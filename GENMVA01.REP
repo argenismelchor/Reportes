@@ -1,0 +1,170 @@
+#IMPORTACION DE CONCEPTOS Y SUS CAPTURAS
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Este reporte importa conceptos a la nomina actual desde un archivo de excel con el siguiente formato:
+#        A       |        B        |       C        |   D  |  E   |  F   |   G   |
+#                      E   N   C   A   B   E   Z   A   D   O   S
+# CLAVE EMPLEADO | NOMBRE EMPLEADO | CLAVE CONCEPTO | CAP1 | CAP2 | CAP3 | TOTAL |
+#
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA'  , 'PANTALLA/IMPRESORA/EXCEL/DISCO' , $salida  )
+NUEVO_PARAMETRO_RUTA ( 'ARCHIVO' , 'C:\'                            , $archivo )
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR'  , ''                               , _grabar  )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+NUEVO_PARAMETRO_TAB ( 'TIPO DE NOMINA' , 'TIPONOM/CLAVE/TIPO DE NOMINA' , $tipo_nom )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( TRAE_REGISTRO ( 'TIPONOM' , $tipo_nom ) = FALSO )
+  MENSAJE ( 'EL TIPO DE NOMINA: ' + $tipo_nom + ', NO EXISTE' )
+  TERMINA_REPORTE
+FIN_SI
+
+SI ( TRAE_REGISTRO ( 'PERIODO' , 'TIPONOM':'CLAVE' , 'TIPONOM':'ACTUAL' ) = FALSO )
+  MENSAJE ( 'EL PERIODO: ' + 'TIPONOM':'ACTUAL' + ', DEL TIPO DE NOMINA: ' + 'TIPONOM':'CLAVE' + ' NO EXISTE' )
+  TERMINA_REPORTE
+FIN_SI
+
+  SI ( PREGUNTA ( 'LA IMPORTACION SE REALIZARA SOBRE LA NOMINA' + 'TIPONOM':'CLAVE' + ', EN EL PERIODO: ' + . ( 'TIPONOM':'ACTUAL' ) + ', CONTINUAR?' ) = FALSO )
+    TERMINA_REPORTE
+  FIN_SI
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CONCEPTO'
+_longitud  := 8
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CAP1'
+_longitud  := 15
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CAP2'
+_longitud  := 15
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CAP3'
+_longitud  := 15
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TOTAL'
+_longitud  := 15
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+_condensado := 1
+$titulo_reporte := 'REPORTE PARA IMPORTAR CONCEPTOS DE NOMINA'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+_renglon_excel  := 2
+$clave_empleado := ''
+$clave_concepto := ''
+$cap1           := ''
+$cap2           := ''
+$cap3           := ''
+$total          := ''
+VAR_T ( &conceptos )
+
+# SUBRUTINAS GLOBALES
+
+SUB_RUTINA lee_renglon
+  EXCEL ( 'TRAE_VALOR' , 1 , _renglon_excel , $clave_empleado )
+  EXCEL ( 'TRAE_VALOR' , 3 , _renglon_excel , $clave_concepto )
+  EXCEL ( 'TRAE_VALOR' , 4 , _renglon_excel , $cap1           )
+  EXCEL ( 'TRAE_VALOR' , 5 , _renglon_excel , $cap2           )
+  EXCEL ( 'TRAE_VALOR' , 6 , _renglon_excel , $cap3           )
+  EXCEL ( 'TRAE_VALOR' , 7 , _renglon_excel , $total          )
+  _renglon_excel := _renglon_excel + 1
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_conceptos
+  PRIMER_REGISTRO ( 'CONCEPTO' )
+    MIENTRAS ( FIN_BASE ( 'CONCEPTO' ) = FALSO )
+      $clave_concepto := 'CONCEPTO':'CLAVE'
+      AGREGA_VALOR_COL ( &conceptos , 0 , $clave_concepto )
+      SIGUIENTE_REGISTRO ( 'CONCEPTO' )
+    FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+
+ABRE_BASE ( 'EMPPRIN' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPNOM' , 'CLAVE' )
+carga_conceptos
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 1 , 1 , $archivo )
+lee_renglon
+  MIENTRAS ( $clave_empleado <> '' )
+    $valor := $clave_empleado
+    imprime_columna
+      SI ( TRAE_REGISTRO ( 'EMPPRIN' , $clave_empleado ) )
+        $valor := 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN'
+        imprime_columna
+        $valor := $clave_concepto
+        imprime_columna
+          SI ( TRAE_INDICE_COL ( &conceptos , 0 , $clave_concepto ) > -1 )
+            $valor := DER ( $cap1 , 15 )
+            imprime_columna
+            $valor := DER ( $cap2 , 15 )
+            imprime_columna
+            $valor := DER ( $cap3 , 15 )
+            imprime_columna
+            $valor := DER ( $total , 15 )
+            imprime_columna 
+              SI ( _grabar )
+                  SI ( CONCEPTO_CAPTURADO ( $clave_concepto ) = FALSO )
+                    CAPTURA_CONCEPTO ( $clave_concepto )
+                  FIN_SI
+                CAP1  ( $clave_concepto ) := VALOR ( $cap1  )
+                CAP2  ( $clave_concepto ) := VALOR ( $cap2  )
+                CAP3  ( $clave_concepto ) := VALOR ( $cap3  )
+                TOTAL ( $clave_concepto ) := VALOR ( $total )
+                GRABA_BASE ( 'EMPNOM' )
+              FIN_SI
+          SI_NO
+            $valor := 'NO EXISTE'
+            imprime_columna
+          FIN_SI
+      SI_NO
+        $valor := '**NO EXISTE EL EMPLEADO'
+        imprime_columna
+      FIN_SI
+    imprime_renglon
+    lee_renglon
+  FIN_MIENTRAS
+
+TERMINA_REPORTE

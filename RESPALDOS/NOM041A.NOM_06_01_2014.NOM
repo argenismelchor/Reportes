@@ -1,0 +1,200 @@
+#IMPRESION Y ACUMULACION DE FINIQUITOS
+#CARTA DE FINIQUITOS
+#VERSION 1.0
+#DESCRIPCION
+#Este reporte te permite crear cartas de finiquitos para los empleados que lo necesiten.
+
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+NUEVO_PARAMETRO_TAB ('EMPLELADO' , 'EMPPRIN/CLAVE/CLAVE' , $clave ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_HORA := 2
+
+$tmp := ''
+$folio := 'TODOS'
+_acumula := 0 
+ABRE_BASE ('EMP_FINR') 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMP_FINR' , 'CLAVE' ) 
+SI ( TRAE_REGISTRO ('EMPPRIN' , $clave ))
+MIENTRAS (FIN_BASE ('EMP_FINR') = FALSO ) 
+  SI ( $tmp <> 'EMP_FINR':'FOLIO') 
+      $folio := $folio + '/' + 'EMP_FINR':'FOLIO'
+      $tmp := 'EMP_FINR':'FOLIO'
+  FIN_SI
+  SIGUIENTE_REGISTRO ('EMP_FINR') 
+FIN_MIENTRAS 
+
+NUEVO_PARAMETRO_SEL ( 'FOLIO'    , $folio , $folio ) 
+NUEVO_PARAMETRO_SEL ( 'ACUMULAR' , 'NO/SI', _acumula ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FIN_SI
+
+CIERRA_BASE ('EMPPRIN') 
+
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+LETRA ( 'LETRA NORMAL' )
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+
+#### VARIABLES GLOBALES.
+_fecha  := 0
+_ant    := 0
+_minimo := 0
+$desc   := ''
+_tipo   := 0
+_frec   := 0
+_aux1   := 0
+$dia    := ''
+$mes    := ''
+$ano    := ''
+$fecha  := ''
+_total_finiquito := 0
+
+
+SUB_RUTINA formato_trabajador
+      DECIMALES := 2
+      _ant := ('EMP_FINR':'FECHA_BAJA' - 'EMPPRIN':'INGRESO') / 365    
+      #******************************************************
+      #IMPRESION DE DATOS PERSONALES
+      #******************************************************
+      LETRA( 'LETRA NORMAL' ) ;; IMPRIME
+      IMP (CENTRA('EMPRESA':'NOMBRE')) ;; IMPRIME
+      IMP (CENTRA('FINIQUITO O LIQUIDACION INDIVIDUAL')) ;; IMPRIME
+      IMP (REPITETXT ('=', 80)) ;; IMPRIME ;; IMPRIME
+      IMP ('CLAVE             : ','EMPPRIN':'CLAVE') ;; IMPRIME 
+      IMP ('NOMBRE            : ','EMPPRIN':'NOMBRE') ;; IMPRIME
+      IMP ('R.F.C.            : ', FORMATO('EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX')) ;; IMPRIME
+      IMP ('FECHA DE BAJA     : ', FECHA ('EMP_FINR':'FECHA_BAJA')) ;; IMPRIME
+      IMP ('FECHA DE INGRESO  : ', FECHA ('EMPPRIN':'INGRESO')) ;; IMPRIME
+      IMP ('SALARIO DIARIO    : ', DER($('EMP_FINR':'SD'), 10)) ;; IMPRIME
+      IMP ('SALARIO INTEGRADO : ', DER($('EMP_FINR':'SDI'), 10)) ;; IMPRIME
+      IMP ('ANTIGUEDAD        : ', _ant , ' AÑO(S)') ;; IMPRIME ;; IMPRIME
+      IMP (COL(27), 'DIAS', COL(40), 'PERCEP', COL(53), 'DEDUC', COL(66), 'NETOS') ;; IMPRIME
+      IMP (REPITETXT ('-', 80)) ;; IMPRIME ;; IMPRIME    
+
+      PRIMER_REGISTRO( 'EMP_FINR' )
+      MIENTRAS ( FIN_BASE( 'EMP_FINR' ) = FALSO )
+       SI ( $folio = 'EMP_FINR':'FOLIO' )
+           DECIMALES := 2    
+               SI ( TRAE_REGISTRO( 'CONCEPTO', 'EMP_FINR':'CONCEPTO' ) )
+                 $desc := 'CONCEPTO':'DESCRIPCION'
+                 _tipo := 'CONCEPTO':'PDC'
+                 _frec := 'CONCEPTO':'FRECUENCIA'
+                 _aux1 := 'CONCEPTO':'CAP3'
+               SI_NO
+                 $desc := 'DESCONOCIDO'
+               FIN_SI    
+               SI ( _acumula = 1 ) 
+                SI ( CONCEPTO_CAPTURADO ( 'EMP_FINR':'CONCEPTO') = FALSO ) 
+                  CAPTURA_CONCEPTO ('EMP_FINR':'CONCEPTO') 
+                FIN_SI
+                  TOTAL ( 'EMP_FINR':'CONCEPTO' ) := 'EMP_FINR':'MONTO'
+                  GRABA_BASE ('EMPNOM') 
+               FIN_SI         
+#*************************** DIAS DE  VIGENCIA  ****************************
+               SI (( _tipo = 2 ) AND ( 'EMP_FINR':'CONCEPTO' = 'DVIG' ))
+                   DECIMALES := 0
+                   IMP ( COL(1), 'EMP_FINR':'CONCEPTO', COL(6), SUBSTR( $desc,1,18)  , COL(27), DER ( $( 'EMP_FINR':'MONTO' ), 4 ) ) ;; IMPRIME
+                   DECIMALES := 2  
+               FIN_SI
+#***************************  PERCEPCIONES  ********************************
+               SI ( _tipo = 0 ) 
+                   IMP ( COL(1), 'EMP_FINR':'CONCEPTO', COL(6), SUBSTR( $desc,1,18) , COL(37), DER ( $( 'EMP_FINR':'MONTO' ), 10) ) ;; IMPRIME
+               FIN_SI
+#***************************  DEDUCCIONES   ********************************
+               SI ( _tipo = 1 )          
+                   IMP ( COL(1), 'EMP_FINR':'CONCEPTO', COL(6), SUBSTR( $desc,1,18) , COL(50), DER ( $( 'EMP_FINR':'MONTO' ), 10 ) ) ;; IMPRIME
+               FIN_SI       
+#*************************** CONCEP. NETOS  ********************************
+               SI (( _tipo = 2 ) AND ( 'EMP_FINR':'CONCEPTO' = 'EXEN' ))
+                   IMP ( COL(1), 'EMP_FINR':'CONCEPTO', COL(6), SUBSTR( $desc,1,18) , COL(63), DER ( $( 'EMP_FINR':'MONTO' ), 10 ) ) ;; IMPRIME                   
+               FIN_SI
+               SI (( _tipo = 2 ) AND ( 'EMP_FINR':'CONCEPTO' = 'PERC' ))
+                   IMP ( COL(1), 'EMP_FINR':'CONCEPTO', COL(6), SUBSTR( $desc,1,18) , COL(63), DER ( $( 'EMP_FINR':'MONTO' ), 10 ) ) ;; IMPRIME                   
+               FIN_SI
+               SI (( _tipo = 2 ) AND ( 'EMP_FINR':'CONCEPTO' = 'PGRA' ))
+                   IMP ( COL(1), 'EMP_FINR':'CONCEPTO', COL(6), SUBSTR( $desc,1,18) , COL(63), DER ( $( 'EMP_FINR':'MONTO' ), 10 ) ) ;; IMPRIME                   
+               FIN_SI
+               SI (( _tipo = 2 ) AND ( 'EMP_FINR':'CONCEPTO' = 'DEDU' ))
+                   IMP ( COL(1), 'EMP_FINR':'CONCEPTO', COL(6), SUBSTR( $desc,1,18) , COL(63), DER ( $( 'EMP_FINR':'MONTO' ), 10 ) ) ;; IMPRIME                   
+               FIN_SI
+               SI (( _tipo = 2 ) AND ( 'EMP_FINR':'CONCEPTO' = 'TOTA' ))
+                   IMP ( COL(1), 'EMP_FINR':'CONCEPTO', COL(6), SUBSTR( $desc,1,18) , COL(63), DER ( $( 'EMP_FINR':'MONTO' ), 10 ) ) ;; IMPRIME                   
+                   _total_finiquito := 'EMP_FINR':'MONTO'
+               FIN_SI
+         FIN_SI
+         SIGUIENTE_REGISTRO( 'EMP_FINR' )
+      FIN_MIENTRAS  
+
+      # ******************************************************
+      # IMPRESION DE LEYENDA
+      # ******************************************************
+         IMPRIME;;IMPRIME
+         IMP (REPITETXT ('-', 80)) ;; IMPRIME ;; IMPRIME ;; IMPRIME                   
+         IMP ('RECIBI DE ','EMPRESA':'NOMBRE',' LA CANTIDAD DE ', DER($( _total_finiquito ), 10)    ) ;; IMPRIME
+         IMP ('(',CANTIDAD_LETRA(( _total_finiquito )), ') ' ) ;; IMPRIME
+         IMP ('POR  CONCEPTO  DE  LA  LIQUIACION   FINIQUITO  QUE  ME  CORRESPONDE AL  DAR POR') ;; IMPRIME
+         IMP ('CONCLUIDO  EN FORMA VOLUNTARIA MI CONTRATO DE TRABAJO EN LOS TERMINOS DE LA LEY') ;; IMPRIME
+         IMP ('FEDERAL DEL TRABAJO.') ;; IMPRIME ;; IMPRIME
+         IMP ('HAGO CONSTAR  QUE AL RECIBIR LA CANTIDAD ANTES  MENCIONADA NO SE ME ADEUDA SUMA') ;; IMPRIME
+         IMP ('ALGUNA  POR  CONCEPTO  DE  SALARIOS  ORDINARIOS  O EXTRAORDINARIOS, VACACIONES,') ;; IMPRIME
+         IMP ('PRIMAS , NI  NINGUN  OTRO   CONCEPTO  QUE   POR  LEY  O  POR  CONTRATO  PUDIERA') ;; IMPRIME
+         IMP ('CORRESPONDERME, POR  LO  QUE  NO  TENGO  NINGUN  INCONVENIENTE EN EXTENDER A LA') ;; IMPRIME
+         IMP ('EMPRESA  EL  MAS  AMPLIO  FINIQUITO, RELEVANDOLE DE  CUALQUIER  RESPONSABILIDAD') ;; IMPRIME
+         IMP ('PRESENTE O FUTURA POR MOTIVO DE LEY, O DEL CONTRATO DE TRABAJO QUE HOY DOY  POR') ;; IMPRIME
+         IMP ('TERMINADO EN FORMA VOLUNTARIA.') ;; IMPRIME ;; IMPRIME ;; IMPRIME
+         IMP ('-----------------------     -----------------------     -----------------------') ;; IMPRIME
+         IMP ('   Vo.Bo.CONTABILDAD            RECURSOS HUMANOS          RECIBI DE CONFORMIDAD ') ;; IMPRIME ;; IMPRIME
+         FORMATO_FECHA:= 5
+         IMP ( CENTRA(('PATRONAL':'MUNICIPIO' + ', ' + 'PATRONAL':'ESTADO' + ' , ' + FECHA(_fecha) ))) ;; IMPRIME      
+         AVANZA_HOJA
+FIN_SUB_RUTINA
+
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina       := 1
+_omitir_encabezados   := 1
+_omitir_encabezado    := 1
+_omitir_sub_totales   := 1
+_omitir_sub_total     := 1
+_omitir_total_general := 1
+$campos_extras:='E. RFC, E. AFILIACION'  
+$condiciones_extras := 'e.clave = ' + $clave 
+#lee_parametros_seleccion
+#lee_parametros_indices
+
+base_trabajadores
+
+USA_ARCHIVO ('EMPPRIN','EMPSDO'   ,'CLAVE')
+USA_ARCHIVO ('EMPPRIN','EMPNOM'   ,'CLAVE')
+USA_ARCHIVO ('EMPPRIN','EMP_FINR' ,'CLAVE' ) 
+USA_ARCHIVO ('EMPPRIN','EMPACUM'  ,'CLAVE')
+
+ SI ( LOCALIZA_REGISTRO( 'EMP_FINR' , 'CLAVE;FOLIO', $clave, $folio ))
+  PON_TOTAL_0
+  PON_CAPTURAS_0
+  GRABA_BASE ('EMPNOM') 
+  CAPTURA_CONCEPTO ('FINI') 
+  CAP3 ('FINI') := 1
+  datos_trabajador
+  SI_NO
+   MENSAJE_PAUSA ('EL EMPLEADO ' + $clave + ' NO TIENE FINIQUITOS CALCULADOS' , 4000 ) 
+ FIN_SI
+
+

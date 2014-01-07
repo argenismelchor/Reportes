@@ -1,0 +1,282 @@
+#FORMATO DC-4
+#VERSION 1.0
+#USUARIO =*
+#EXCEL
+#NO EDITAR
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+$empresa := 'EMPRESA':'CLAVE'
+$letra := 'Arial'
+$lugar := LEE_INI( 'DC4_' + $empresa, 'LUGAR', '' )
+$actividad := LEE_INI( 'DC4_' + $empresa, 'ACTIVIDAD', '' )
+$rl := LEE_INI( 'DC4_' + $empresa, 'REP_LEGAL', '' )
+FORMATO_FECHA := 6
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL', $salida)
+NUEVO_PARAMETRO_FEC ( 'FECHA', '', _fecha )
+NUEVO_PARAMETRO     ( 'AÑO', SUBSTR( FECHA( FECHA_HOY ), 5, 4), _ano )
+NUEVO_PARAMETRO     ( 'ACTIVIDAD', $actividad, $actividad )
+$rfc := LEE_INI( 'PARAMETROS', 'RFC_EMPRESA', '' )
+NUEVO_PARAMETRO     ( 'RFC', $rfc, $rfc )
+NUEVO_PARAMETRO     ( 'REP. LEGAL', $rl, $rl )
+NUEVO_PARAMETRO     ( 'LUGAR', $lugar, $lugar )
+NUEVO_PARAMETRO_TAB ( 'REGISTRO', 'PATRONAL/CLAVE/TABLA DE REGISTROS', $registro )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+ESCRIBE_INI( 'PARAMETROS', 'RFC_EMPRESA', $rfc )
+ESCRIBE_INI( 'DC4_' + $empresa, 'ACTIVIDAD', $actividad )
+ESCRIBE_INI( 'DC4_' + $empresa, 'REP_LEGAL', $rl )
+ESCRIBE_INI( 'DC4_' + $empresa, 'LUGAR', $lugar )
+
+#VARIABLES GLOBALES
+_inix      := 0
+_iniy      := 0
+_ajuste_x  := 0
+_ajuste_y  := 0
+_indice    := 0
+_sep_trab  := 40
+_ancho     := 0
+_fi        := CALCULA_FECHA( _ano, 01, 01 )
+_ff        := CALCULA_FECHA( _ano, 12, 31 )
+LETRA( 'LETRA NORMAL' )
+_renglon  := 1
+
+MODO_IMPRESION ( 'GRAFICO' )
+
+FORMATO_FECHA := 0
+SALIDA := $salida
+
+VAR_T ( &empleados )
+$cadena   := ''
+$car      := ''
+_x        := 0
+_y        := 0
+_num_trab := 0
+_total    := 0
+$clave    := ''
+_cont     := 0
+_ind_trab := 0
+_total_hojas := 0
+
+SUB_RUTINA imprime_cadena
+  _indice := 0
+  MIENTRAS ( LONGITUD( $cadena ) > 0 )
+    $car := SUBSTR( $cadena, 1, 1 )
+    SI ( $car <> '-' )
+      IMP_XY( _x + _indice, _y, $car )
+    FIN_SI
+    $cadena := ELIMINA( $cadena, 1, 1 )
+    _indice := _indice + _ancho
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA enc
+   COLOR( 'NEGRO' ) IMPRIME_SIN_SALTO
+   ###############  FORMA
+   IMPRIME_IMAGEN( 'SEC_TRAB', 100, 50, 200, 200 )
+   IMPRIME_REC ( 70, 360, 1900, 80 )
+   IMPRIME_REC ( 70, 440, 1900, 100 )
+   IMPRIME_REC ( 70, 540, 1900, 140 )
+   IMPRIME_REC ( 70, 540, 980, 140 )
+   IMPRIME_REC ( 70, 680, 1900, 110 )
+   IMPRIME_REC ( 1690, 680, 280, 110 )
+   IMPRIME_REC ( 70, 830, 400, 70 )
+   IMPRIME_REC ( 70, 790, 1900, 110 )
+   IMPRIME_REC ( 70, 900, 1900, 80 )
+   IMPRIME_REC ( 70, 980, 1900, 100 )
+   IMPRIME_REC ( 70, 1080, 1900, 950 )
+   IMPRIME_REC ( 70, 980, 1350, 1050 )
+   IMPRIME_REC ( 70, 2030, 1900, 470 )
+
+   ###############  CICLOS
+   _cont := 0
+   MIENTRAS ( _cont < 14 )
+      IMPRIME_LINEA ( ( _cont * 65 ) + 130, 600, ( _cont * 65 ) + 130, 680 )
+       _cont :=  _cont + 1
+   FIN_MIENTRAS
+
+   _cont := 0
+   MIENTRAS (  _cont < 12 )
+      IMPRIME_LINEA ( ( _cont * 65 ) + 1170, 600, ( _cont * 65 ) + 1170, 680 )
+      _cont := _cont + 1
+   FIN_MIENTRAS
+
+   _cont := 0
+   MIENTRAS (  _cont < 3 )
+      IMPRIME_LINEA ( ( _cont * 65 ) + 1755, 740, ( _cont * 65 ) + 1755, 790 )
+      _cont := _cont + 1
+   FIN_MIENTRAS
+
+   _cont := 0
+   MIENTRAS (  _cont < 7 )
+      IMPRIME_LINEA ( ( _cont * 65 ) + 1160, 2400, ( _cont * 65 ) + 1160, 2455 )
+      _cont := _cont + 1
+   FIN_MIENTRAS
+   IMPRIME_LINEA ( 1160, 2455, 1552, 2455 )
+
+   ###############  ENCABEZADOS
+   CAMBIA_LETRA( $letra, 12, '\N' ) IMPRIME_SIN_SALTO
+   IMP_RECT( 'Secretaría del Trabajo y Previsión Social', 70, 50, 1900, 80, 'CEN' )
+   CAMBIA_LETRA( $letra, 14, '\N' ) IMPRIME_SIN_SALTO
+   IMP_RECT( 'LISTA DE CONSTANCIA DE HABILIDADES LABORALES', 70, 150, 1900, 80, 'CEN' )
+   CAMBIA_LETRA( $letra, 14, '\N' ) IMPRIME_SIN_SALTO
+   IMP_RECT( 'Formato DC-4', 70, 250, 1900, 80, 'CEN' )
+   IMP_RECT( 'DATOS GENERALES DE LA EMPRESA', 70, 370, 1900, 80, 'CEN' )
+   IMP_RECT( 'RELACION DE TRABAJADORES', 70, 910, 1900, 80, 'CEN' )
+   IMPRIME_REC ( 70, 980, 1900, 100 )
+   CAMBIA_LETRA( $letra, 10, '\N' ) IMPRIME_SIN_SALTO
+   IMP_RECT( 'Nombre del Trabajador', 70, 1010, 1350, 80, 'CEN' )
+   IMP_RECT( 'Número de constancias', 1420, 980, 540, 80, 'CEN' )
+   IMP_RECT( 'Expedidas al trabajador', 1420, 1030, 540, 80, 'CEN' )
+
+   ###############  TITULOS
+   CAMBIA_LETRA( $letra, 10, '\N' ) IMPRIME_SIN_SALTO
+   IMP_XY ( 75, 440, 'Nombre o razón social' )
+   IMP_XY ( 75, 550, 'Registro Federal de Contribuyentes' )
+   IMP_XY ( 1051, 550, 'Registro patronal del I.M.S.S.' )
+   IMP_XY ( 75, 690, 'Actividad específica o giro' )
+   IMP_XY ( 75, 850, 'Hoja' )
+   IMP_XY ( 260, 850, 'de' )
+   DECIMALES := 0
+   COLOR( 'AZUL' ) IMPRIME_SIN_SALTO
+   IMP_XY ( 190, 850, .( PAGINA ) )
+   IMP_XY ( 360, 850, .( _total_hojas ) )
+   IMP_RECT( $rl, 70, 2250, 1900, 80, 'CEN' )
+   IMP_XY( 100, 490, 'EMPRESA':'NOMBRE' )
+   IMP_XY( 100, 740, $actividad )
+
+   $cadena := $rfc
+   SI ( LONGITUD( $cadena ) = 14 )
+     $cadena := ' ' + $cadena
+   FIN_SI
+   _x := 90
+   _y := 620
+   _ancho := 65
+   imprime_cadena
+ 
+   $cadena := FORMATO( 'PATRONAL':'REGISTRO PATRONAL', 'XXXXXXXXXX-X' )
+   _x := 1195
+   _y := 620
+   _ancho := 65
+   imprime_cadena
+ 
+   $cadena := SUBSTR( FECHA( _fecha ), 5, 2 ) + SUBSTR( FECHA( _fecha ), 3, 2 ) + SUBSTR( FECHA( _fecha ), 1, 2 )
+   _x := 1190
+   _y := 2410
+   _ancho := 64
+   imprime_cadena
+
+
+   COLOR( 'NEGRO' ) IMPRIME_SIN_SALTO
+   IMP_RECT( '______________________________________________________________', 70, 2260, 1900, 80, 'CEN' )
+   IMP_RECT( 'Nombre y Firma del Patrón o representante legal de la empresa', 70, 2300, 1900, 80, 'CEN' )
+
+   CAMBIA_LETRA( $letra, 10, '' ) IMPRIME_SIN_SALTO
+   IMP_RECT( 'Lugar y firma de elaboración de este informe', 70, 2350, 1900, 80, 'CEN' )
+
+   IMP_XY ( 250, 2415, '______________________________________' )
+   CAMBIA_LETRA( $letra, 12, '\N' ) IMPRIME_SIN_SALTO
+   IMP_XY ( 350, 2405, $lugar )
+
+   CAMBIA_LETRA( $letra, 8, '' ) IMPRIME_SIN_SALTO
+   IMP_RECT( 'Los datos se asientan en esta constancia bajo protesta de decir la verdad, apercibidos de de la responsabilidad en que incurre todo', 70, 2035, 1900, 80, 'CEN' )
+   IMP_RECT( 'aquel que no se conduce con la verdad.', 70, 2075, 1900, 80, 'CEN' )
+
+   CAMBIA_LETRA( $letra, 8, '\N' ) IMPRIME_SIN_SALTO
+   IMP_XY ( 1200, 2460, 'Año' )
+   IMP_XY ( 1330, 2460, 'Mes' )
+   IMP_XY ( 1470, 2460, 'Día' )
+   IMP_XY ( 75, 2500, 'NOTAS' )
+   IMP_XY ( 75, 2530, '- Anexar el número de hojas que sea necesario. Solamente deberá asentarse la firma en la última hoja que se presente.' )
+   IMP_XY ( 75, 2560, '- Llenar a máquina o con letra de molde.' )
+   IMP_XY ( 75, 2590, '- Los espacios sombreados son para uso exclusivo de la Secretaría del Trabajo y previsió Social.' )
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+  INCREMENTA_TABLA( &empleados, 'TOTAL', 'EMPPRIN':'CLAVE', 1 )
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_trabajador
+  SI ( TRAE_REGISTRO( 'EMPPRIN', $clave ) )
+    DECIMALES := 0
+    _ind_trab := _ind_trab + 1
+    IMP_XY ( 100 + _ajuste_x, 1080 + ( _num_trab * _sep_trab ) + _ajuste_y, DER( .( _ind_trab ), 4 ) + '  ' + 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN' )
+    DECIMALES := 0
+    IMP_XY ( 1700 + _ajuste_x, 1080 + ( _num_trab * _sep_trab ) + _ajuste_y, DER( .( _total ), 3 ) )
+    _num_trab := _num_trab + 1
+    SI ( $salida = 'EXCEL' )
+      _renglon := _renglon + 1
+      EXCEL ( 'PON_VALOR', 1, _renglon, 'EMPPRIN':'CLAVE' )
+      EXCEL ( 'PON_VALOR', 2, _renglon, 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN' )
+      EXCEL ( 'PON_VALOR', 3, _renglon, .( _total ) )
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+#lee_parametros_seleccion
+#lee_parametros_indices
+$campos_extras := 'C. FECHA_INICIAL, C. FECHA_FINAL'
+$bases_extras := 'EMPCURSO C'
+$condiciones_extras := 'C. CLAVE = E. CLAVE AND C. FECHA_INICIAL <= :FFIN AND C. FECHA_FINAL >= :FINI AND C. DC3 = "SI"'
+base_trabajadores
+PARAMETRO_SQL( 'EMPPRIN', 'FINI', _fi )
+PARAMETRO_SQL( 'EMPPRIN', 'FFIN', _ff )
+
+SI ( TRAE_REGISTRO( 'PATRONAL', $registro ) = FALSO )
+  MENSAJE( 'NO EXISTE EL REGISTRO SELECCIONADO' )
+  TERMINA_REPORTE
+FIN_SI
+
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+CIERRA_BASE( 'EMPPRIN' )
+
+ABRE_BASE( 'EMPPRIN' )
+
+SI ( $salida = 'EXCEL' )
+  EXCEL ( 'PON_VALOR', 1, _renglon, 'CLAVE' )
+  EXCEL ( 'PON_VALOR', 2, _renglon, 'NOMBRE' )
+  EXCEL ( 'PON_VALOR', 3, _renglon, 'CURSOS' )
+FIN_SI
+
+#CUENTA TOTAL DE HOJAS
+_ind   := 0
+MIENTRAS( TRAE_VALOR_TABLA( &empleados, 0, _ind ) <> '' )
+  _ind := _ind + 1
+FIN_MIENTRAS
+
+_total_hojas := TRUNCAR( ( _ind - 1 ) / 23 ) + 1
+
+_ind   := 1
+$clave := TRAE_VALOR_TABLA( &empleados, 0, _ind )
+SI ( $clave <> '' )
+  enc
+FIN_SI
+MIENTRAS( $clave <> '' )
+   _total := VALOR ( TRAE_VALOR_TABLA( &empleados, 1, _ind ) )
+   imprime_trabajador
+   SI ( Y_ACTUAL > 1980 )
+     _num_trab := 0
+     AVANZA_HOJA
+     IMPRIME
+     enc
+   FIN_SI
+  _ind := _ind + 1
+  $clave := TRAE_VALOR_TABLA( &empleados, 0, _ind )
+FIN_MIENTRAS
+TERMINA_REPORTE

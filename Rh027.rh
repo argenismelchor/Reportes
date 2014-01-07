@@ -1,0 +1,150 @@
+#INDICE DE AUSENTISMO
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra el indice de ausentismo de los empleados de la empresa.
+#Este reporte imprime el indice de ausentismo, el numero de bajas de acuerdo al indice seleccionado.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , '' , _fi ) 
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL' , '' , _ff )
+NUEVO_PARAMETRO_TAB ( 'TIPO FALTA' , 'FALTA/CLAVE/FALTAS' , &faltas )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'Indice de ausentismo del ' + FECHA (_fi) + ' al ' + FECHA (_ff)
+   encabezado_ini
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+RENGLONES     := 65
+COLUMNAS      := 80
+
+#Variables Globales
+VAR_T ( &indices )
+_num_ind  := 0
+_tot_vig  := 0
+_stot_vig := 0
+_tot_fal  := 0
+_stot_fal := 0
+_tot_inc  := 0
+_stot_inc := 0
+_indice   := 0
+_no_dias  := 0
+$tfalta   := TRAE_SELECCION( &faltas )
+VAR_T ( &subtotales )
+_fal      := 0
+_inc      := 0
+$indice   := ''
+_di       := 0
+
+#Subrutinas diversas
+SUB_RUTINA imprime_indice
+   COLOR ('NEGRO')
+   DECIMALES := 2
+   IMP ( COL (15) , 'Dias Trabajados          : ' , DER ( _stot_vig , 10 ) ) ;; IMPRIME
+   #_stot_vig := _stot_vig / (_ff - _fi + 1)
+   DECIMALES := 0
+   IMP ( COL (15) , 'Total de Faltas          : ' , DER ( _stot_fal , 10 ) ) ;; IMPRIME
+   IMP ( COL (15) , 'Total de Incapacidades   : ' , DER ( _stot_inc , 10 ) ) ;; IMPRIME
+   DECIMALES := 4
+   _indice   := ( ( _stot_fal + _stot_inc ) / _stot_vig ) * 100
+   DECIMALES := 2
+   IMP ( COL (15) , 'Indice de Ausentismo     : ' , DER ( _indice , 10 ) ) ;; IMPRIME
+   IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA cuenta_faltas
+   SI ( $tfalta = '' )
+      _fal := TOTAL_FALTAS ( _fi , _ff , '*' )
+   SI_NO
+      _fal := TRAE_FALTAS  ( _fi , _ff , $tfalta )
+   FIN_SI
+   _inc := TRAE_INCAPACIDADES ( _fi , _ff , '*' )
+   #Incremento de valores para los indices seleccionados
+   _num_ind := 0
+   REPITE
+      INCREMENTA_TABLA ( &subtotales , 'FALTAS' , TRAE_VALOR_TABLA ( &indices , 0 , _num_ind ) , _fal )
+      INCREMENTA_TABLA ( &subtotales , 'INC'    , TRAE_VALOR_TABLA ( &indices , 0 , _num_ind ) , _inc )
+      _num_ind := _num_ind + 1
+   HASTA ( TRAE_VALOR_TABLA ( &indices , 0 , _num_ind ) = '' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+   IMPRIME
+   IMP ( COL (15) , 'SubTotales ' + $indice ) ;; IMPRIME
+   IMPRIME
+   _stot_vig := VALOR_TABLA ( &subtotales , 'DVIG'   , $indice )
+   _stot_fal := VALOR_TABLA ( &subtotales , 'FALTAS' , $indice )
+   _stot_inc := VALOR_TABLA ( &subtotales , 'INC'    , $indice )
+   imprime_indice
+   DECIMALES := 0
+   ASIGNA_VALOR_TABLA ( &subtotales , 'DVIG'   , $indice , 0 )
+   ASIGNA_VALOR_TABLA ( &subtotales , 'FALTAS' , $indice , 0 )
+   ASIGNA_VALOR_TABLA ( &subtotales , 'INC'    , $indice , 0 )
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   # Incremento de valores para los indices seleccionados
+   _num_ind := 0
+   REPITE
+      INCREMENTA_TABLA ( &subtotales , 'DVIG' , TRAE_VALOR_TABLA ( &indices , 0 , _num_ind ) , _no_dias )
+      _num_ind := _num_ind + 1
+   HASTA ( TRAE_VALOR_TABLA ( &indices , 0 , _num_ind ) = '' )
+   cuenta_faltas
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+$campos_extras := 'E. CALENDARIO'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO' , 'CLAVE' )
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+   _no_dias := FUE_VIGENTE ( _fi, _ff )
+# Tarda demasiado tiempo la consulta para SQL Server.
+# _di := DIAS_INHABILES( _fi , _ff , 'EMPPRIN':'CALENDARIO' , 0 , 0 )
+   _no_dias := _no_dias - _di
+   SI ( ( _no_dias + _di ) > 0 )
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte
+IMPRIME ;; IMPRIME
+_stot_vig := VALOR_TABLA ( &subtotales , 'DVIG'   , 'TOTAL' )
+_stot_fal := VALOR_TABLA ( &subtotales , 'FALTAS' , 'TOTAL' )
+_stot_inc := VALOR_TABLA ( &subtotales , 'INC'    , 'TOTAL' )
+imprime_indice

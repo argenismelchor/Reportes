@@ -1,0 +1,178 @@
+#ProNOMINA PROMEX
+#NO EDITAR
+#USUARIO =*
+#VERSION 1.000
+#DESCRIPCION
+#Reporte que genera un archivo ASCII para la interfase electrónica de pagos de nómina con BANCAPROMEX.
+#FIN_DESCRIPCION
+#
+_fi := 0
+_ff := 0
+_fa := 0
+DECIMALES := 0
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA APLICACION' , '' , _fa )
+NUEVO_PARAMETRO     ( 'NUMERO DE SEMANA' , '1' , _sem )
+NUEVO_PARAMETRO     ( 'NUM. DE CUENTA' , '99999999999999999999' , $cuenta )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_PESOS := 3
+FORMATO_FECHA := 0
+$archi        := ''
+SI ( $salida = 'DISCO' )
+   NUEVO_PARAMETRO ( 'ARCHIVO' , DIRECTORIO_TRABAJO + '\DEPONOM.001' , $archi )
+   LEE_PARAMETROS
+   BORRA_PARAMETROS
+   SALIDA_REPORTE ($archi)
+   MODO_IMPRESION ('DIRECTO')
+FIN_SI 
+SALIDA    := $salida
+RENGLONES := 65
+COLUMNAS  := 80
+DRAFT     := 'S'
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &totales )
+VAR_T ( &indices )
+_num_ind := 0
+$indice  := ''
+$tipo    := ''
+_cont    := 0
+_imp     := 0
+_l       := 0
+_lsem    := 0
+_net     := 0
+_cont    := 0
+_tot     := 0
+_fecha   := 0
+_ext     := 0
+$t       := ''
+$f       := ''
+$a       := ''
+$m       := ''
+$d       := ''
+$cta     := ''
+
+#SUB_RUTINA sumatoria
+#  DECIMALES := 2
+# Incremento de valores para los indices seleccionados
+#  _num_ind := 0
+#  REPITE
+#     _num_ind := _num_ind + 1
+#  HASTA ( TRAE_VALOR_TABLA ( &indices , 0 , _num_ind ) = '' )
+#FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   DECIMALES := 8
+   $cta := SUBSTR ( 'EMPPRIN':'CTA_TARJETA' , 1 , 9 )
+   _net := TRUNCAR ( TOTAL ('TOTA') * 100 ) / 100
+   _tot := _tot  + _net
+   DECIMALES := 0
+   IMP ( COL (1) , '2' , COL (2) , 'EMPPRIN':'CLAVE' , COL (17) , '01' , COL (19) , 'D' , COL (20) , '00000000000000' )
+   DECIMALES := 2
+   _l := LONGITUD ( .(_net) ) - 1
+   IMP ( COL (34 - _l) , $ (TOTAL('TOTA')) , COL (80) , ' ' ) ;; IMPRIME
+   DECIMALES := 0
+FIN_SUB_RUTINA
+
+
+#SUB_RUTINA sub_totales
+  #
+#FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina     := 1
+_omitir_encabezados := 1
+_omitir_sub_totales := 1
+_omitir_sub_total   := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+
+# Definicion de variables en base a los parametros
+SALIDA   := $salida
+$ind_act := ''
+$nom_ind := ''
+
+# Definicion de la tabla de indices utilizados
+REPITE
+   $nom_ind := TRAE_VALOR_TABLA ( &in , 2 , _num_ind )
+   $ind_act := TRAE_VALOR_TABLA ( &in , 0 , _num_ind )
+   SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+      AGREGA_VALOR_COL ( &indices , 0 , $nom_ind )
+   FIN_SI
+   _num_ind := _num_ind + 1
+HASTA ( $nom_ind = '' )
+AGREGA_VALOR_COL ( &indices , 0 , 'TOTAL' )
+
+$campos_extras := 'E.NOMBREP, E.NOMBREM, E.NOMBREN, E.CTA_TARJETA'
+base_trabajadores
+
+#ABRE_BASE ('EMPPRIN')
+PRIMER_REGISTRO ('EMPPRIN')
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   DECIMALES := 8
+   $cta := SUBSTR ( 'EMPPRIN':'CTA_TARJETA' , 1  , 9 )
+   SI ( FUE_VIGENTE ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' ) )
+      SI ( TOTAL ('TOTA') > 0 )
+         SI ( VALOR ( $cta ) <> 0 )
+            _cont := _cont + 1
+            _tot  := _tot  + TOTAL ('TOTA')
+         FIN_SI
+      FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+# ---------- Impresión de ENCABEZADO
+_tot := TRUNCAR ( _tot * 100 ) / 100
+DECIMALES := 0
+$a := SUBSTR ( FECHA (_fa) , 5 , 2 )
+$m := SUBSTR ( FECHA (_fa) , 3 , 2 )
+$d := SUBSTR ( FECHA (_fa) , 1 , 2 )   
+$fecha := $a + $m + $d
+_l     := LONGITUD ( .(_cont) )
+_lsem  := LONGITUD ( .(_sem)  )
+DECIMALES := 0
+IMP ( COL (1) , '1' , COL (2) , '000' , COL (5 - _lsem) , .(_sem) , COL (5) , '00000' , COL (10 - _l) , .(_cont) , COL (10) , '00000000000000' )
+DECIMALES := 2
+_l := LONGITUD ( .(_tot) ) - 1
+IMP ( COL (24 - _l) , $ (_tot) , COL (24) , '01' , COL (26) , $cuenta )
+_l := LONGITUD ($cta)
+IMP ( COL (46) , '850101' )
+DECIMALES := 0
+IMP ( COL (52) , '00000000000' , COL (63) , $fecha , COL (69) , '850101' , COL (80) , ' ' )
+IMPRIME
+
+# ---------- Detalle de Trabajadores
+_tot := 0
+PRIMER_REGISTRO ('EMPPRIN')
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   DECIMALES := 2
+   $cta := SUBSTR ( 'EMPPRIN':'CTA_TARJETA' , 1 , 9 )
+   _net := TRUNCAR ( TOTAL ('TOTA') * 100 ) / 100
+   SI ( FUE_VIGENTE ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' ) )
+      SI ( TOTAL ('TOTA') > 0 )
+         SI ( VALOR ( $cta ) <> 0 )
+            datos_trabajador
+         FIN_SI
+      FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+_ext := _sem
+_l   := LONGITUD ( .(_sem) )
+SI ( _l <= 1 )
+   _ext := VALOR ( CONCAT ( '00' , (.(_ext)) ) )
+FIN_SI
+SI ( _l = 2 )
+   _ext := VALOR ( CONCAT ( '0'  , (.(_ext)) ) )
+FIN_SI
+
+TERMINA_REPORTE
+#termina_reporte
+
+#$indice := 'TOTAL'
+#sub_totales

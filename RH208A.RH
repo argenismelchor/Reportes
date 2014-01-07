@@ -1,0 +1,177 @@
+#GENERAL DE TRABAJADORES NUEVO
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.9
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como base en los reportes.
+#CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL/DISCO', $salida)
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL', '', _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL', '', _ff )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'AFILIACION'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INGRESO'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'S.D.'
+_longitud  := 12
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SDO MENSUAL'
+_longitud  := 12
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SUCURSAL'
+_longitud  := 30
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'DEPTO'
+_longitud  := 30
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'PUESTO'
+_longitud  := 30
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'BAJA IMSS'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+_condensado := 1
+$titulo_reporte := 'GENERAL DE TRABAJADORES AL ' + FECHA( FECHA_HOY )
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+_sdo := 0
+
+# SUBRUTINAS GLOBALES
+   SUB_RUTINA formato_trabajador
+
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'AFILIACION'
+   imprime_columna
+
+   $valor := FECHA( 'EMPPRIN':'INGRESO' )
+   imprime_columna
+
+   DECIMALES := 2
+   _sdo := SUELDO_ACTUAL( _ff, _ff )
+   $valor := $( _sdo )
+   imprime_columna
+
+   $valor := $( _sdo * 30  )
+   imprime_columna
+
+   SI ( TRAE_REGISTRO( 'SUCURSAL', 'EMPPRIN':'SUC_CLAVE' ) )
+     $valor := 'SUCURSAL':'NOMBRE'
+   SI_NO
+     $valor := 'SUCURSAL NO ENCONTRADA'
+   FIN_SI
+   imprime_columna     
+
+   SI ( TRAE_REGISTRO( 'DEPTO', 'EMPPRIN':'DEP_CLAVE' ) )
+     $valor := 'DEPTO':'DESCRIPCION'
+   SI_NO
+     $valor := 'DEPTO NO ENCONTRADO'
+   FIN_SI
+   imprime_columna     
+
+   SI ( TRAE_REGISTRO( 'PUESTO', 'EMPPRIN':'PUE_CLAVE' ) )
+     $valor := 'PUESTO':'DESCRIPCION'
+   SI_NO
+     $valor := 'PUESTO NO ENCONTRADO'
+   FIN_SI
+   imprime_columna  
+
+   ULTIMO_REGISTRO ('EMPSDO')
+   
+   $valor := FECHA( 'EMPSDO':'BAJA_IMSS' )
+   imprime_columna
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_encabezados_excel    := 0
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+
+_incluir_dep := 1
+_incluir_suc := 1
+_incluir_pue := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. RFC'
+base_trabajadores
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+define_encabezado
+
+USA_ARCHIVO ('EMPPRIN','EMPSDO','CLAVE')
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE( _fi, _ff ) )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+TERMINA_REPORTE

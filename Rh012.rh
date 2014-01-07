@@ -1,0 +1,85 @@
+#ANTIGUEDAD Y SUELDOS
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra todos los trabajadores de la empresa aún cuando no esten vigentes.
+#Este reporte imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#Se recomienda imprimir en forma horizontal.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , '' , _fi ) 
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL'   , '' , _ff )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+
+ENCABEZADO   
+   $titulo_reporte := 'ANTIGUEDAD Y SUELDOS DE TRABAJADORES VIGENTES DEL ' + FECHA (_fi) + ' AL ' + FECHA (_ff)
+   encabezado_ini
+   IMP ( COL (1)   , 'No.' , COL (11) , 'Nombre' , COL (42) , 'Puesto' , COL (67) , 'RFC' , COL (84) , 'No. IMSS' )
+   IMP ( COL (101) , 'F.Alta' , COL (114) , 'Antig' , COL (122) , DER ( 'S.Dia' , 8 ) )
+   IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+COLUMNAS      := 130
+RENGLONES     := 65
+
+#Variables Globales
+_ant := 0
+_ana := 0
+_anm := 0
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+   SI ( TRAE_REGISTRO ( 'PUESTO' , TRAE_DSP ( 'P' , _ff ) ) ) ;; FIN_SI
+   IMP ( COL (1)   , 'EMPPRIN':'CLAVE' , COL (11) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 30 ) , COL (42) , SUBSTR ( 'PUESTO':'DESCRIPCION' , 1 , 23 ) )
+   IMP ( COL (67)  , FORMATO ( 'EMPPRIN':'RFC' , 'XXXX-XXXXXX-XXX' ) , COL (84) , FORMATO ( 'EMPPRIN':'AFILIACION' , 'XXXX-XX-XXXX-X' ) )
+   IMP ( COL (101) , FECHA ( 'EMPPRIN':'INGRESO' ) )
+   DECIMALES := 2
+   _ant := ( _ff - 'EMPPRIN':'INGRESO' ) + 1
+   _ana := TRUNCAR ( _ant / 365 )
+   _anm := TRUNCAR ( ( _ant - ( _ana * 365 ) ) / 30.4166 )
+   DECIMALES := 0
+   IMP ( COL (114) , .(_ana) + 'a,' + .(_anm) + 'm' )
+   DECIMALES := 2
+   IMP ( COL (122) , DER ( $ ( SUELDO_ACTUAL ( _ff , _ff )) , 8 ) )
+   DECIMALES := 0
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+$campos_extras := 'E. RFC, E. AFILIACION'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO' , 'CLAVE' )
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE ( _fi , _ff ) )
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte

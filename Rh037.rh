@@ -1,0 +1,197 @@
+#EMPLEADOS POR CURSO
+#VERSION 1.0
+#USUARIO =*
+#EXCEL
+#NO EDITAR
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL', $salida)
+NUEVO_PARAMETRO_TAB ( 'CURSO(S)', 'CURSO/CLAVE/TABLA DE CURSOS', &cursos )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL', '', _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL', '', _ff )
+NUEVO_PARAMETRO_CHEQ( 'DETALLE EMPLEADOS', '', _detalle )
+NUEVO_PARAMETRO_CHEQ( 'GRAFICA', '', _grafica )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA        := $salida
+$curso        := ''
+$curso_ant    := ''
+$curso_tit    := ''
+_imp_totales  := 0
+COLUMNAS      := 90
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   SI ( _detalle = 1 )
+     SI ( TRAE_REGISTRO( 'CURSO', $curso_tit ) )
+       IMP ( CENTRA( $curso_tit + ' ' + 'CURSO':'DESCRIPCION' ) ) IMPRIME
+     FIN_SI
+   SI_NO
+     IMP ( CENTRA( 'RESUMEN DE CURSOS' ) ) IMPRIME
+   FIN_SI
+   IMP ( CENTRA ( 'CURSOS DEL ' + FECHA( _fi ) + ' AL ' + FECHA( _ff ) )) IMPRIME
+   IMP ( REPITETXT( '=', COLUMNAS )) IMPRIME
+   SI ( _imp_totales = 1 )
+     IMP ( 'CLAVE', COL(10), 'DESCRIPCION', COL(75), 'TOTAL' ) IMPRIME
+   SI_NO
+     IMP ( 'CLAVE', COL(10), 'NOMBRE', COL(45), 'PUESTO' ) IMPRIME
+   FIN_SI
+   IMP ( REPITETXT ('-', COLUMNAS )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+# VARIABLES GLOBALES
+VAR_T( &totales )
+_col_excel := 0
+_ren_excel := 2
+_sub_tot   := 0
+$puesto    := ''
+
+SUB_RUTINA imprime_subtotales
+  IMPRIME
+  DECIMALES := 0
+  IMP ( 'SUBTOTAL DE EMPLEADOS : ', .( _sub_tot ) ) IMPRIME
+  SI ( $curso <> '' )
+    AVANZA_HOJA
+  FIN_SI
+  _sub_tot   := 0
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+  SI ( _detalle = 1 )
+    SI ( 'EMPPRIN':'CURSO' <> $curso )
+      $curso_tit := 'EMPPRIN':'CURSO'
+      SI ( $curso <> '' )
+        imprime_subtotales
+      FIN_SI
+      $curso := 'EMPPRIN':'CURSO'
+    FIN_SI
+    IMP ( COL(1), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+    IMP ( COL(45), 'EMPPRIN':'PUE_CLAVE' )
+    $puesto := ''
+    SI ( TRAE_REGISTRO( 'PUESTO', 'EMPPRIN':'PUE_CLAVE' ) )
+      IMP ( COL(55), 'PUESTO':'DESCRIPCION' )
+      $puesto := 'PUESTO':'CLAVE' + ' ' + 'PUESTO':'DESCRIPCION'
+    FIN_SI
+    IMPRIME
+    SI ( $salida = 'EXCEL' )
+      EXCEL( 'PON_VALOR', 1, _ren_excel, 'EMPPRIN':'CLAVE' )
+      EXCEL( 'PON_VALOR', 2, _ren_excel, 'EMPPRIN':'NOMBRE' )
+      EXCEL( 'PON_VALOR', 3, _ren_excel, $puesto )
+      EXCEL( 'PON_VALOR', 4, _ren_excel, 'EMPPRIN':'CURSO' )
+      _ren_excel := _ren_excel + 1      
+    FIN_SI
+    _sub_tot := _sub_tot + 1
+  FIN_SI
+  INCREMENTA_TABLA( &totales, 'TOTAL', 'EMPPRIN':'CURSO', 1 )
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+SI ( _detalle = 0 )
+  _omitir_encabezados   := 1
+  _omitir_sub_totales   := 1
+  _omitir_total_general := 1
+FIN_SI
+
+_incluir_pue := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'C.*'
+$bases_extras  := 'EMPCURSO C'
+$cursos := TRAE_SELECCION( &cursos )
+$condiciones_extras := 'C. CLAVE = E. CLAVE AND C. FECHA_FINAL >= :FI AND C. FECHA_INICIAL <= :FF'
+SI ( $cursos <> '' )
+  $condiciones_extras := $condiciones_extras + ' AND C. CURSO IN ( ' + $cursos + ' )'
+FIN_SI
+SI ( _detalle = 1 )
+  $ordenes_extras := 'C. CURSO'
+FIN_SI
+base_trabajadores
+PARAMETRO_SQL( 'EMPPRIN', 'FI', _fi )
+PARAMETRO_SQL( 'EMPPRIN', 'FF', _ff )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+SI ( _detalle = 1 )
+  imprime_subtotales
+FIN_SI
+termina_reporte
+
+SI (( $salida = 'EXCEL' ) AND ( _detalle = 0 ))
+  EXCEL( 'PON_VALOR', 1, 1, 'CLAVE' )
+  EXCEL( 'PON_VALOR', 2, 1, 'DESCRIPCION' )
+  EXCEL( 'PON_VALOR', 3, 1, 'TOTAL' )
+FIN_SI
+
+SI (( $salida = 'EXCEL' ) AND ( _detalle = 1 ))
+  EXCEL( 'PON_VALOR', 1, 1, 'CLAVE' )
+  EXCEL( 'PON_VALOR', 2, 1, 'NOMBRE' )
+  EXCEL( 'PON_VALOR', 3, 1, 'PUESTO' )
+  EXCEL( 'PON_VALOR', 4, 1, 'CURSO' )
+FIN_SI
+
+_imp_totales  := 1
+SI ( _detalle = 1 )
+  AVANZA_HOJA
+FIN_SI
+_ren_excel := 2
+_indice := 1
+_subtotal  := 0
+_total  := 0
+$descripcion := ''
+$curso  := TRAE_VALOR_TABLA( &totales, 0, _indice )
+MIENTRAS( $curso <> '' )
+  IMP ( COL(1), $curso )
+  SI ( TRAE_REGISTRO( 'CURSO', $curso ) )
+    $descripcion := SUBSTR( 'CURSO':'DESCRIPCION', 1, 63)
+  SI_NO
+    $descripcion := 'DESCRIPCION DESCONOCIDA'
+  FIN_SI
+  IMP ( COL(10), $descripcion )  
+  _subtotal := VALOR( TRAE_VALOR_TABLA( &totales, 1, _indice ) )
+  DECIMALES := 0
+  IMP ( COL(75), DER( .( _subtotal ), 5 ) )
+  IMPRIME
+  SI ( $salida = 'EXCEL' )
+    EXCEL( 'PON_VALOR', 1, _ren_excel, $curso )
+    EXCEL( 'PON_VALOR', 2, _ren_excel, $descripcion )
+    EXCEL( 'PON_VALOR', 3, _ren_excel, .( _subtotal ) )
+    _ren_excel := _ren_excel + 1
+  FIN_SI
+  _total := _total + _subtotal
+  _indice := _indice + 1
+  $curso  := TRAE_VALOR_TABLA( &totales, 0, _indice )
+FIN_MIENTRAS
+
+IMPRIME
+IMPRIME
+IMP ( 'TOTAL DE CURSOS : ', .( _total ) ) IMPRIME
+
+SI ( _grafica = 1 )
+  CREA_GRAFICA( &totales )
+FIN_SI
+
+TERMINA_REPORTE

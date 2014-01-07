@@ -1,0 +1,429 @@
+#CALCULO PTU ESTANDAR
+#CALCULO PTU MONTOS NETOS A PARTIR DE LA CAPTURA1 
+#NO EDITAR
+#USUARIO =*
+#EXCEL
+
+$empresa := LEE_INI( 'PTU', 'ORIGEN', '' )
+NUEVO_PARAMETRO_SAL   ( 'SALIDA' , 'PANTALLA/EXCEL' , $salida )
+NUEVO_PARAMETRO_TAB   ( 'TIPO DE NOMINA' , 'TIPONOM/CLAVE/TIPOS DE NOMINA' , $tipo )
+NUEVO_PARAMETRO_CHEQ  ( 'GRABAR EN NOMINA' , '' , _afectar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+ESCRIBE_INI( 'PTU', 'ORIGEN', $empresa )
+$dir_origen := ''
+$actual := 'EMPRESA':'CLAVE'
+
+$tipo_nomina := $tipo
+# declaracion de variables para calculo
+VAR_N ( _faltas )          ;; VAR_N ( _incapacidades )    ;; VAR_N ( _exento )
+VAR_N ( _aux1   )          ;; VAR_N ( _base_gravable )    ;; VAR_N ( _aux2 )
+VAR_N ( _calculo_ispt )    ;; VAR_N ( _total_sdo )        ;; VAR_N ( _ajuste ) 
+VAR_N ( _tipo_nomina )     ;; VAR_N ( _tot_emp )          ;; VAR_A ( $falt )
+VAR_N ( _minimo )          ;; VAR_A ( $mes )              ;; VAR_N ( _ptu )
+VAR_N ( _sdo    )          ;; VAR_N ( _tot_sdo)           ;; VAR_N ( _ptu_tot)
+VAR_N ( _ptu_tot_dias)     ;; VAR_N ( _ptu_tot_sdo)       ;; VAR_N ( _total_dias )
+VAR_N ( _dias )            ;; VAR_N ( _salario )          ;; VAR_N ( _aux3 )
+VAR_N ( _aux4 )            ;; VAR_N ( _f_dias )           ;; VAR_N ( _f_sdos )
+VAR_N ( _acums )           ;; VAR_A ( $conc )             ;; VAR_A ( $saux )
+VAR_A ( $suc )             ;; VAR_N ( _fi )               ;; VAR_N ( _ff )
+VAR_A ( $ispt )            ;; VAR_A ( $subs )             ;; VAR_A ( $cred )
+VAR_N ( _minimo_dias )     ;; VAR_N ( _aux10 )            ;; VAR_N ( _incapacidades2 ) 
+VAR_N ( _incapacidades3 ) 
+
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+COLUMNAS      := 120
+_ajuste       := 0.10
+
+ENCABEZADO
+   LETRA ( 'LETRA CONDENSADA' )
+   IMPRIME
+   IMP ( COL (1) , 'CALCULO DE PTU' , COL (108), 'giro Ver 1.0' ) ;; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ( 'Del ' + FECHA ( _fi ) + ' al ' + FECHA ( _ff ) ) ) ;; IMPRIME
+   IMP ( REPITETXT ( '=' , 130 ) ) ;; IMPRIME
+   IMP ( COL (1)   , 'Clave' , COL (10) , 'Nombre' , COL (42) , DER ( 'DIAS' , 7 ) , COL (50) , DER ( 'BASE PERCEP' , 15 ) )
+   IMP ( COL (65)  , DER ( 'PTU Dias' , 12 ) , COL (77) , DER ( 'PTU Sdos' , 12 ) , COL (89) , DER ( 'TOTAL PTU' , 12 ) )
+   IMP ( COL (102) , DER ( 'ISPT' , 12 ) , COL (115) , DER ( 'TOTAL' , 15 ) ) ;; IMPRIME
+   IMP ( REPITETXT ( '-' , 130 ) ) ;; IMPRIME
+   LETRA ( 'LETRA CONDENSADA' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA CONDENSADA' )
+   IMP ( COL (1) , 'Fecha : ' , FECHA (FECHA_HOY) , ' ' , 'Hora : ' , HORA (HORA_ACTUAL) , COL (85) , 'PAGINA -' , PAGINA , '-' ) ;; IMPRIME
+   LETRA ( 'LETRA CONDENSADA' ) ;; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+CREA_KARDEX ('TOTAL')
+
+SUB_RUTINA _imp_tot
+   DECIMALES := 2
+   PRIMER_REGISTRO ( 'NOMINA' ) 
+   MIENTRAS ( FIN_BASE ( 'NOMINA' ) = 0 )
+      SI ( 'NOMINA':'TOTAL' <> 0 )
+         SI  ( TRAE_REGISTRO ( 'CONCEPTO', 'NOMINA':'CLAVE' ) )
+            SI ( 'CONCEPTO':'IMPRIMIR' <> 0 )
+               IMP ( 'CONCEPTO':'CLAVE', COL (10), 'CONCEPTO':'DESCRIPCION' )
+               SI ( 'CONCEPTO':'PDC' = 0 ) ;; COL (40) ;; FIN_SI
+               SI ( 'CONCEPTO':'PDC' = 1 ) ;; COL (50) ;; FIN_SI        
+               SI ( 'CONCEPTO':'PDC' = 2 ) ;; COL (60) ;; FIN_SI
+               IMP ( DER ( $ ( 'NOMINA':'TOTAL' ), 15 ))
+               IMPRIME
+            FIN_SI
+         SI_NO
+            IMP ( COL (11), 'DESCONOCIDO' )
+            IMP ( DER ( $ ( 'NOMINA':'TOTAL' ), 15 ))
+            IMPRIME
+         FIN_SI
+      FIN_SI
+      SIGUIENTE_REGISTRO ( 'NOMINA' )
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+### inicio del reporte, apertura de bases de datos y archivos
+FORMATO_FECHA := 0
+NUEVO_PARAMETRO_FEC ('PERIODO INICIO', FECHA( CALCULA_FECHA( AÑO( FECHA_HOY ) - 1, 01, 01 ) ), _fi) 
+NUEVO_PARAMETRO_FEC ('PERIODO FIN', FECHA( CALCULA_FECHA( AÑO( FECHA_HOY ) - 1, 12, 31 ) ), _ff)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( TRAE_REGISTRO ( 'TIPONOM', $tipo_nomina ) = 0 )
+  IMP ( 'NO SE HA ENCONTRADO EL TIPO DE NOMINA SELECCIONADO' ) ;; IMPRIME
+  TERMINA_REPORTE
+FIN_SI
+SI ( TRAE_REGISTRO ( 'PERIODO', $tipo_nomina, 'TIPONOM':'ACTUAL' ) = 0 )
+  IMP ( 'NO SE HA ENCONTRADO EL PERIODO ACTUAL DEL TIPO DE NOMINA SELECCIONADO' ) ;; IMPRIME
+  TERMINA_REPORTE
+FIN_SI
+
+$mes := 'PERIODO':'MES DE ACUMULACION'
+
+FORMATO_FECHA := 3
+SI ( TRAE_REGISTRO_VIG ( 'MINIMO', _fi ) = 0 )
+  IMP ( 'NO SE HA ENCONTRADO EL SUELDO MINIMO PARA EL PERIODO ACTUAL DEL TIPO DE NOMINA SELECCIONADO' ) ;; IMPRIME
+  TERMINA_REPORTE
+FIN_SI
+SI ( TRAE_REGISTRO_VIG ( 'PAGOIMSS', _fi ) = 0 )
+  IMP ( 'NO SE HAN ENCONTRADO LOS PORCENTAJES DE PAGO AL IMSS PARA EL PERIODO ACTUAL DEL TIPO DE NOMINA SELECCIONADO' ) ;; IMPRIME
+  TERMINA_REPORTE
+FIN_SI
+FORMATO_FECHA := 3
+
+$conceptos := LEE_INI( 'PTU', 'CONCEPTOS', '01,02,04,12' )
+_sdo_sind := VALOR( LEE_INI( 'PTU', 'SUELDO', '264.29' ) )
+_ptu := VALOR( LEE_INI( 'PTU', 'PTU', '0.0' ) )
+_minimo_dias := VALOR( LEE_INI( 'PTU', 'DIAS', '60' ) )
+
+NUEVO_PARAMETRO_TAB ( 'EMPLEADO' ,'EMPPRIN/CLAVE/EMPLEADOS' , &empleado )
+NUEVO_PARAMETRO_SEL ( 'CALCULO DE ISPT' , 'APLICAR ART.80/APLICAR ART.86' , _inc )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+
+DECIMALES := 0
+DECIMALES := 2
+
+ESCRIBE_INI( 'PTU', 'PTU', .( _ptu ) )
+ESCRIBE_INI( 'PTU', 'CONCEPTOS', $conceptos )
+ESCRIBE_INI( 'PTU', 'SUELDO', .( _sdo_sind ) )
+ESCRIBE_INI( 'PTU', 'DIAS', .( _minimo_dias ) )
+
+$ispt := LEE_INI( 'PTU', 'ISPT', '' )
+$subs := LEE_INI( 'PTU', 'SUBS', '' )
+$cred := LEE_INI( 'PTU', 'CRED', '' )
+
+SI ( ( _inc = 0 ) OR ( _inc = 1 ) )
+   SI ( $ispt = '' )
+     NUEVO_PARAMETRO_TAB ('TABLA ISPT .MENSUAL','TABISPT/CLAVE/TABLA DE IMPUESTOS', $ispt) 
+   SI_NO
+     NUEVO_PARAMETRO     ('TABLA ISPT .MENSUAL', $ispt, $ispt) 
+   FIN_SI
+   SI ( $cred = '' )
+     NUEVO_PARAMETRO_TAB ('TABLA SUB.MENSUAL','TABISPT/CLAVE/TABLA DE CREDITO', $cred) 
+   SI_NO
+     NUEVO_PARAMETRO     ('TABLA SUB.MENSUAL', $cred, $cred) 
+   FIN_SI
+   LEE_PARAMETROS
+   BORRA_PARAMETROS
+FIN_SI
+ESCRIBE_INI( 'PTU', 'ISPT', $ispt )
+ESCRIBE_INI( 'PTU', 'CRED', $cred )
+
+
+_acum := 0
+
+_factor := 0
+_sueldo := 0
+_bono_ptu := 0
+
+VAR_T ( &tabla_sql )
+AGREGA_VALOR_COL ( &tabla_sql, 0, 'SELECT E.CLAVE, E.NOMBREP || " " || E.NOMBREM || " " || E.NOMBREN AS NOMBRE, E.INGRESO, E.TIPO_NOM, E.CUOTA_SINDICAL, E.PTU, E.PE,' )
+AGREGA_VALOR_COL ( &tabla_sql, 0, 'E. "SEMANA REDUCIDA",E. "JORNADA REDUCIDA", E."TIPO DESCUENTO", E."VALOR DESCUENTO", E. CALENDARIO' )
+AGREGA_VALOR_COL ( &tabla_sql, 0, 'FROM EMPPRIN E' )
+SI ( TRAE_VALOR_TABLA ( &empleado, 0, 0 ) <> '*' )
+   AGREGA_VALOR_COL ( &tabla_sql, 0, 'WHERE E.CLAVE IN' )
+   CREA_SELECCION_SQL ( &tabla_sql, &empleado )
+FIN_SI
+AGREGA_VALOR_COL ( &tabla_sql, 0, 'ORDER BY E. TIPO_NOM, E.CLAVE' )
+CREA_CONSULTA ( 'EMPPRIN', &tabla_sql )
+#PARAMETRO_SQL ( 'EMPPRIN', 'tipo_nomina', $tipo_nomina )
+
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPVACA' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPAUS'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPINC'  , 'CLAVE' )
+
+
+# ********** Generación de bases de cálculo
+PRIMER_REGISTRO ( 'EMPPRIN' )
+_tot_emp  := 0
+_tot_dias := 0
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = 0 )
+   MUESTRA_AVANCE ( 'EMPPRIN' , 'EMPPRIN':'CLAVE' )
+   _dias := 0
+   _dias := FUE_VIGENTE ( _fi , _ff )
+   SI ( _dias > 366 )
+      _dias := 365
+   FIN_SI
+   SI (( 'EMPPRIN':'PTU' = 1 ) AND ( _dias > _minimo_dias ))
+      DECIMALES      := 50
+      _faltas := 0
+      _incapacidades := 0
+
+      _exento  := 0
+      _tot_emp := _tot_emp + 1
+      _dias    := _dias - ( _faltas + _incapacidades + _incapacidades2 + _incapacidades3 )
+      _tot_dias := _tot_dias + _dias
+      _sdo := _acums
+      _sdo := _sdo / _dias
+      SI ( _sdo > ( _sdo_sind * 1.2 ) )
+         _sdo := _sdo_sind * 1.2 * _dias
+      SI_NO
+         _sdo := _sdo * _dias
+      FIN_SI
+      _tot_sdo := _tot_sdo + _sdo
+      _dias    := 0
+      _sdo     := 0
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+# ********** Determinación de FACTORES
+IMPRIME
+IMPRIME
+DECIMALES := 0
+IMP ( COL (10) , 'Total de Bases : ' , COL (42) , DER ( _tot_dias , 7 ) )
+DECIMALES := 2
+IMP ( COL (60) , DER ( $ ( _tot_sdo) , 15  ) ) 
+IMPRIME 
+IMPRIME
+DECIMALES := 50
+_f_dias := ( _ptu / 2 ) / _tot_dias
+_f_sdos := ( _ptu / 2 ) / _tot_sdo
+DECIMALES := 8
+IMP ( COL (10) , 'FACTOR DIAS     : ' , COL (39) , DER ( $ (_f_dias) , 10 ) ) ;; IMPRIME
+IMP ( COL (10) , 'FACTOR SUELDOS  : ' , COL (39) , DER ( $ (_f_sdos) , 10 ) ) ;; IMPRIME 
+IMPRIME
+IMPRIME
+
+_ren_excel  := 1
+SI ( $salida = 'EXCEL' )
+  EXCEL( 'PON_VALOR', 1, _ren_excel, 'CLAVE' )
+  EXCEL( 'PON_VALOR', 2, _ren_excel, 'NOMBRE' )
+  EXCEL( 'PON_VALOR', 3, _ren_excel, 'DIAS' )
+  EXCEL( 'PON_VALOR', 4, _ren_excel, 'SUELDO' )
+  EXCEL( 'PON_VALOR', 5, _ren_excel, 'PTU TOT DIAS' )
+  EXCEL( 'PON_VALOR', 6, _ren_excel, 'PTU TOT SUELDO' )
+  EXCEL( 'PON_VALOR', 7, _ren_excel, 'PTU SUMA' )
+  EXCEL( 'PON_VALOR', 8, _ren_excel, 'ISPT' )
+  EXCEL( 'PON_VALOR', 9, _ren_excel, 'TOTAL' )
+  _ren_excel := _ren_excel + 1
+FIN_SI
+
+
+SUB_RUTINA FORMULA_ISPT
+   SI ( CAP1 ('51') <> 0 )
+      TOTAL ('51') := CAP1 ('51')
+   SI_NO
+      SI ( _inc = 1 )
+# ********** ISPT art. 86
+         ULTIMO_REGISTRO ('EMPSDO')
+         SI ( 'EMPSDO':'TIPO' .=. 'B' )
+            REGISTRO_ANTERIOR ('EMPSDO')
+         FIN_SI            
+         _salario := 'EMPSDO':'SDO1'
+         _aux1 := ( _salario * 30.4166 ) + ( ( ( TOTAL_PERCEPCIONES - _exento ) / 365 ) * 30.4 )
+         _aux3 := ( _salario * 30.4166 )
+         SI ( TRAE_REGISTRO ( 'TABISPT' , $ispt ) )
+            _aux2 := CALCULA_ISPT (_aux1) 
+            _aux4 := CALCULA_ISPT (_aux3) 
+         FIN_SI
+         SI (( _aux2 < 0 ) OR (_aux4 < 0 ))
+            TOTAL ('51') := 0
+         SI_NO
+            TOTAL ('51') := (( _aux2 - _aux4 ) / ( _aux1 - _aux3 )) * ( TOTAL ('31') - _exento )
+         FIN_SI
+
+         SI ( _afectar = 1 ) 
+           GRABA_BASE ( 'EMPNOM' )
+         FIN_SI
+      SI_NO
+# ********** ISPT art. 80
+         _aux1 := TOTAL_PERCEPCIONES - _exento
+         SI ( TRAE_REGISTRO ( 'TABISPT' , $ispt ) )
+            _aux2 := CALCULA_ISPT (_aux1) 
+         FIN_SI
+         SI ( TRAE_REGISTRO ( 'TABISPT' , $cred ) )
+            _aux2 := _aux2 - CALCULA_ISPT (_aux1)
+         FIN_SI
+         SI ( _aux2 <= 0 )
+            _aux2 := 0
+         SI_NO
+            TOTAL ('51') := _aux2
+         FIN_SI  
+         SI ( _afectar = 1 ) 
+           GRABA_BASE ( 'EMPNOM' )
+         FIN_SI
+      FIN_SI
+    FIN_SI
+   _aux10 :=   TOTAL ('51') 
+FIN_SUB_RUTINA 
+
+_aux2 := 0 
+_neto := 0
+
+
+# ********** Cálculo por trabajador
+PRIMER_REGISTRO ( 'EMPPRIN' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPNOM',  'CLAVE' )
+_tot_dias   := 0
+_tot_sdo    := 0
+_tot_emp    := 0
+_total_sdo  := 0
+_total_dias := 0
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = 0 )
+   PON_TOTAL_0
+   _dias := 0
+   _dias := FUE_VIGENTE ( _fi , _ff )
+   SI ( _dias > 366 )
+      _dias := 365
+   FIN_SI
+   MUESTRA_AVANCE ( 'EMPPRIN' , 'EMPPRIN':'CLAVE' )
+   SI (CAP1 ('31') <> 0 )
+      PRIMER_REGISTRO ( 'NOMINA'  )
+      $suc := TRAE_DSP ( 'S' , _ff )
+      SI ( TRAE_REGISTRO ( 'SUCURSAL' , $suc ) )
+         SI ( TRAE_REGISTRO ( 'PATRONAL' , 'SUCURSAL':'REGISTRO PATRONAL' ) )
+            ULTIMO_REGISTRO ('MINIMO')
+            SI ( 'PATRONAL':'ZONA ECONOMICA' = 'A' )
+               _minimo := 'MINIMO':'MINIMO A'
+            FIN_SI
+            SI ( 'PATRONAL':'ZONA ECONOMICA' = 'B' )
+               _minimo := 'MINIMO':'MINIMO B'
+            FIN_SI
+            SI ( 'PATRONAL':'ZONA ECONOMICA' = 'C' )
+               _minimo := 'MINIMO':'MINIMO C'
+            FIN_SI
+         SI_NO
+            IMP ( 'REGISTRO PATRONAL INVÁLIDO DE LA SUCURSAL ', 'SUCURSAL':'CLAVE' ) ;; IMPRIME
+            TERMINA_REPORTE
+         FIN_SI 
+      SI_NO
+         IMPRIME
+         IMP ( 'SUCURSAL INVÁLIDA DE TRABAJADOR ' , 'EMPPRIN':'CLAVE' , ' ', 'EMPPRIN':'NOMBRE' ) ;; IMPRIME
+         IMPRIME
+         TERMINA_REPORTE
+      FIN_SI
+      DECIMALES      := 50
+      _faltas        := 0
+      _incapacidades := 0
+      _exento        := 0
+      _ptu_tot_dias  := 0
+      _ptu_tot_sdo   := 0
+      _dias          := _dias - ( _faltas + _incapacidades + _incapacidades2 + _incapacidades3 )
+      DECIMALES := 50
+      _tot_emp      := _tot_emp + 1
+      _ptu_tot_dias := _dias * _f_dias
+      _sdo := _acums
+      _sdo := _sdo / _dias
+      SI ( _sdo > ( _sdo_sind * 1.2 ) )
+         _sdo := _sdo_sind * 1.2 * _dias
+      SI_NO
+         _sdo := _sdo * _dias 
+      FIN_SI
+      _ptu_tot_sdo := _sdo * _f_sdos
+      _tot_sdo     := _tot_sdo    + _sdo
+      _tot_dias    := _tot_dias   + _dias
+      _total_dias  := _total_dias + _ptu_tot_dias
+      _total_sdo   := _total_sdo  + _ptu_tot_sdo
+      SI ( _ptu_tot_dias + _ptu_tot_sdo > 0 )
+        SI ( CONCEPTO_CAPTURADO( '31' ) = FALSO )
+          CAPTURA_CONCEPTO( '31' )
+        FIN_SI
+      FIN_SI
+      # Incluir aqui formulas de Calculo
+      PON_TOTAL_0
+      INCLUYE _PTU
+      DECIMALES := 0
+      IMP ( COL (1) , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 30 ) , COL (42) , DER ( _dias , 7 ) )
+      DECIMALES := 2
+      IMP ( COL (50)  , DER ( $ (_sdo) , 15 ) ) 
+      IMP ( COL (65)  , DER ( $ (_ptu_tot_dias) , 12 ) )  
+      IMP ( COL (77)  , DER ( $ (_ptu_tot_sdo)  , 12 ) ) 
+      IMP ( COL (89)  , DER ( $ (_ptu_tot_dias + _ptu_tot_sdo) , 12 ) )
+      IMP ( COL (102) , DER ( $ (TOTAL ('51'))   , 12 ) )
+      IMP ( COL (115) , DER ( $ (TOTAL ('TOTA')) , 15 ) )
+      IMPRIME
+      SI ( $salida = 'EXCEL' )
+        EXCEL( 'PON_VALOR', 1, _ren_excel, 'EMPPRIN':'CLAVE' )
+        EXCEL( 'PON_VALOR', 2, _ren_excel, 'EMPPRIN':'NOMBRE' )
+        EXCEL( 'PON_VALOR', 3, _ren_excel, .( _dias ) )
+        EXCEL( 'PON_VALOR', 4, _ren_excel, $( _sdo ) )
+        EXCEL( 'PON_VALOR', 5, _ren_excel, $( _ptu_tot_dias ) )
+        EXCEL( 'PON_VALOR', 6, _ren_excel, $( _ptu_tot_sdo ) )
+        EXCEL( 'PON_VALOR', 7, _ren_excel, $( _ptu_tot_dias + _ptu_tot_sdo ) )
+        EXCEL( 'PON_VALOR', 8, _ren_excel, $( TOTAL('51') ) )
+        EXCEL( 'PON_VALOR', 9, _ren_excel, $( TOTAL('TOTA') ) )
+        _ren_excel := _ren_excel + 1
+      FIN_SI
+      DECIMALES := 50
+      ACUMULA_TOTALES ( 'TOTAL' )
+      _dias        := 0
+      _sdo         := 0
+   FIN_SI
+   SI ( _afectar = 1 )
+     GRABA_BASE ( 'EMPNOM' )
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+# termino del reporte
+AVANZA_HOJA
+DECIMALES := 2
+IMPRIME ;; IMPRIME 
+IMPRIME
+IMP ( COL (1)  , 'Suma de DIAS    : ' , COL (25) , DER ( .(_tot_dias)   , 15 ) ) ;; IMPRIME
+IMP ( COL (1)  , 'Suma de SUELDOS : ' , COL (25) , DER ( $(_tot_sdo)    , 15 ) ) ;; IMPRIME
+IMP ( COL (1)  , 'SUMA PTU DIAS   : ' , COL (25) , DER ( $(_total_dias) , 15 ) ) ;; IMPRIME
+IMP ( COL (1)  , 'SUMA PTU SDO    : ' , COL (25) , DER ( $(_total_sdo)  , 15 ) ) ;; IMPRIME
+IMP ( COL (25) , REPITETXT ( '-' , 15 ) ) ;; IMPRIME
+IMP ( COL (1)  , 'TOTAL   P T U   : ' , COL (25) , DER ( $ (_total_dias + _total_sdo) , 15 ) ) ;; IMPRIME
+IMPRIME
+IMPRIME ;; IMPRIME
+IMP ( '    **** TOTALES GENERALES ****' ) ;; IMPRIME ;; IMPRIME
+USA_KARDEX ('TOTAL')
+_imp_tot
+IMPRIME ;; IMPRIME
+DECIMALES := 0
+IMP ( '  *** EMPLEADOS CALCULADOS : ', _tot_emp ) ;; IMPRIME
+IMPRIME ;; IMPRIME
+IMP ( '  --------------------------------- FIN DE REPORTE ---------------------------' ) ;; IMPRIME

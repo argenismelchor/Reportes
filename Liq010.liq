@@ -1,0 +1,68 @@
+#CALCULO DE FACTORES DE INTEGRACION
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Proceso para el càlculo de factores de integraciòn en base a las prestaciones definidas en el catàlogo correspondiente
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_TAB  ( 'TIPO DE EMPLEADO' , 'TIPOEMP/CLAVE/TIPOS DE EMPLEADOS' , $tipo_emp )
+NUEVO_PARAMETRO_CHEQ ( 'ACTUALIZAR TABLA' , '' , _actualizar )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+SALIDA        := $salida
+_lv           := 0
+
+ABRE_BASE ( 'TIPOEMP' )
+SI ( TRAE_REGISTRO ( 'TIPOEMP' , $tipo_emp ) = 0 )
+   MENSAJE ( 'TIPO DE EMPLEADO INVALIDO' )
+   TERMINA_REPORTE
+FIN_SI
+
+USA_ARCHIVO ( 'TIPOEMP' , 'FACTOR' , 'CLAVE' )
+
+ENCABEZADO   
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   _lv := LONGITUD ( VERSION_GIRO )
+   IMP ( COL (1) , NOMBRE_REPORTE , COL (COLUMNAS - _lv) , VERSION_GIRO ) ;; IMPRIME
+   IMP ( COL (1) , CLAVE_REPORTE , CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ('Factores de Integracion') ) ;; IMPRIME
+   IMP ( CENTRA ( 'TIPO DE EMPLEADO ' + 'TIPOEMP':'DESCRIPCION' ) ) ;; IMPRIME
+   IMP ( REPITETXT ( '=' , 80 ) ) ;; IMPRIME
+   IMP ( COL (1) , 'Ant Inic' , COL (15) , 'Ant Final' , COL (30) , 'P.VAC' , COL (40) , 'VACAC' , COL (50) , 'AGUIN' , COL (60) , 'FACTOR' ) ;; IMPRIME
+   IMP ( REPITETXT ( '-' , 80 ) ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL (1) , 'Fecha : ' , FECHA (FECHA_HOY) , '    ' , 'Hora : ' , HORA (HORA_ACTUAL) , COL (65) , 'PAGINA : ' , PAGINA ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+MIENTRAS ( FIN_BASE ( 'FACTOR' ) = FALSO )
+   DECIMALES := 0
+   IMP ( COL (1)  , DER ( 'FACTOR':'ANT INICIAL' , 2 ) , COL (15) , DER ( 'FACTOR':'ANT FINAL' , 2 ) )
+   IMP ( COL (30) , DER ( 'FACTOR':'PRIMA VACACIONAL'  , 4 ) , '%' , COL (40) , DER ( 'FACTOR':'DIAS DE VACACIONES' , 4 ) )
+   IMP ( COL (50) , DER ( 'FACTOR':'DIAS DE AGUINALDO' , 4 ) )
+   DECIMALES := 6
+   'FACTOR':'FACTOR' := 1 + (( 'FACTOR':'DIAS DE VACACIONES' * ( 'FACTOR':'PRIMA VACACIONAL' / 100 )) +
+                             ( 'FACTOR':'DIAS DE AGUINALDO' )) / 365
+   IMP ( COL (60) , DER ( 'FACTOR':'FACTOR' , 8 ) )
+   IMPRIME
+   SI ( _actualizar )
+      GRABA_BASE ( 'FACTOR' )
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'FACTOR' )
+FIN_MIENTRAS
+
+

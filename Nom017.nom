@@ -1,0 +1,165 @@
+#RECIBOS NOTIFORMAS GRAFICO
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte imprime los recibos notiforma de los trabajadores que recibieron pago en el perido. 
+#Este reporte imprime el formato exacto de los recibos notiforma en forma grafica lo cual lo hace mas lento pero mas exacto.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_CHEQ ( 'AJUSTAR', '', _ajustar )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+_detalle_prestamos := 0   #PERMITE DESLOSAR EL DETALLE DE PRESTAMOS.
+
+_ajuste_x := VALOR( LEE_INI( TRAE_IMPRESORA, 'AJUSTE_X_RECIBOS_GRAFICO', '0' ) )
+_ajuste_y := VALOR( LEE_INI( TRAE_IMPRESORA, 'AJUSTE_Y_RECIBOS_GRAFICO', '0' ) )
+_inix := 0
+_iniy := 0
+_total_conceptos := 12
+SI ( _ajustar = 1 )
+    DECIMALES := 0
+    _inix := _ajuste_x
+    _iniy := _ajuste_y
+    NUEVO_PARAMETRO ( 'AJUSTE X', .(_inix), _ajuste_x )
+    NUEVO_PARAMETRO ( 'AJUSTE Y', .(_iniy), _ajuste_y )
+    LEE_PARAMETROS
+
+    BORRA_PARAMETROS
+    #GRABA EL NUEVO VALOR DE AJUSTE EN EL INI
+    SI (( _ajuste_x <> _inix ) OR ( _ajuste_y <> _iniy ))
+      ESCRIBE_INI( TRAE_IMPRESORA, 'AJUSTE_X_RECIBOS_GRAFICO', .(_ajuste_x) )
+      ESCRIBE_INI( TRAE_IMPRESORA, 'AJUSTE_Y_RECIBOS_GRAFICO', .(_ajuste_y) )
+    FIN_SI
+FIN_SI
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+SALIDA        := $salida
+MODO_IMPRESION( 'GRAFICO' )
+TAMAÑO_HOJA ( 1017, 1900 )
+_espacio:=45 ;; #Espaciado entre los conceptos
+LETRA ( 'LETRA 2' )
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &kardex)
+VAR_N ( _aux1  )
+VAR_N ( _perc  )
+VAR_N ( _dedu  )
+VAR_A ( $c_perc )
+VAR_A ( $d_perc )
+VAR_N ( _t_perc )
+VAR_A ( $c_deduc )
+VAR_A ( $d_deduc )
+VAR_N ( _t_deduc )
+VAR_N ( _num_registro )
+VAR_A ( $aux )
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+  #
+FIN_SUB_RUTINA
+
+SUB_RUTINA trae_renglon
+  $c_perc:=TRAE_VALOR_TABLA( &kardex, 0, _num_registro )
+  $d_perc:=TRAE_VALOR_TABLA( &kardex, 1, _num_registro )
+  $aux:=TRAE_VALOR_TABLA( &kardex, 5, _num_registro )
+  _t_perc:=VALOR( $aux )
+  $c_deduc:=TRAE_VALOR_TABLA( &kardex, 6, _num_registro )
+  $d_deduc:=TRAE_VALOR_TABLA( &kardex, 7, _num_registro )
+  $aux:=TRAE_VALOR_TABLA( &kardex, 11, _num_registro )
+  _t_deduc:=VALOR( $aux )
+FIN_SUB_RUTINA
+
+SUB_RUTINA _enc
+   LETRA ( 'LETRA 2' )
+   VE_XY ( 40 + _ajuste_x, 80 + _ajuste_y )  ;; IMP ( 'EMPPRIN':'CLAVE' ) ;; IMPRIME
+   VE_XY ( 150 + _ajuste_x, 80 + _ajuste_y ) ;; IMP ( 'EMPPRIN':'NOMBRE') ;; IMPRIME
+   VE_XY ( 1230 + _ajuste_x, 80 + _ajuste_y ) ;; IMP ( FORMATO ( 'EMPPRIN':'AFILIACION', 'XXXX-XX-XXXX-X' ) ) ;; IMPRIME
+   VE_XY ( 1580 + _ajuste_x, 80 + _ajuste_y ) ;; IMP ( FORMATO ( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' ) ) ;; IMPRIME
+   SI ( CD_DC = 0 )
+     SI ( TRAE_REGISTRO ( 'DEPTO', TRAE_DSP ( 'D', 'PERIODO':'FECHA FINAL' ) ) ) ;; FIN_SI
+     VE_XY ( 150 + _ajuste_x, 170 + _ajuste_y ) ;; IMP ( 'DEPTO':'DESCRIPCION'  ) ;; IMPRIME
+   SI_NO
+     SI ( TRAE_REGISTRO ( 'CENTROC', TRAE_DSP ( 'D', 'PERIODO':'FECHA FINAL' ) ) ) ;; FIN_SI
+     VE_XY ( 150 + _ajuste_x, 170 + _ajuste_y ) ;; IMP ( 'DEPTO':'DESCRIPCION'  ) ;; IMPRIME
+   FIN_SI
+   DECIMALES:=2
+   VE_XY ( 900 + _ajuste_x, 170 + _ajuste_y ) ;; IMP ( $( SUELDO_ACTUAL ( 'PERIODO':'FECHA FINAL', 'PERIODO':'FECHA FINAL' ) ) ) ;; IMPRIME
+   VE_XY ( 1230 + _ajuste_x, 170 + _ajuste_y ) ;; IMP ( FECHA ( 'PERIODO':'FECHA FINAL' + 1 ) ) ;; IMPRIME
+   DECIMALES:=0
+   VE_XY ( 1140 + _ajuste_x, 170 + _ajuste_y ) ;; IMP ( 'PERIODO':'NUMERO' ) ;; IMPRIME   
+   VE_XY ( 1600 + _ajuste_x, 170 + _ajuste_y ) ;; IMP ( .( TOTAL( 'DVIG' ) ) ) ;; IMPRIME
+   DECIMALES:=2
+FIN_SUB_RUTINA
+
+INCLUYE PRESTAMO.DAT
+
+SUB_RUTINA _imp_tot
+   FORMATO_PESOS:=0
+   TABULA_KARDEX_NOMINA ( &kardex, 8 )
+   SI ( _detalle_prestamos = 1 )
+     checa_prestamos
+   FIN_SI
+   FORMATO_PESOS:=2
+   _num_registro:=0
+   REPITE
+     trae_renglon
+     SI (_t_perc <> 0)
+       VE_XY(100 + _ajuste_x, 280+(_num_registro*_espacio) + _ajuste_y) ;; IMP ( $c_perc ) ;; IMPRIME
+       VE_XY(200 + _ajuste_x, 280+(_num_registro*_espacio) + _ajuste_y) ;; IMP ( SUBSTR($d_perc,1,20) ) ;; IMPRIME
+       VE_XY(680 + _ajuste_x, 280+(_num_registro*_espacio) + _ajuste_y) ;; IMP ( DER($(_t_perc), 10) ) ;; IMPRIME
+     FIN_SI
+     SI (_t_deduc <> 0)
+       VE_XY(980 + _ajuste_x, 280+(_num_registro*_espacio) + _ajuste_y) ;; IMP ( $c_deduc ) ;; IMPRIME
+       VE_XY(1080 + _ajuste_x, 280+(_num_registro*_espacio) + _ajuste_y) ;; IMP ( SUBSTR($d_deduc,1,20) ) ;; IMPRIME
+       VE_XY(1560 + _ajuste_x, 280+(_num_registro*_espacio) + _ajuste_y) ;; IMP ( DER($(_t_deduc), 10) ) ;; IMPRIME
+     FIN_SI
+     IMPRIME
+     _num_registro:=_num_registro + 1
+   HASTA(( _num_registro >= _total_conceptos ) OR (_t_perc + _t_deduc = 0))
+FIN_SUB_RUTINA
+
+SUB_RUTINA _pie
+   VE_XY ( 100 + _ajuste_x, 760 + _ajuste_y )  ;; IMP ( 'Total Percepciones' ) ;; IMPRIME
+   VE_XY ( 680 + _ajuste_x, 760 + _ajuste_y )  ;; IMP ( DER ($( TOTAL( 'PERC' ) ), 10) ) ;; IMPRIME
+   VE_XY ( 980 + _ajuste_x, 760 + _ajuste_y )  ;; IMP ( 'Total Deducciones' ) ;; IMPRIME
+   VE_XY ( 1560 + _ajuste_x, 760 + _ajuste_y ) ;; IMP ( DER ($( TOTAL( 'DEDU' ) ), 10) ) ;; IMPRIME
+   VE_XY ( 170  + _ajuste_x, 820 + _ajuste_y )  ;; IMP ( SUBSTR('EMPRESA':'NOMBRE', 1, 35) ) ;; IMPRIME
+   VE_XY ( 1560 + _ajuste_x, 850 + _ajuste_y ) ;; IMP ( DER ($( TOTAL( 'TOTA' ) ), 10) ) ;; IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_subtotales    := 1
+_omitir_total_general := 1
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+$campos_extras:='E. RFC, E. AFILIACION'  
+base_trabajadores
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( ( TOTAL( 'PERC' ) <> 0 ) OR ( TOTAL( 'DEDU' ) <> 0 ) )
+    _enc
+    _imp_tot
+    _pie
+    AVANZA_HOJA
+    IMPRIME
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte

@@ -1,0 +1,222 @@
+#IMPORTACION DE AUTORIZACION PERMANENTE
+#IMPORTACION DE AUTORIZACIONES ANTE IMSS
+#USUARIO =*
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#DESCRIPCION
+#Reporte de AUTORIZACIONES Y SUSPENSIONES ANTE EL IMSS.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'DISCO', $salida)
+NUEVO_PARAMETRO_SEL  ( 'TIPO MOVIMIENTO' , 'AUTORIZACIONES/SUSPENSIONES' , _tipomov ) 
+NUEVO_PARAMETRO_FEC  ( 'FECHA MOV' , '' , _fechamov ) 
+NUEVO_PARAMETRO_RUTA ( 'RUTA' , 'c:\IMSS.TXT' , $ruta )  
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+MODO_IMPRESION ( 'DIRECTO' ) 
+SALIDA_REPORTE ( $ruta ) 
+
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+$rpatronal  := ''
+$digver     := ''
+$afiliacion := ''
+$digver2    := ''
+$apellidop  := ''
+$apellidom  := ''
+$nombre     := ''
+$tipomov    := ''
+$fechamov   := ''
+$codpos     := ''
+$calle      := ''
+$numext     := ''
+$numint     := ''
+$colonia    := ''
+$municipio  := ''
+$estado     := ''
+$tipomov    := ''
+$fechamov   := ''
+
+# SUBRUTINAS GLOBALES
+
+SUB_RUTINA obten_estado 
+    SI ( $estado = 'AGS' ) 
+       $estado := 'AGS'
+    SI ( $estado = 'BC' ) 
+       $estado := 'BCN'
+    SI ( $estado = 'BCS' ) 
+       $estado := 'BCS'
+    SI ( $estado = 'CAM' ) 
+       $estado := 'CAMP'
+    SI ( $estado = 'COA' ) 
+       $estado := 'COAH'
+    SI ( $estado = 'COL' ) 
+       $estado := 'COL'
+    SI ( $estado = 'CHI' ) 
+       $estado := 'CHIH'
+    SI ( $estado = 'CHIS' ) 
+       $estado := 'CHIS'
+    SI ( $estado = 'DF' ) 
+       $estado := 'DF'
+    SI ( $estado = 'DUR' ) 
+       $estado := 'DGO'
+    SI ( $estado = 'GTO' ) 
+       $estado := 'GTO'
+    SI ( $estado = 'GUE' ) 
+       $estado := 'GRO'
+    SI ( $estado = 'HGO' ) 
+       $estado := 'HGO'
+    SI ( $estado = 'JAL' ) 
+       $estado := 'JAL'
+    SI ( $estado = 'MEX' ) 
+       $estado := 'MEX'
+    SI ( $estado = 'MICH' ) 
+       $estado := 'MICH'
+    SI ( $estado = 'MOR' ) 
+       $estado := 'MOR'
+    SI ( $estado = 'NAY' ) 
+       $estado := 'NAY'
+    SI ( $estado = 'NL' ) 
+       $estado := 'NL'
+    SI ( $estado = 'OAX' ) 
+       $estado := 'OAX'
+    SI ( $estado = 'PUE' ) 
+       $estado := 'PUE'
+    SI ( $estado = 'QR' ) 
+       $estado := 'QROO'
+    SI ( $estado = 'QUE' ) 
+       $estado := 'QRO'
+    SI ( $estado = 'SIN' ) 
+       $estado := 'SIN'
+    SI ( $estado = 'SLP' ) 
+       $estado := 'SLP'
+    SI ( $estado = 'SON' ) 
+       $estado := 'SON'
+    SI ( $estado = 'TAB' ) 
+       $estado := 'TAB'
+    SI ( $estado = 'TAM' ) 
+       $estado := 'TAM'
+    SI ( $estado = 'TLA' ) 
+       $estado := 'TLAX'
+    SI ( $estado = 'VER' ) 
+       $estado := 'VER'
+    SI ( $estado = 'YUC' ) 
+       $estado := 'YUC'
+    SI ( $estado = 'ZAC' ) 
+       $estado := 'ZAC'
+ 
+   FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI 
+   FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI
+   FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI FIN_SI
+   FIN_SI FIN_SI   
+
+FIN_SUB_RUTINA 
+
+SUB_RUTINA formato_trabajador
+
+   DECIMALES := 0
+
+   $rpatronal  := ''
+   $digver     := ''
+   $afiliacion := ''
+   $digver2    := '' 
+
+   ULTIMO_REGISTRO ( 'EMPSUC' ) 
+   SI ( TRAE_REGISTRO ( 'SUCURSAL' , 'EMPSUC':'CATALOGO' ) ) 
+        SI ( TRAE_REGISTRO ( 'PATRONAL' , 'SUCURSAL':'REGISTRO PATRONAL' ) ) 
+             $rpatronal :=  SUBSTR ( 'PATRONAL':'REGISTRO PATRONAL' , 1  , 10  ) 
+             $digver    :=  SUBSTR ( 'PATRONAL':'REGISTRO PATRONAL' , 11 , 1   ) 
+        FIN_SI
+   FIN_SI 
+
+   $afiliacion := SUBSTR ( 'EMPPRIN':'AFILIACION' , 1  , 10 ) 
+   $digver2    := SUBSTR ( 'EMPPRIN':'AFILIACION' , 11 , 1  ) 
+ 
+   $apellidop  := 'EMPPRIN':'NOMBREP'
+   $apellidom  := 'EMPPRIN':'NOMBREM'
+   $nombre     := 'EMPPRIN':'NOMBREN'
+
+   SI ( _tipomov = 0 ) 
+        $tipomov := '03'
+   SI_NO SI ( _tipomov = 1 ) 
+        $tipomov := '12'
+   FIN_SI FIN_SI
+
+   FORMATO_FECHA:= 6
+   $fechamov  := FECHA ( _fechamov ) 
+   $codpos    := 'EMPRH':'CP'
+   $calle     := 'EMPRH':'CALLE'
+   $numext    := 'EMPRH':'NUMERO'
+   $numint    := 'EMPRH':'INTERIOR'
+   $colonia   := 'EMPRH':'COLONIA'
+   $municipio := 'EMPRH':'MUNICIPIO'
+   $estado    := 'EMPRH':'ESTADO'
+
+   obten_estado  
+
+   MIENTRAS ( LONGITUD ( $codpos ) < 5  ) 
+              $codpos := '0' + $codpos
+   FIN_MIENTRAS
+ 
+   MIENTRAS ( LONGITUD ( $numint ) < 15  ) 
+              $numint := $numint + ' '
+   FIN_MIENTRAS
+
+   MIENTRAS ( LONGITUD ( $colonia ) < 50  ) 
+              $colonia := $colonia + ' '
+   FIN_MIENTRAS
+
+   MIENTRAS ( LONGITUD ( $municipio ) < 30  ) 
+              $municipio := $municipio + ' '
+   FIN_MIENTRAS
+
+   SI ( $salida = 'DISCO' ) 
+        IMP ( COL(1)   , $rpatronal , COL(11)  , $digver    , COL(12)  , $afiliacion , COL(22)  , $digver2   ) 
+        IMP ( COL(23)  , $apellidop , COL(50)  , $apellidom , COL(77)  , $nombre     , COL(104) , $tipomov   )
+        IMP ( COL(106) , $fechamov  , COL(114) , '  '       , COL(116) , $codpos     , COL(121) , $calle     )  
+        IMP ( COL(161) , $numext    , COL(176) , $numint    , COL(191) , $colonia    , COL(241) , $municipio )
+        IMP ( COL(271) , $estado  ) 
+        IMPRIME
+   FIN_SI
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. RFC,E.AFILIACION,E.NOMBREP,E.NOMBREM,E.NOMBREN'
+$bases_extras := 'EMPEXT EXT'
+$condiciones_extras := 'E.CLAVE = EXT.CLAVE'
+base_trabajadores
+
+ABRE_BASE ( 'PATRONAL' ) 
+ABRE_BASE ( 'SUCURSAL' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT' , 'CLAVE' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSUC' , 'CLAVE' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPRH' , 'CLAVE'  ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT' , 'CLAVE' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO' , 'CLAVE' ) 
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+
+
+
+   ULTIMO_REGISTRO ( 'EMPSDO' ) 
+   SI  ( ( 'EMPSDO':'TIPO' <> 'B' )   AND ( 'EMPEXT':'AUT_PERM' = 1 ) ) 
+
+   formato_trabajador 
+   FIN_SI
+
+
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+
+TERMINA_REPORTE

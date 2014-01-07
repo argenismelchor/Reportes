@@ -1,0 +1,37 @@
+[] ('31') ;; # CALCULO DE PTU
+   DECIMALES := 8
+
+   SI ( CAP1('31') <> 0 ) 
+     TOTAL  ('31') := CAP1('31')   
+   FIN_SI 
+
+   SI ( _afectar = 1 ) 
+     GRABA_BASE ( 'EMPNOM' )
+   FIN_SI
+  
+][
+[] ('AJUS') ;; # 
+   DECIMALES := 2
+   TOTAL ('AJUS') := AJUSTA ( ( TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES ) , _ajuste ) * -1
+][
+[] ('PERC') ;; # 
+   DECIMALES := 8
+   TOTAL ('PERC') := TOTAL_PERCEPCIONES
+][
+[] ('PGRA') ;; # 
+   TOTAL ('PGRA') := TOTAL_PERCEPCIONES - _exento
+][
+[] ('EXEN') ;; # 
+   TOTAL ('EXEN') := _exento
+][
+[] ('DEDU') ;; # 
+   TOTAL ('DEDU') := TOTAL_DEDUCCIONES
+][
+[] ('TOTA') ;; # 
+   TOTAL ('TOTA') := TOTAL ('PERC') - TOTAL ('DEDU')
+   DECIMALES := 2
+][
+[] ('EX31') ;; # 
+][
+[] ('SUBN') ;; # 
+][

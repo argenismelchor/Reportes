@@ -1,0 +1,671 @@
+#CONSTANTES
+$tabrel := 'EMPRELOJ'
+_bitacora := 0  #CREAR BITACORA DE TRASNFERENCIA
+
+_decimales_rel := 8
+DECIMALES := _decimales_rel
+_fs := 0.000011574074
+_fm := 0.000694444446
+_fh := 0.041666666666
+_ajuste := _fm / 30
+_ajustito := _fm / 5
+_ajustito := _fs
+
+#VARIABLES DE TRANSFERENCIA
+_trans_faltas := _trans_faltas
+_trans_he     := _trans_he
+_trans_mf     := _trans_mf
+_grabar       := _grabar
+
+#PARAMETROS
+$nocheco       := '********'
+_nocturno      := 0
+_hay_checada   := 0
+_checar_festivo := _checar_festivo
+_turno_grabado  := 0
+_actualizar_turno := 1
+
+INCLUYE POLITICA.DAT
+
+#VARIABLE DE CHECADAS
+_ac1         := 0
+_ac2         := 0
+_ac3         := 0
+_ac4         := 0
+_acceso1     := 0
+_acceso2     := 0
+_acceso3     := 0
+_acceso4     := 0
+_hora1  := 0
+_hora2  := 0
+_hora3  := 0
+_hora4  := 0
+$campo1 := ''
+$campo2 := ''
+$campo3 := ''
+$campo4 := ''
+$dia    := ''
+
+#VARIABLES GLOBALES DE CONTADORES
+_faux        := 0
+_falta       := 0
+_festivo     := 0
+_incapacidad := 0
+_descanso    := 0
+_vacacion    := 0
+_retardo     := 0
+_he          := 0
+_tiempo      := 0
+_fest_trab   := 0
+
+#VARIABLES DEL PROCEDIMIENTO DE CHECADAS
+_normal        := 0
+_extra         := 0
+_ret           := 0
+_total         := 0
+_tnormal       := 0
+_textra        := 0
+_tret          := 0
+_ttotal        := 0
+_texentas      := 0
+_ttriples      := 0
+_tgrabadas     := 0
+_vacaciones    := 0
+_entrada       := 0
+_salida        := 0
+$excepcion     := ''
+_fechaaux      := 0
+$campo         := ''
+_sal           := 0
+_dias_extras   := 0
+_haux          := 0
+_es_falta      := 0
+
+_tot_faltas := 0
+_tot_ret    := 0
+_tot_he     := 0
+
+_calc_normal   := 0
+_calc_extra    := 0
+_calc_retardo  := 0
+_calc_primadom := 0
+_calc_mf       := 0
+_calc_festivo  := 0
+_calc_festivo_trab  := 0
+
+# FESTIVOS
+VAR_T ( &fest )
+$df          := ''
+_primero     := 0
+_ind_fest    := 0
+_ind_fest2   := 0
+_dia_fest    := 0
+_es_festivo  := 0
+
+SUB_RUTINA checa_festivos
+  $df := 'EMPPRIN':'CALENDARIO'
+  _ind_fest := TRAE_INDICE_REN( &fest, 0, $df )
+  SI ( _ind_fest < 0 )
+    _dia_fest := _fi
+    _primero := 1
+    MIENTRAS( _dia_fest <= _ff )
+      SI (( DIAS_INHABILES( _dia_fest, _dia_fest, $df, 0, 0 ) > 0 ) AND ( DIA_SEMANA ( _dia_fest ) <> 1 ) AND ( DIA_SEMANA( _dia_fest ) <> 7 ) )
+        FORMATO_FECHA := 3
+        SI ( _primero = 1 )
+          AGREGA_VALOR_REN( &fest, 0, $df )
+          _ind_fest := TRAE_INDICE_REN( &fest, 0, $df )
+          _primero := 0
+        FIN_SI
+        AGREGA_VALOR_COL( &fest, _ind_fest, FECHA( _dia_fest ) )
+      FIN_SI
+      _dia_fest := _dia_fest + 1
+    FIN_MIENTRAS
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA es_dia_festivo
+  _es_festivo := 0
+  $df := 'EMPPRIN':'CALENDARIO'
+  _ind_fest := TRAE_INDICE_REN( &fest, 0, $df )
+  SI ( _ind_fest >= 0 )
+    FORMATO_FECHA := 3
+    _ind_fest2 := TRAE_INDICE_COL( &fest, _ind_fest, FECHA( _faux ) )
+    SI ( _ind_fest2 >= 0 )
+      _es_festivo := 1
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA actualiza_turno
+  DECIMALES := 4
+  SI ( .( FRAC( $tabrel:'ENTRADA_P' ) ) = .( CALCULA_HORA( 7, 0, 0 ) ) )
+    'EMPEXT':'TURNO_NOMINA' := '1'
+  SI_NO
+    SI ( .( FRAC( $tabrel:'ENTRADA_P' ) ) = .( CALCULA_HORA( 17, 30, 0 ) ) )
+      'EMPEXT':'TURNO_NOMINA' := '2'
+    SI_NO
+      'EMPEXT':'TURNO_NOMINA' := 'EMPPRIN':'TURNO'
+    FIN_SI
+  FIN_SI
+  GRABA_BASE( 'EMPEXT' )
+  _turno_grabado  := 1
+  DECIMALES := 2
+FIN_SUB_RUTINA
+
+SUB_RUTINA dia_semana
+  SI ( DIA_SEMANA( _faux ) = 1 ) $dia := 'DOM' FIN_SI
+  SI ( DIA_SEMANA( _faux ) = 2 ) $dia := 'LUN' FIN_SI  
+  SI ( DIA_SEMANA( _faux ) = 3 ) $dia := 'MAR' FIN_SI
+  SI ( DIA_SEMANA( _faux ) = 4 ) $dia := 'MIE' FIN_SI
+  SI ( DIA_SEMANA( _faux ) = 5 ) $dia := 'JUE' FIN_SI
+  SI ( DIA_SEMANA( _faux ) = 6 ) $dia := 'VIE' FIN_SI
+  SI ( DIA_SEMANA( _faux ) = 7 ) $dia := 'SAB' FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_turno
+  SI ( TRAE_REGISTRO( 'TURNO1', 'EMPPRIN':'TURNO' ) )
+    #
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_dia_turno
+  DECIMALES := _decimales_rel
+  dia_semana
+  carga_turno
+  $campo1 := 'ENTRADA_' + $dia
+  $campo2 := 'SALIDA_COM_' + $dia
+  $campo3 := 'REGRESO_COM_' + $dia
+  $campo4 := 'SALIDA_' + $dia
+  _hora1  := 'TURNO1':$campo1
+  _hora2  := 'TURNO1':$campo2
+  _hora3  := 'TURNO1':$campo3
+  _hora4  := 'TURNO1':$campo4
+  SI ( _hora1 > _hora4 )
+    _nocturno := 1
+  SI_NO
+    _nocturno := 0
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA verifica_acceso
+  DECIMALES := _decimales_rel
+  SI ((( FRAC( _ac2 ) > 0 ) OR ( FRAC( _ac3 ) > 0 )) AND ( FRAC( _ac4 ) = 0 ))
+    SI (( FRAC( _ac2 ) > 0 ) AND ( FRAC( _ac3 ) = 0 ))
+      _ac4 := _ac2
+      _ac2 := 0
+    FIN_SI
+    SI (( FRAC( _ac3 ) > 0 ) AND ( FRAC( _ac2 ) = 0 ))
+      _ac4 := _ac3
+      _ac3 := 0
+    FIN_SI
+    SI (( FRAC( _ac3 ) > 0 ) AND ( FRAC( _ac2 ) > 0 ))
+      _ac4 := _ac3
+      _ac3 := 0
+      _ac2 := 0
+    FIN_SI
+  FIN_SI
+  SI ( FRAC( _ac4 ) > 0 )
+     _ac4 := _ac4 + _ajustito
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA ajusta
+  SI ( FRAC( _ac1 ) > 0 ) _ac1 := _ac1 + _ajuste FIN_SI
+  SI ( FRAC( _ac2 ) > 0 ) _ac2 := _ac2 + _ajuste FIN_SI
+  SI ( FRAC( _ac3 ) > 0 ) _ac3 := _ac3 + _ajuste FIN_SI
+  SI ( FRAC( _ac4 ) > 0 ) _ac4 := _ac4 + _ajuste FIN_SI
+  SI ( FRAC( _hora1 ) > 0 ) _hora1 := _hora1 + _ajuste FIN_SI
+  SI ( FRAC( _hora2 ) > 0 ) _hora2 := _hora2 + _ajuste FIN_SI
+  SI ( FRAC( _hora3 ) > 0 ) _hora3 := _hora3 + _ajuste FIN_SI
+  SI ( FRAC( _hora4 ) > 0 ) _hora4 := _hora4 + _ajuste FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_politicas
+  #CARGA PARAMETROS
+  $clave_falta := LEE_INI( 'RELOJ', 'FALTAS', '' )
+  $clave_he    := LEE_INI( 'RELOJ', 'HORAS EXTRAS', '' )
+  $clave_mf    := LEE_INI( 'RELOJ', 'MEDIAS FALTAS', '' )
+  _tolerancia := VALOR( LEE_INI( 'RELOJ', 'MINUTOS TOLERANCIA', '0' ) ) * _fm
+  #VALIDA LAS POLITICAS
+  SI (( _trans_faltas = 1 ) AND ( $clave_falta = '' ))
+    MENSAJE( 'NO HA DEFINIDO LA CLAVE DE FALTA A UTILIZAR PARA LA TRANSFERENCIA.' )
+    TERMINA_REPORTE
+  FIN_SI
+  SI (( _trans_he = 1 ) AND ( $clave_he = '' ))
+    MENSAJE( 'NO HA DEFINIDO LA CLAVE DE HORAS EXTRAS A UTILIZAR PARA LA TRANSFERENCIA.' )
+    TERMINA_REPORTE
+  FIN_SI
+  SI (( _trans_mf = 1 ) AND ( $clave_mf = '' ))
+    MENSAJE( 'NO HA DEFINIDO LA CLAVE DE MEDIAS FALTAS A UTILIZAR PARA LA TRANSFERENCIA.' )
+    TERMINA_REPORTE
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA inicializa_valores
+  _falta       := 0
+  _incapacidad := 0
+  _descanso    := 0
+  _vacacion    := 0
+  _retardo     := 0
+  _he          := 0
+  _festivo     := 0
+  $dia         := ''
+  $excepcion   := ''
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_checada
+  _hay_checada   := 1
+  #SI LA TABLA DEL RELOJ ES EMPPRIN ENTONCES NO HACE LA BUSQUEDA DEL REGISTRO PORQUE ASUME QUE YA VIENE EN EL SQL
+  SI ( $tabrel = 'EMPRELOJ' )
+    SI ( TRAE_REGISTRO( 'EMPRELOJ', 'EMPPRIN':'CLAVE', _faux ) )
+      _hay_checada := 1
+      SI (( FRAC( $tabrel:'ENTRADA_REAL_P' ) = 0 ) AND ( FRAC( $tabrel:'SALIDA_REAL_P' ) = 0 ))
+        _hay_checada := 0
+      FIN_SI
+    SI_NO
+      _hay_checada := 0
+    FIN_SI
+  FIN_SI
+  SI ( _hay_checada = 1 )
+    DECIMALES := _decimales_rel
+    SI (( FRAC( $tabrel:'SALIDA_P' ) > FRAC( $tabrel:'ENTRADA_P' ) ) OR ( FRAC( $tabrel:'SALIDA_P' ) = 0 ) )
+      _hora1       := _faux + $tabrel:'ENTRADA_P'
+      _hora2       := _faux + $tabrel:'SALIDA_S'
+      _hora3       := _faux + $tabrel:'ENTRADA_S'
+      _hora4       := _faux + $tabrel:'SALIDA_P'
+      _nocturno    := 0  
+    SI_NO
+      _hora1       := _faux + $tabrel:'ENTRADA_P'
+      _hora2       := _faux + $tabrel:'SALIDA_S'
+      _hora3       := _faux + $tabrel:'ENTRADA_S'
+      _hora4       := _faux + 1 + $tabrel:'SALIDA_P'
+      _nocturno    := 1
+    FIN_SI
+  
+    _ac1     := _faux + FRAC( $tabrel:'ENTRADA_REAL_P' )
+    _ac2     := _faux + FRAC( $tabrel:'ENTRADA_REAL_S' )
+    _ac3     := _faux + FRAC( $tabrel:'SALIDA_REAL_S' )
+    #SI ( ( _nocturno = 1 ) AND ( FRAC( $tabrel:'ENTRADA_REAL_P' ) < FRAC( $tabrel:'SALIDA_REAL_P' ) ))
+    #  _ac1     := _faux + 1 + FRAC( $tabrel:'ENTRADA_REAL_P' )
+    #  _ac2     := _faux + 1 + FRAC( $tabrel:'ENTRADA_REAL_S' )
+    #  _ac3     := _faux + 1 + FRAC( $tabrel:'SALIDA_REAL_S' )
+    #FIN_SI
+    SI ( FRAC( $tabrel:'ENTRADA_REAL_P' ) < FRAC( $tabrel:'SALIDA_REAL_P' ) )
+      _ac4     := _faux + FRAC( $tabrel:'SALIDA_REAL_P' )
+      SI ( _nocturno = 1 )
+        SI ( FRAC( $tabrel:'ENTRADA_REAL_P' ) < FRAC( $tabrel:'SALIDA_REAL_P' ) )
+          _ac4 := _faux + FRAC( $tabrel:'SALIDA_REAL_P' )
+        SI_NO
+          _ac4 := _faux + 1 + FRAC( $tabrel:'SALIDA_REAL_P' )
+        FIN_SI
+      FIN_SI
+    SI_NO
+      _ac4   := _faux + 1 + FRAC( $tabrel:'SALIDA_REAL_P' )
+    FIN_SI
+  
+    verifica_acceso
+    _acceso1 := _ac1
+    _acceso2 := _ac2
+    _acceso3 := _ac3
+    _acceso4 := _ac4
+  SI_NO
+    _acceso1 := 0
+    _acceso2 := 0
+    _acceso3 := 0
+    _acceso4 := 0
+    _hora1   := 0
+    _hora2   := 0
+    _hora3   := 0
+    _hora4   := 0
+    _ac1 := 0
+    _ac2 := 0
+    _ac3 := 0
+    _ac4 := 0
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA genera_falta
+  SI ( _grabar = 0 )
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(40), 'FALTA' )
+    IMPRIME
+  SI_NO
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(40), 'FALTA', COL(60), $clave_falta )
+    IMPRIME
+  FIN_SI
+  _tot_faltas := _tot_faltas + 1  
+  SI ( _grabar = 1 )
+    SI ( TRAE_REGISTRO( 'EMPAUS', 'EMPPRIN':'CLAVE', _faux ) = FALSO )
+      AGREGA_REGISTRO( 'EMPAUS' )
+      'EMPAUS':'CLAVE' := 'EMPPRIN':'CLAVE'
+      'EMPAUS':'FECHAI' := _faux
+      'EMPAUS':'FECHAF' := _faux
+      'EMPAUS':'TIPO' := $clave_falta
+      GRABA_BASE( 'EMPAUS' )
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA genera_retardo
+  _es_falta := 0
+  DECIMALES := _decimales_rel
+  _retardo := _retardo / _fm
+  #SI ( _retardo > 480 )
+  #  _retardo := 480
+  #  _es_falta := 1
+  #FIN_SI
+  SI ( _es_falta = 0 )
+   SI (( TOTAL_FALTAS( _faux, _faux, 'S' ) = 0 ) AND ( TRAE_INCAPACIDADES( _faux, _faux, '*' ) = 0 ))
+    DECIMALES := _decimales_rel
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(40), 'RETARDO', COL(60), HORA( _retardo * _fm ) )
+    DECIMALES := 2
+    IMP ( COL(70), DER( .( _retardo ) + ' Min.', 10) )
+    IMPRIME
+    DECIMALES := 0
+    _tot_ret := _tot_ret + 1  
+    SI ( _grabar = 1 )
+      SI ( TRAE_REGISTRO( 'EMPRET', 'EMPPRIN':'CLAVE', _faux ) = FALSO )
+        AGREGA_REGISTRO( 'EMPRET' )
+        'EMPRET':'CLAVE' := 'EMPPRIN':'CLAVE'
+        'EMPRET':'FECHA' := _faux
+        'EMPRET':'RETARDO' := .( _retardo )
+        'EMPRET':'DESCONTAR' := 'S'
+        GRABA_BASE( 'EMPRET' )
+      FIN_SI
+    FIN_SI
+    DECIMALES := _decimales_rel
+   FIN_SI
+  SI_NO
+    genera_falta
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA genera_media_falta
+  SI (( _grabar = 0 ) OR ( _bitacora = 0 ))
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(40), 'MEDIA FALTA' )
+    IMPRIME
+  SI_NO
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(20), 'FALTA', COL(30), $clave_mf )
+    IMPRIME
+  FIN_SI
+  SI ( _grabar = 1 )
+    SI ( TRAE_REGISTRO( 'EMPAUS', 'EMPPRIN':'CLAVE', _faux ) = FALSO )
+      AGREGA_REGISTRO( 'EMPAUS' )
+      'EMPAUS':'CLAVE' := 'EMPPRIN':'CLAVE'
+      'EMPAUS':'FECHAI' := _faux
+      'EMPAUS':'FECHAF' := _faux
+      'EMPAUS':'TIPO' := $clave_mf
+      GRABA_BASE( 'EMPAUS' )
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA genera_he
+  DECIMALES := _decimales_rel
+  _he := _he / _fm
+  IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(40), 'HORAS EXTRAS', COL(60), HORA( _he / 60 * _fh ) )
+  DECIMALES := 2
+  IMP ( COL(70), DER( .( _he / 60 ) ,10) )
+  IMPRIME
+  DECIMALES := 2
+  _tot_he := _tot_he + 1
+  SI ( _grabar = 1 )
+    CAPTURA_CONCEPTO ( '10' )
+    CAP1('10') := _faux
+    DECIMALES := 2
+    CAP2('10') := _he / 60
+    GRABA_BASE( 'EMPNOM' )
+  FIN_SI
+  DECIMALES := _decimales_rel
+FIN_SUB_RUTINA
+
+SUB_RUTINA genera_prima
+  DECIMALES := _decimales_rel
+  _tiempo := _acceso4 - _acceso1
+  SI ( ( _grabar = 0 ) OR ( _bitacora = 0 ))
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(40), 'PRIMA DOMINICAL', COL(60), HORA( _tiempo ) )
+    IMPRIME
+  SI_NO
+    DECIMALES := 2
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(20), 'NOMINA', COL(30), $clave_prim, COL(40), .( _tiempo / _fh ) )
+    IMP ( COL(70), DER( .( _tiempo / _fh ) + ' Hrs.' ,10) )
+    IMPRIME
+  FIN_SI
+  SI ( _grabar = 1 )
+    SI ( CONCEPTO_CAPTURADO($clave_prim) = FALSO )
+      CAPTURA_CONCEPTO ( $clave_prim )
+    FIN_SI
+    DECIMALES := 2
+    CAP3($clave_prim) := _tiempo / _fh
+    GRABA_BASE( 'EMPNOM' )
+  FIN_SI
+  DECIMALES := _decimales_rel
+FIN_SUB_RUTINA
+
+SUB_RUTINA genera_bono_dominical
+  DECIMALES := _decimales_rel
+  SI (( _grabar = 0 ) OR ( _bitacora = 0 ))
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(40), 'BONO DOMINICAL' )
+    IMPRIME
+  SI_NO
+    DECIMALES := 2
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(20), 'NOMINA', COL(30), $clave_bd )
+    IMPRIME
+  FIN_SI
+  SI ( _grabar = 1 )
+    SI ( CONCEPTO_CAPTURADO($clave_bd) = FALSO )
+      CAPTURA_CONCEPTO ( $clave_bd )
+    FIN_SI
+    DECIMALES := 2
+    CAP1($clave_bd) := 1
+    GRABA_BASE( 'EMPNOM' )
+  FIN_SI
+  DECIMALES := _decimales_rel
+FIN_SUB_RUTINA
+
+SUB_RUTINA genera_festivo_trab
+  DECIMALES := _decimales_rel
+  SI (( _grabar = 0 ) OR ( _bitacora = 0 ))
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(40), 'FESTIVO TRAB.', COL(60), HORA( _fest_trab ) )
+    IMPRIME
+  SI_NO
+    DECIMALES := _decimales_rel
+    _fest_trab := _fest_trab / _fh
+    DECIMALES := 2
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(20), 'NOMINA', COL(30), $clave_fest_trab, COL(40), .( _fest_trab ) )
+    IMPRIME
+  FIN_SI
+  SI ( _grabar = 1 )
+    CAPTURA_CONCEPTO ( $clave_fest_trab )
+    DECIMALES := _decimales_rel
+    CAP1( $clave_fest_trab ) := _fest_trab
+    GRABA_BASE( 'EMPNOM' )
+  FIN_SI
+  DECIMALES := _decimales_rel
+FIN_SUB_RUTINA
+
+SUB_RUTINA genera_festivo
+  DECIMALES := _decimales_rel
+  SI (( _grabar = 0 ) OR ( _bitacora = 0 ))
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(40), 'FESTIVO' )
+    IMPRIME
+  SI_NO
+    DECIMALES := 2
+    IMP ( 'EMPPRIN':'CLAVE', COL(10), FECHA( _faux ), COL(20), 'NOMINA', COL(30), $clave_fest, COL(40), '1' )
+    IMPRIME
+  FIN_SI
+  SI ( _grabar = 1 )
+    CAPTURA_CONCEPTO ( $clave_fest )
+    CAP3( $clave_fest ) := 1
+    GRABA_BASE( 'EMPNOM' )
+  FIN_SI
+  DECIMALES := _decimales_rel
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_excepciones
+    $excepcion := ''
+    SI ( $excepcion = '' )
+      SI ( TRAE_REGISTRO( 'TURNO1', 'EMPPRIN':'TURNO' ) )
+        dia_semana
+        $campo := 'SALIDA_' + $dia
+        _sal := 'TURNO1':$campo
+        _hora4 := _sal
+        SI ( FRAC( _sal ) = 0 )
+          $excepcion     := 'DESCANSO'
+        FIN_SI
+      FIN_SI
+    FIN_SI
+    SI ( $excepcion = '' )
+      SI ( TRAE_INCAPACIDADES( _faux, _faux, '*' ) > 0 )
+        $excepcion     := 'INCAPACIDAD'
+      FIN_SI
+    FIN_SI
+    SI ( $excepcion = '' )
+      SI ( TRAE_FALTAS( _faux, _faux, '*' ) > 0 )
+         _fechaaux := _faux
+         MIENTRAS ( TRAE_REGISTRO( 'EMPAUS', 'EMPPRIN':'CLAVE', _fechaaux ) = FALSO )
+           _fechaaux := _fechaaux - 1
+         FIN_MIENTRAS
+         SI ( TRAE_REGISTRO( 'FALTA', 'EMPAUS':'TIPO' ) )
+            $excepcion     := 'FALTA':'DESCRIPCION'
+         SI_NO
+            $excepcion     := 'INCIDENCIA'
+         FIN_SI
+      FIN_SI
+    FIN_SI
+    SI ( $excepcion = '' )
+      SI ( TRAE_VACACIONES( _faux, _faux, VERDADERO ) > 0 ) 
+        $excepcion     := 'VACACIONES'
+      FIN_SI
+    FIN_SI
+    SI (( $excepcion = '' ) AND ( _checar_festivo = 1 ))
+      SI ( DIAS_INHABILES( _faux, _faux, 'EMPPRIN':'CALENDARIO', 0, 0 ) > 0 )
+        $excepcion     := 'FESTIVO'
+      FIN_SI
+    FIN_SI
+    SI ( $excepcion = '' )
+      $excepcion := 'AUSENTE'
+    FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA calcula_dia
+  DECIMALES := _decimales_rel
+  _calc_normal   := 0
+  _calc_extra    := 0
+  _calc_retardo  := 0
+  _calc_primadom := 0
+  _calc_mf       := 0
+  _calc_festivo  := 0
+  _calc_festivo_trab  := 0
+  carga_checada
+  SI ( _hay_checada = 1 )
+    SI (( FRAC( _acceso1 ) > 0 ) AND ( _acceso1 < _hora1 + _fm ))
+      #SE CHECA TIEMPO EXTRA EN LA ENTRADA
+      SI (( _checar_te ) AND ( _acceso1 < _hora1 - _tiempo_he_ent ))
+        _calc_extra   := _calc_extra + ( _hora1 - _acceso1 )
+      FIN_SI
+      _acceso1 := _hora1
+    FIN_SI
+    #SE CHECA EL RETARDO DE LA ENTRADA SIEMPRE QUE NO SEA DIA DE DESCANSO
+    SI (( FRAC( _acceso1 ) > 0 ) AND ( _acceso1 > _hora1 + _tolerancia + _fm ) AND ( FRAC( _hora4 ) > 0 ))
+      _calc_retardo := _calc_retardo + ( _acceso1 - ( _hora1 + _tolerancia ))
+    FIN_SI
+    #SE CONSIDERA COMO RETARDO EL TIEMPO INTERMEDIO.
+    SI (( FRAC( _acceso2 ) > 0 ) AND ( FRAC( _acceso3 ) > 0 ))
+      _calc_retardo := _calc_retardo + ( _acceso3 - _acceso2 )
+    FIN_SI
+    #SE VERIFICA EL RETARDO A LA SALIDA.
+    SI (( FRAC( _acceso4 ) > 0 ) AND ( _acceso4 < _hora4 ) AND ( FRAC( _hora4 ) > 0 ))
+      _calc_retardo := _calc_retardo + ( _hora4 - _acceso4 )
+    FIN_SI
+    SI (( FRAC( _acceso4 ) > 0 ) AND ( _acceso4 > _hora4 ) AND ( FRAC( _hora4 ) > 0 ))
+      #SE VERIFICA EL TIEMPO EXTRA A LA SALIDA
+      SI ( _acceso4 > _hora4 + _tiempo_he_sal )
+        _calc_extra   := _calc_extra + ( _acceso4 - _hora4 )
+      FIN_SI
+      _acceso4 := _hora4
+    FIN_SI
+    #SE CALCULA EL TIEMPO NORMAL
+    SI (( FRAC( _acceso1 ) > 0 ) AND ( FRAC( _acceso4 ) > 0 ))       
+      _calc_normal := ( _acceso4 - _acceso1 ) + _ajustito
+      #SE LE RESTA EL TIEMPO DE COMEDOR EXCEPTO LOS DIAS DE DESCANSO
+      SI (( _calc_normal > 0 ) AND ( FRAC( _hora4 ) > 0 ))
+        SI ( 'EMPPRIN':'TURNO' <> '4' )
+          _calc_normal := _calc_normal - _tiempo_comida
+        FIN_SI
+      FIN_SI
+      #SE LE RESTAN LOS RETARDOS
+      #_calc_normal := _calc_normal - _calc_retardo + _ajustito
+      #SI ES DIA DE DESCANSO SE CONSIDERA COMO TIEMPO EXTRA
+      SI ( FRAC( _hora4 ) = 0 )
+        _calc_extra := _calc_normal
+        SI ( _desc_com_di = 1 )
+          _calc_extra := _calc_extra - _tiempo_comida
+        FIN_SI
+        _calc_normal := 0
+      FIN_SI
+    FIN_SI
+    #SI ES DOMINGO GENERA PRIMA DOMINICAL
+    SI (( DIA_SEMANA( _faux ) = 1 ) AND ( FRAC( _acceso1 ) > 0 ) AND ( FRAC( _acceso4 ) > 0 ) )
+      _calc_primadom := 1
+    FIN_SI
+    #CHECA MEDIAS FALTAS
+    SI ( ( FRAC( _acceso1 ) = 0 ) OR ( FRAC( _acceso4 ) = 0 ) )
+      SI ( FRAC( _hora4 ) > 0 )
+         SI ( ( FRAC( _acceso1 ) = 0 ) AND ( FRAC( _acceso4 ) = 0 ) )
+           #SOLO TIENE EL REGISTRO PERO NO CHECO.
+           _festivo    := DIAS_INHABILES( _faux, _faux, 'EMPPRIN':'CALENDARIO', 0, 0 )
+           SI ( _festivo = 0 )
+            #NO TIENE NINGUNA INCIDENCIA POR LO QUE SE CONSIDERA COMO FALTA
+             _calc_mf := 1
+             _hay_checada := 0
+           FIN_SI
+         SI_NO
+           #NO TIENE UNA DE LAS CHECADAS
+           _calc_mf := 1
+         FIN_SI
+      FIN_SI
+    FIN_SI
+    SI ( FRAC( _acceso1 ) = 0 )
+      _acceso1 := 0
+    FIN_SI
+    SI ( FRAC( _acceso2 ) = 0 )
+      _acceso2 := 0
+    FIN_SI
+    SI ( FRAC( _acceso3 ) = 0 )
+      _acceso3 := 0
+    FIN_SI
+    SI ( FRAC( _acceso4 ) = 0 )
+      _acceso4 := 0
+    FIN_SI
+    #CHECA SI TRABAJO EN DIA FESTIVO PERO ESTO LO ALENTA
+    SI ( _checar_festivo = 1 )
+       SI (( DIA_SEMANA ( _faux ) <> 1 ) AND ( DIA_SEMANA( _faux ) <> 7 ) AND ( DIAS_INHABILES( _faux, _faux, 'EMPPRIN':'CALENDARIO', 0, 0 ) > 0 ))
+           SI (( _ac1 <> 0 ) Y ( _ac4 <> 0 ))
+              _ac1 := _acceso1
+              SI ( _acceso1 < _hora1 )
+                _ac1 := _hora1
+              FIN_SI
+              _ac4 := _acceso4
+              SI ( _acceso4 > _hora4 )
+                _ac4 := _hora4
+              FIN_SI
+              _fest_trab := (( _ac4 - _ac1 ) - ( _fm * 30 ) + _ajuste )
+              _calc_festivo_trab := 1
+              _calc_extra  := _fest_trab
+              _calc_normal := 0
+           FIN_SI
+       FIN_SI
+    FIN_SI
+    #VALIDA SI EL TIEMPO EXTRA ESTA AUTORIZADO.
+    SI ( _validar_te = 1 )
+      SI ( TRAE_REGISTRO( 'EMPHE', 'EMPPRIN':'CLAVE', _faux, 'H' ) )
+        SI ( _calc_extra > 'EMPHE':'MONTO' * _fm )
+           _calc_extra := 'EMPHE':'MONTO' * _fm
+        FIN_SI
+      SI_NO
+        _calc_extra := 0
+      FIN_SI
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+

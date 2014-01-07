@@ -1,0 +1,127 @@
+#DETALLADO DE SALDOS VACACIONALES
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra el detallado de los saldos vacacionales de los trabajadores de la empresa.
+#Este reporte imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal. De las vacaciones imprime el detalle completo de todos los años.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO/EXCEL' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA DE CORTE' , '' , _ff ) 
+NUEVO_PARAMETRO     ( 'PERIODOS A MOSTRAR' , '1' , _anos )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'Saldos Vacacionales al ' + FECHA (_ff)
+   encabezado_ini
+   SI ( CD_DC = 0 )
+      IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' , COL (50) , DER ( 'SUCURSAL' , 10 ) , COL (60) , DER ( 'DEPTO' , 10 ) , COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   SI_NO
+      IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' , COL (50) , DER ( 'SUCURSAL' , 10 ) , COL (60) , DER ( 'C.C.' , 10 ) , COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   FIN_SI
+   encabezado_fin
+   SI ( $salida = 'EXCEL' )
+      EXCEL ( 'PON_VALOR', 1, 1, 'CLAVE' )
+      EXCEL ( 'PON_VALOR', 2, 1, 'NOMBRE' )
+      EXCEL ( 'PON_VALOR', 3, 1, 'SUCURSAL' )
+      EXCEL ( 'PON_VALOR', 4, 1, 'DEPARTAMENTO' )
+      EXCEL ( 'PON_VALOR', 5, 1, 'PUESTO' )
+      EXCEL ( 'PON_VALOR', 6, 1, 'SDO VACACIONES' )
+      EXCEL ( 'PON_VALOR', 7, 1, 'SDO PRIMA' )
+   FIN_SI
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+
+#Variables Globales
+VAR_T ( &vacaciones )
+_dias    := 0
+_fini    := 0
+_ffin    := 0
+_di      := 0
+_nvaca   := 0
+_pvaca   := 0
+_indice  := 0
+_ren_act := 3
+
+#Subrutina diversas
+SUB_RUTINA formato_trabajador
+   PRIMER_REGISTRO ('EMPVACA')
+   TABULA_VACACIONES ( &vacaciones , _ff , FALSO )
+   IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 38 ) )
+   IMP ( COL (50) , DER ( 'EMPPRIN':'SUC_CLAVE' , 10 ) , COL (60) , DER ( 'EMPPRIN':'DEP_CLAVE' , 10 ) , COL (70) , DER ( 'EMPPRIN':'PUE_CLAVE' , 10 ) )
+   IMPRIME
+   _indice := 1
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL (5) , 'Período' , COL (15) , 'Derecho' , COL (25) , 'Derecho' , COL (35) , 'Tomadas' , COL (45) , 'Tomadas' , COL (55) , 'Saldo' , COL (65) , 'Saldo' )
+   IMPRIME
+   IMP ( COL (15) , 'Días' , COL (25) , 'Prima' , COL (35) , 'Días' , COL (45) , 'Prima' , COL (55) , 'Días' , COL (65) , 'Prima' )
+   IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   MIENTRAS (( _indice <= _anos ) AND ( TRAE_VALOR_TABLA ( &vacaciones , 0 , _indice + 1 ) <> '' ))
+      IMP ( COL (3)  , DER ( TRAE_VALOR_TABLA ( &vacaciones , 0 , _indice + 1 ) , 9 ) )
+      IMP ( COL (15) , DER ( TRAE_VALOR_TABLA ( &vacaciones , 1 , _indice + 1 ) , 5 ) )
+      IMP ( COL (25) , DER ( TRAE_VALOR_TABLA ( &vacaciones , 2 , _indice + 1 ) , 5 ) )
+      IMP ( COL (35) , DER ( TRAE_VALOR_TABLA ( &vacaciones , 3 , _indice + 1 ) , 5 ) )
+      IMP ( COL (45) , DER ( TRAE_VALOR_TABLA ( &vacaciones , 4 , _indice + 1 ) , 5 ) )
+      IMP ( COL (55) , DER ( TRAE_VALOR_TABLA ( &vacaciones , 5 , _indice + 1 ) , 5 ) )
+      IMP ( COL (65) , DER ( TRAE_VALOR_TABLA ( &vacaciones , 6 , _indice + 1 ) , 5 ) )
+      IMPRIME
+      _indice := _indice + 1
+   FIN_MIENTRAS
+   _nvaca := SDO_VACACIONAL_DIAS  ( _ff )
+   _pvaca := SDO_VACACIONAL_PRIMA ( _ff )
+   DECIMALES := 2
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL (10) , '*** Saldo Vacacional : ' , COL (55) , DER ( _nvaca , 5 ) , COL (65) , DER ( _pvaca , 5 ) ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+   SI ( $salida = 'EXCEL' )
+      EXCEL ( 'PON_VALOR', 1, _ren_act, 'EMPPRIN':'CLAVE' )
+      EXCEL ( 'PON_VALOR', 2, _ren_act, 'EMPPRIN':'NOMBRE' )
+      EXCEL ( 'PON_VALOR', 3, _ren_act, 'EMPPRIN':'SUC_CLAVE' )
+      EXCEL ( 'PON_VALOR', 4, _ren_act, 'EMPPRIN':'DEP_CLAVE' )
+      EXCEL ( 'PON_VALOR', 5, _ren_act, 'EMPPRIN':'PUE_CLAVE' )
+      EXCEL ( 'PON_VALOR', 6, _ren_act, _nvaca )
+      EXCEL ( 'PON_VALOR', 7, _ren_act, _pvaca )
+      _ren_act := _ren_act + 1
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc   := 1
+_incluir_dep   := 1
+_incluir_pue   := 1
+$campos_extras := 'E. CALENDARIO, E. INGRESO'
+base_trabajadores
+
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPVACA' , 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   SI ( ES_VIGENTE ( _ff ) > 0 )
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte

@@ -1,0 +1,132 @@
+#KARDEX DE AUSENTISMO
+#NO EDITAR
+#USUARIO =*
+#TRABAJADORES VIGENTES
+#VERSION 2.000
+#DESCRIPCION
+#Este reporte muestra el kardex de ausentismo de los trabajadores vigentes de la empresa al rango de fechas seleccionado, este reporte permite filtrar la informacion en base al registro patronal, la sucursal, el centro de costo,
+#el departamento, el puesto, el tipo de empleado. Este reporte permite elegir los indices a considerar y si lo desea puede
+#alterar el orden del los mismos.
+#Este reporte imprime la clave, el nombre y el kardex de ausentismo.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , '' , _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL'   , '' , _ff )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( _ff - _fi > 31 )
+  MENSAJE( 'EL PERIODO DE FECHAS NO PUEDE SER MAYOR A 31 DIAS.' )
+  TERMINA_REPORTE
+FIN_SI
+
+$dias   := ''
+_fini   := 0
+$dia    := ''
+$dantes := ''
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+COLUMNAS := 70 + ( _ff - _fi )
+
+ENCABEZADO   
+   $titulo_reporte := 'KARDEX DE AUSENTISMO DEL ' + FECHA (_fi) + ' AL ' + FECHA (_ff)
+   encabezado_ini
+   FORMATO_FECHA := 0
+   _fini := _fi
+   $dias := ''
+   MIENTRAS ( _fini <= _ff )
+     $dia := SUBSTR( FECHA( _fini ), 1, 1 )
+     SI ( $dia <> $dantes )
+       $dias := $dias + $dia
+     SI_NO
+       $dias := $dias + ' '
+     FIN_SI
+     $dantes := $dia
+     _fini := _fini + 1
+   FIN_MIENTRAS
+   IMP ( COL (1)   , 'CLAVE' , COL (10) , 'NOMBRE', COL(50), 'FAL  INC  RET', COL(70), $dias )
+   IMPRIME
+   _fini := _fi
+   $dias := ''
+   MIENTRAS ( _fini <= _ff )
+     $dias := $dias + SUBSTR( FECHA( _fini ), 2, 1 )
+     _fini := _fini + 1
+   FIN_MIENTRAS   
+   FORMATO_FECHA := 3
+   IMP ( COL(70), $dias ) IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+RENGLONES     := 65
+
+#Variables Globales
+_bono  := 5
+_monto := 0
+_faltas := 0
+_incapacidades := 0
+_retardos := 0
+_total    := 0
+
+INCLUYE FALTAS.DAT
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+   carga_kardex
+   IMP ( COL (1)   , 'EMPPRIN':'CLAVE' , COL (11) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 30 ) )
+   _faltas := TRAE_FALTAS( _fi, _ff, '*' )
+   _incapacidades := TRAE_INCAPACIDADES( _fi, _ff, '*' )
+   _retardos := TRAE_RETARDOS( _fi, _ff )
+   ULTIMO_REGISTRO( 'EMPSDO' )
+   SI ( 'EMPSDO':'TIPO' = 'B' )
+     REGISTRO_ANTERIOR( 'EMPSDO' )
+   FIN_SI
+   SI ( ( _faltas = 0 ) AND ( _retardos = 0 ) AND ( _incapacidades <= 3 ) )
+     _monto := 'EMPSDO':'SDO1' * _bono
+     _total := _total + _monto
+   SI_NO
+     _monto := 0
+     DECIMALES := 0
+     IMP ( COL(50), DER(.(_faltas), 3), COL(55), DER(.(_incapacidades), 3), COL(60), DER(.(_retardos), 3) )
+   FIN_SI
+   DECIMALES := 2
+   IMP ( COL(70), $kardex_faltas )
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+# Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_pue := 1
+$campos_extras := 'E. CALENDARIO, E.RFC, E.AFILIACION'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPAUS', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPINC', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPRET', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPVACA', 'CLAVE' )
+
+_ini_kardex := _fi
+_fin_kardex := _ff
+
+ACTUALIZA_BASES
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE ( _fi, _ff ) > 0 )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte

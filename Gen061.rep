@@ -1,0 +1,131 @@
+#AJUSTE DE PERCEPCION GRABADA EN ACUMULADOS
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte permite hacer un ajuste del concepto EXEN en base a los conceptos exentos. Permite indicar de que mes a que mes hace el ajuste.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO     ( 'MES INICIAL', '1', _mes_ini )
+NUEVO_PARAMETRO     ( 'MES FINAL', '12', _mes_fin )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ('AJUSTE DE PGRA') ) ;; IMPRIME
+   IMP ( REPITETXT('=',80)) ;; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE' ) ;; IMPRIME
+   IMP ( COL(20), 'CONCEPTO', COL(32), DER('EXENTO', 10) );; IMPRIME
+   IMP ( REPITETXT('-',80) );; IMPRIME;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+FORMATO_FECHA := 2
+
+#Variables Globales
+_ind    := 0
+$conc   := ''
+_exento := 0
+_perc   := 0
+_mes    := 0
+_monto  := 0
+$mes    := ''
+
+#CONCEPTOS QUE CONFORMAN LOS EXENTOS
+VAR_T( &exen )
+AGREGA_VALOR_COL ( &exen, 0, '10' )
+AGREGA_VALOR_COL ( &exen, 0, '13' )
+AGREGA_VALOR_COL ( &exen, 0, '14' )
+AGREGA_VALOR_COL ( &exen, 0, '15' )
+AGREGA_VALOR_COL ( &exen, 0, '16' )
+AGREGA_VALOR_COL ( &exen, 0, '22' )
+AGREGA_VALOR_COL ( &exen, 0, '30' )
+AGREGA_VALOR_COL ( &exen, 0, '31' )
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+  IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 30) ) ;; IMPRIME
+  IMPRIME
+  _mes := _mes_ini
+  MIENTRAS ( _mes <= _mes_fin )
+    SI ( _mes = 1  ) $mes := 'ENE' FIN_SI
+    SI ( _mes = 2  ) $mes := 'FEB' FIN_SI
+    SI ( _mes = 3  ) $mes := 'MAR' FIN_SI
+    SI ( _mes = 4  ) $mes := 'ABR' FIN_SI
+    SI ( _mes = 5  ) $mes := 'MAY' FIN_SI
+    SI ( _mes = 6  ) $mes := 'JUN' FIN_SI
+    SI ( _mes = 7  ) $mes := 'JUL' FIN_SI
+    SI ( _mes = 8  ) $mes := 'AGO' FIN_SI
+    SI ( _mes = 9  ) $mes := 'SEP' FIN_SI
+    SI ( _mes = 10 ) $mes := 'OCT' FIN_SI
+    SI ( _mes = 11 ) $mes := 'NOV' FIN_SI
+    SI ( _mes = 12 ) $mes := 'DIC' FIN_SI
+    _ind := 0
+    $conc := TRAE_VALOR_TABLA( &exen, 0, _ind )
+    _exento := 0
+    MIENTRAS ( $conc <> '' )
+      _monto := ACUM_MENSUAL( $mes, $conc )
+      _exento := _exento + _monto
+      IMP ( COL(20), $conc, COL(32), DER( $( _monto ), 10) ) ;; IMPRIME
+      _ind := _ind + 1
+      $conc := TRAE_VALOR_TABLA( &exen, 0, _ind )
+    FIN_MIENTRAS
+    SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', 'EXEN' ) = FALSO )
+      AGREGA_REGISTRO( 'EMPACUM' )
+      'EMPACUM':'CLAVE' := 'EMPPRIN':'CLAVE'
+      'EMPACUM':'CONCEPTO' := 'EXEN'
+    FIN_SI
+    'EMPACUM':$mes := _exento
+    SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', 'PERC' ) )
+      _perc := 'EMPACUM':$mes
+    FIN_SI
+    SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', 'PGRA' ) = FALSO )
+      AGREGA_REGISTRO( 'EMPACUM' )
+      'EMPACUM':'CLAVE' := 'EMPPRIN':'CLAVE'
+      'EMPACUM':'CONCEPTO' := 'PGRA'
+    FIN_SI
+    'EMPACUM':$mes := _perc - _exento
+    GRABA_BASE( 'EMPACUM' )
+    IMP ( COL(5), 'MES ', $mes, ' AJUSTADO...' ) ;; IMPRIME
+    _mes := _mes + 1
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte

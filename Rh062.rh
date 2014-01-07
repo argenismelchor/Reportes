@@ -1,0 +1,411 @@
+#REPORTE INEGI
+#NO EDITAR
+#USUARIO =*
+#GENERAL DE TRABAJADORES
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra todos los trabajadores de la empresa aún cuando no esten vigentes.
+#Este reporte imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+FORMATO_FECHA := 0
+_mes := VALOR ( SUBSTR( FECHA( FECHA_HOY ), 3, 2 ) )
+_ano := VALOR ( SUBSTR( FECHA( FECHA_HOY ), 5, 2 ) )
+_ano := _ano + 2000
+$empresa := 'EMPRESA':'CLAVE'
+
+MODO_IMPRESION( 'GRAFICO' )
+TAMAÑO_HOJA( 2700, 2200 )
+
+DECIMALES := 0
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO     ( 'MES', .(_mes), _mes )
+NUEVO_PARAMETRO     ( 'ANO', .(_ano), _ano )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_fi := CALCULA_FECHA( _ano, _mes, 01 )
+_ff := CALCULA_FECHA( _ano, _mes, 31 )
+
+_dias_efectivos := _ff - _fi + 1
+_dias_efectivos := _dias_efectivos - DIAS_INHABILES( _fi, _ff, '1', 0, 0 )
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+RENGLONES     := 65
+COLUMNAS      := 80
+
+#Variables Globales
+VAR_T( &inegi )
+VAR_T( &conceptos )
+VAR_T( &fin )
+VAR_T( &psoc )
+VAR_T( &extras )
+VAR_T( &exmonto )
+VAR_T( &efectivos )
+
+$tipo_empleado := ''
+$mes           := ''
+_dias          := 0
+_integ         := 0
+_efectivos     := 0
+_sueldo        := 0
+_indice        := 0
+_liq           := 0
+_psoc          := 0
+$concepto      := ''
+_factor        := 0
+_extras        := 0
+_exmonto       := 0
+
+# CONCEPTOS DE SUELDO
+AGREGA_VALOR_COL( &conceptos, 0, '01' )
+AGREGA_VALOR_COL( &conceptos, 0, '02' )
+AGREGA_VALOR_COL( &conceptos, 0, '04' )
+AGREGA_VALOR_COL( &conceptos, 0, '08' )
+AGREGA_VALOR_COL( &conceptos, 0, '09' )
+AGREGA_VALOR_COL( &conceptos, 0, '14' )
+AGREGA_VALOR_COL( &conceptos, 0, '15' )
+AGREGA_VALOR_COL( &conceptos, 0, '16' )
+
+# CONCEPTOS DE LIQUIDACIONES
+AGREGA_VALOR_COL( &fin, 0, '21' )
+AGREGA_VALOR_COL( &fin, 0, '22' )
+AGREGA_VALOR_COL( &fin, 0, '23' )
+
+# CONCEPTOS DE PRESTACIONES SOCIALES
+AGREGA_VALOR_COL( &psoc, 0, '12' )
+AGREGA_VALOR_COL( &psoc, 0, '13' )
+AGREGA_VALOR_COL( &psoc, 0, '17' )
+AGREGA_VALOR_COL( &psoc, 0, '18' )
+AGREGA_VALOR_COL( &psoc, 0, '19' )
+AGREGA_VALOR_COL( &psoc, 0, '30' )
+
+# CONCEPTOS DE HORAS EFECTIVAS
+AGREGA_VALOR_COL( &efectivos, 0, 'C10' )
+AGREGA_VALOR_COL( &efectivos, 0, 'C11' )
+
+# CONCEPTOS DE UNIDADES DE HORAS EXTRAS
+AGREGA_VALOR_COL( &extras, 0, 'HEX2' )
+AGREGA_VALOR_COL( &extras, 0, 'HEX2' )
+
+# CONCEPTOS DE HORAS EXTRAS MONTO
+AGREGA_VALOR_COL( &exmonto, 0, '10' )
+AGREGA_VALOR_COL( &exmonto, 0, '11' )
+
+SI ( _mes = 1 ) $mes := 'ENE' FIN_SI
+SI ( _mes = 2 ) $mes := 'FEB' FIN_SI
+SI ( _mes = 3 ) $mes := 'MAR' FIN_SI
+SI ( _mes = 4 ) $mes := 'ABR' FIN_SI
+SI ( _mes = 5 ) $mes := 'MAY' FIN_SI
+SI ( _mes = 6 ) $mes := 'JUN' FIN_SI
+SI ( _mes = 7 ) $mes := 'JUL' FIN_SI
+SI ( _mes = 8 ) $mes := 'AGO' FIN_SI
+SI ( _mes = 9 ) $mes := 'SEP' FIN_SI
+SI ( _mes = 10 ) $mes := 'OCT' FIN_SI
+SI ( _mes = 11 ) $mes := 'NOV' FIN_SI
+SI ( _mes = 12 ) $mes := 'DIC' FIN_SI
+
+#Subrutina diversas
+
+SUB_RUTINA checa_tipo_empleado
+  SI ( TRAE_REGISTRO( 'PUESTO', 'EMPPRIN':'PUE_CLAVE' ) )   
+    SI ( 'PUESTO':'TIPO EMPLEADO' = 'A' )
+      $tipo_empleado := 'ADMON'
+    SI_NO
+      SI ( 'PUESTO':'TIPO EMPLEADO' = 'D' )
+        $tipo_empleado := 'DIRECTO'
+      SI_NO
+        $tipo_empleado := 'INDIRECTO'
+      FIN_SI
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+  checa_tipo_empleado
+  DECIMALES := 2
+  _sueldo := 0
+  _indice := 0
+  $concepto := TRAE_VALOR_TABLA( &conceptos, 0, _indice )
+  MIENTRAS ( $concepto <> '' )
+    _sueldo := _sueldo + ACUM_MENSUAL( $mes, $concepto )
+    _indice := _indice + 1
+    $concepto := TRAE_VALOR_TABLA( &conceptos, 0, _indice )
+  FIN_MIENTRAS
+
+  _indice := 0
+  _liq := 0
+  $concepto := TRAE_VALOR_TABLA( &fin, 0, _indice )
+  MIENTRAS ( $concepto <> '' )
+    _liq := _liq + ACUM_MENSUAL( $mes, $concepto )
+    _indice := _indice + 1
+    $concepto := TRAE_VALOR_TABLA( &fin, 0, _indice )
+  FIN_MIENTRAS
+
+  _indice := 0
+  _psoc := 0
+  $concepto := TRAE_VALOR_TABLA( &psoc, 0, _indice )
+  MIENTRAS ( $concepto <> '' )
+    _psoc := _psoc + ACUM_MENSUAL( $mes, $concepto )
+    _indice := _indice + 1
+    $concepto := TRAE_VALOR_TABLA( &psoc, 0, _indice )
+  FIN_MIENTRAS
+
+  _integ     := INT_IMSS_ACTUAL( _fi, _ff )
+
+  _indice := 0
+  _extras    := 0
+  $concepto := TRAE_VALOR_TABLA( &extras, 0, _indice )
+  MIENTRAS ( $concepto <> '' )
+    _extras := _extras + ACUM_MENSUAL( $mes, $concepto )
+    _indice := _indice + 1
+    $concepto := TRAE_VALOR_TABLA( &extras, 0, _indice )
+  FIN_MIENTRAS
+
+  _indice  := 0
+  _exmonto := 0
+  $concepto := TRAE_VALOR_TABLA( &exmonto, 0, _indice )
+  MIENTRAS ( $concepto <> '' )
+    _exmonto := _exmonto + ACUM_MENSUAL( $mes, $concepto )
+    _indice := _indice + 1
+    $concepto := TRAE_VALOR_TABLA( &exmonto, 0, _indice )
+  FIN_MIENTRAS
+
+  _indice    := 0
+  _efectivos := 0
+  $concepto := TRAE_VALOR_TABLA( &efectivos, 0, _indice )
+  MIENTRAS ( $concepto <> '' )
+    _efectivos := _efectivos + ACUM_MENSUAL( $mes, $concepto )
+    _indice := _indice + 1
+    $concepto := TRAE_VALOR_TABLA( &efectivos, 0, _indice )
+  FIN_MIENTRAS
+
+  DECIMALES := 6
+  INCREMENTA_TABLA( &inegi, 'EMPPRIN':'SEXO', $tipo_empleado + '_TOTAL', 1 )
+  INCREMENTA_TABLA( &inegi, 'EMPPRIN':'SEXO', $tipo_empleado + '_SUELDO', _sueldo )
+  INCREMENTA_TABLA( &inegi, 'EMPPRIN':'SEXO', $tipo_empleado + '_LIQ', _liq )
+  INCREMENTA_TABLA( &inegi, 'EMPPRIN':'SEXO', $tipo_empleado + '_DIAS', _efectivos )
+  INCREMENTA_TABLA( &inegi, 'EMPPRIN':'SEXO', $tipo_empleado + '_EXTRAS', _extras )
+  INCREMENTA_TABLA( &inegi, 'EMPPRIN':'SEXO', $tipo_empleado + '_EXMONTO', _exmonto )
+  INCREMENTA_TABLA( &inegi, 'EMPPRIN':'SEXO', 'SOCIAL', _psoc )
+  INCREMENTA_TABLA( &inegi, 'EMPPRIN':'SEXO', 'IMSS', _dias * _integ * _factor )
+  DECIMALES := 2
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+#lee_parametros_seleccion
+#lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+_efectivos := 0
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+_incluir_dep := 1
+_incluir_pue := 1
+$campos_extras := 'E. CALENDARIO, R. SEXO'
+$bases_extras := 'EMPRH R'
+$condiciones_extras := 'R. CLAVE = E. CLAVE'
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+SI ( TRAE_REGISTRO_VIG( 'PAGOIMSS', _ff ) = FALSO )
+  MENSAJE( 'NO HAY CUOTAS IMSS VIGENTES A LA FECHA' )
+  TERMINA_REPORTE
+FIN_SI
+
+DECIMALES := 6
+_factor := 'PAGOIMSS':'EG ESPECIE PATRON' + 'PAGOIMSS':'EG 3SMGDF PATRON' + 'PAGOIMSS':'EG DINERO PATRON' + 'PAGOIMSS':'RT'
+_factor := _factor + 'PAGOIMSS':'INVALIDEZ Y VIDA PATRON' + 'PAGOIMSS':'GUARDERIA' + 'PAGOIMSS':'CESANTIA Y VEJEZ PATRON'
+_factor := _factor / 100
+DECIMALES := 2
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   _dias := FUE_VIGENTE( _fi, _ff )
+   SI (( _dias > 0 ) AND ( 'EMPPRIN':'SEXO' <> '' ))
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+$admon := ''
+
+SI ( TRAE_REGISTRO( 'EMPRESA', $admon ) )
+  $empresa := 'EMPRESA':'CLAVE'
+  CAMBIA_BASE( 'EMPRESA':'PATH TRABAJO' )
+  PRIMER_REGISTRO( 'EMPPRIN' )
+  MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+     _dias := FUE_VIGENTE( _fi, _ff )
+     _efectivos := _dias - DIAS_INHABILES( _fi, _ff, 'EMPPRIN':'CALENDARIO', 0, 0 )
+     SI (( _efectivos > 0 ) AND ( 'EMPPRIN':'SEXO' <> '' ))
+       datos_trabajador
+     FIN_SI
+     SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+  FIN_MIENTRAS
+  termina_reporte
+FIN_SI
+
+IMPRIME ;; IMPRIME
+DECIMALES := 0
+LETRA( 'LETRA ENFATISADA' )
+SI ( _mes = 1 ) IMP ( CENTRA( 'ENERO' ) ) FIN_SI
+SI ( _mes = 2 ) IMP ( CENTRA( 'FEBRERO' ) ) FIN_SI
+SI ( _mes = 3 ) IMP ( CENTRA( 'MARZO' ) ) FIN_SI
+SI ( _mes = 4 ) IMP ( CENTRA( 'ABRIL' ) ) FIN_SI
+SI ( _mes = 5 ) IMP ( CENTRA( 'MAYO' ) ) FIN_SI
+SI ( _mes = 6 ) IMP ( CENTRA( 'JUNIO' ) ) FIN_SI
+SI ( _mes = 7 ) IMP ( CENTRA( 'JULIO' ) ) FIN_SI
+SI ( _mes = 8 ) IMP ( CENTRA( 'AGOSTO' ) ) FIN_SI
+SI ( _mes = 9 ) IMP ( CENTRA( 'SEPTIEMBRE' ) ) FIN_SI
+SI ( _mes = 10 ) IMP ( CENTRA( 'OCTUBRE' ) ) FIN_SI
+SI ( _mes = 11 ) IMP ( CENTRA( 'NOVIEMBRE' ) ) FIN_SI
+SI ( _mes = 12 ) IMP ( CENTRA( 'DICIEMBRE' ) ) FIN_SI
+IMPRIME
+IMP ( 'CATEGORIAS', COL(30), DER( 'HOMBRES', 10 ), COL(50), DER( 'MUJERES', 10 ), COL(70), DER( 'TOTAL', 10 ) ) ;; IMPRIME
+IMPRIME
+IMPRIME
+IMP ( 'I.-PERSONAL OCUPADO - PROMEDIO MENSUAL' ) ;; IMPRIME
+IMPRIME
+LETRA( 'LETRA NORMAL' )
+_total1 := VALOR_TABLA( &inegi, 'M', 'DIRECTO_TOTAL' ) + VALOR_TABLA( &inegi, 'F', 'DIRECTO_TOTAL' )
+_h1     := VALOR_TABLA(&inegi, 'M', 'DIRECTO_TOTAL' )
+_m1     := VALOR_TABLA(&inegi, 'F', 'DIRECTO_TOTAL' )
+IMP ( '   1.-OBREROS', COL(30), DER( $( _h1 ), 10 ), COL(50), DER( $( _m1 ), 10 ), COL(70), DER ( $( _total1), 10) ) ;; IMPRIME
+_total2 := VALOR_TABLA( &inegi, 'M', 'INDIRECTO_TOTAL' ) + VALOR_TABLA( &inegi, 'F', 'INDIRECTO_TOTAL' )
+_h2     := VALOR_TABLA(&inegi, 'M', 'INDIRECTO_TOTAL' )
+_m2     := VALOR_TABLA(&inegi, 'F', 'INDIRECTO_TOTAL' )
+IMP ( '   2.-TECNICOS DE PRODUCCION', COL(30), DER( $( _h2 ), 10 ), COL(50), DER( $( _m2 ), 10 ), COL(70), DER ( $( _total2), 10) ) ;; IMPRIME
+_total3 := VALOR_TABLA( &inegi, 'M', 'ADMON_TOTAL' ) + VALOR_TABLA( &inegi, 'F', 'ADMON_TOTAL' )
+_h3     := VALOR_TABLA(&inegi, 'M', 'ADMON_TOTAL' )
+_m3     := VALOR_TABLA(&inegi, 'F', 'ADMON_TOTAL' )
+IMP ( '   3.-EMPLEADOS ADMVOS', COL(30), DER( $( _h3 ), 10 ), COL(50), DER( $( _m3 ), 10 ), COL(70), DER ( $( _total3), 10) ) ;; IMPRIME
+
+IMPRIME
+LETRA( 'LETRA ENFATISADA' )
+IMP ( '       T O T A L', COL(30), DER( $( _h1 + _h2 + _h3 ), 10 ), COL(50), DER( $( _m1 + _m2 + _m3 ), 10 ), COL(70), DER ( $( _total1 + _total2 + _total3 ), 10) ) ;; IMPRIME
+IMPRIME ;; IMPRIME
+
+LETRA( 'LETRA ENFATISADA' )
+IMP ( 'II.-SALARIO, SUELDOS Y PRESTACIONES SOCIALES PAGADOS EN EL MES DE REFERENCIA' ) ;; IMPRIME
+IMPRIME
+LETRA( 'LETRA NORMAL' )
+_total1 := VALOR_TABLA(&inegi, 'M', 'DIRECTO_SUELDO' ) + VALOR_TABLA( &inegi, 'F', 'DIRECTO_SUELDO' )
+_h1     := VALOR_TABLA(&inegi, 'M', 'DIRECTO_SUELDO' )
+_m1     := VALOR_TABLA(&inegi, 'F', 'DIRECTO_SUELDO' )
+IMP ( '   1.-SUELDOS OBREROS', COL(30), DER( $( _h1 ), 10 ), COL(50), DER( $( _m1 ), 10 ), COL(70), DER ( $( _total1), 10) ) ;; IMPRIME
+_total2 := VALOR_TABLA(&inegi, 'M', 'INDIRECTO_SUELDO' ) + VALOR_TABLA( &inegi, 'F', 'INDIRECTO_SUELDO' )
+_h2     := VALOR_TABLA(&inegi, 'M', 'INDIRECTO_SUELDO' )
+_m2     := VALOR_TABLA(&inegi, 'F', 'INDIRECTO_SUELDO' )
+IMP ( '   2.-SUELDOS TEC. DE PRODUCCION', COL(30), DER( $( _h2 ), 10 ), COL(50), DER( $( _m2 ), 10 ), COL(70), DER ( $( _total2), 10) ) ;; IMPRIME
+_total3 := VALOR_TABLA(&inegi, 'M', 'ADMON_SUELDO' ) + VALOR_TABLA( &inegi, 'F', 'ADMON_SUELDO' )
+_h3     := VALOR_TABLA(&inegi, 'M', 'ADMON_SUELDO' )
+_m3     := VALOR_TABLA(&inegi, 'F', 'ADMON_SUELDO' )
+IMP ( '   3.-SUELDOS ADMINISTRATIVOS', COL(30), DER( $( _h3 ), 10 ), COL(50), DER( $( _m3 ), 10 ), COL(70), DER ( $( _total3), 10) ) ;; IMPRIME
+_total4 := VALOR_TABLA(&inegi, 'M', 'SOCIAL' ) + VALOR_TABLA( &inegi, 'F', 'SOCIAL' )
+_h4     := VALOR_TABLA(&inegi, 'M', 'SOCIAL' )
+_m4     := VALOR_TABLA(&inegi, 'F', 'SOCIAL' )
+IMP ( '   4.-PRESTACIONES SOCIALES', COL(30), DER( $( _h4 ), 10 ), COL(50), DER( $( _m4 ), 10 ), COL(70), DER ( $( _total4), 10) ) ;; IMPRIME
+_total5 := VALOR_TABLA(&inegi, 'M', 'IMSS' ) + VALOR_TABLA( &inegi, 'F', 'IMSS' )
+_h5     := VALOR_TABLA(&inegi, 'M', 'IMSS' )
+_m5     := VALOR_TABLA(&inegi, 'F', 'IMSS' )
+IMP ( '   5.-CONTRIBUCIONES PATRONALES AL IMSS', COL(30), DER( $( _h5 ), 10 ), COL(50), DER( $( _m5 ), 10 ), COL(70), DER ( $( _total5), 10) ) ;; IMPRIME
+IMPRIME
+
+LETRA( 'LETRA ENFATISADA' )
+IMP ( '       T O T A L', COL(30), DER( $( _h1 + _h2 + _h3 + _h4 + _h5 ), 10 ), COL(50), DER( $( _m1 + _m2 + _m3 + _m4 + _m5 ), 10 ), COL(70), DER ( $( _total1 + _total2 + _total3 + _total4 + _total5), 10) ) ;; IMPRIME
+IMPRIME
+
+LETRA( 'LETRA ENFATISADA' )
+IMP ( 'III.-HORAS - HOMBRE Y DIAS TRABAJADOS' ) ;; IMPRIME
+IMPRIME
+LETRA( 'LETRA NORMAL' )
+_total1 := VALOR_TABLA( &inegi, 'M', 'DIRECTO_DIAS' ) + VALOR_TABLA( &inegi, 'F', 'DIRECTO_DIAS' )
+_h1     := VALOR_TABLA(&inegi, 'M', 'DIRECTO_DIAS' )
+_m1     := VALOR_TABLA(&inegi, 'F', 'DIRECTO_DIAS' )
+IMP ( '   1.-HORAS OBREROS', COL(30), DER( $( _h1 ), 10 ), COL(50), DER( $( _m1 ), 10 ), COL(70), DER ( $( _total1), 10) ) ;; IMPRIME
+_total2 := VALOR_TABLA( &inegi, 'M', 'INDIRECTO_DIAS' ) + VALOR_TABLA( &inegi, 'F', 'INDIRECTO_DIAS' )
+_h2     := VALOR_TABLA(&inegi, 'M', 'INDIRECTO_DIAS' )
+_m2     := VALOR_TABLA(&inegi, 'F', 'INDIRECTO_DIAS' )
+IMP ( '   2.-HORAS TEC. DE PRODUCCION', COL(30), DER( $( _h2 ), 10 ), COL(50), DER( $( _m2 ), 10 ), COL(70), DER ( $( _total2), 10) ) ;; IMPRIME
+_total3 := VALOR_TABLA( &inegi, 'M', 'ADMON_DIAS' ) + VALOR_TABLA( &inegi, 'F', 'ADMON_DIAS' )
+_h3     := VALOR_TABLA(&inegi, 'M', 'ADMON_DIAS' )
+_m3     := VALOR_TABLA(&inegi, 'F', 'ADMON_DIAS' )
+IMP ( '   3.-HORAS ADMINISTRATIVOS', COL(30), DER( $( _h3 ), 10 ), COL(50), DER( $( _m3 ), 10 ), COL(70), DER ( $( _total3), 10) ) ;; IMPRIME
+IMPRIME
+LETRA( 'LETRA ENFATISADA' )
+IMP ( '       T O T A L', COL(30), DER( $( _h1 + _h2 + _h3 ), 10 ), COL(50), DER( $( _m1 + _m2 + _m3 ), 10 ), COL(70), DER ( $( _total1 + _total2 + _total3 ), 10) ) ;; IMPRIME
+IMPRIME
+
+LETRA( 'LETRA ENFATISADA' )
+IMP ( 'IV.-HORAS EXTRAS' ) ;; IMPRIME
+IMPRIME
+LETRA( 'LETRA NORMAL' )
+_total1 := VALOR_TABLA( &inegi, 'M', 'DIRECTO_EXTRAS' ) + VALOR_TABLA( &inegi, 'F', 'DIRECTO_EXTRAS' )
+_h1     := VALOR_TABLA(&inegi, 'M', 'DIRECTO_EXTRAS' )
+_m1     := VALOR_TABLA(&inegi, 'F', 'DIRECTO_EXTRAS' )
+IMP ( '   1.-HORAS OBREROS', COL(30), DER( $( _h1 ), 10 ), COL(50), DER( $( _m1 ), 10 ), COL(70), DER ( $( _total1), 10) ) ;; IMPRIME
+_total2 := VALOR_TABLA( &inegi, 'M', 'INDIRECTO_EXTRAS' ) + VALOR_TABLA( &inegi, 'F', 'INDIRECTO_EXTRAS' )
+_h2     := VALOR_TABLA(&inegi, 'M', 'INDIRECTO_EXTRAS' )
+_m2     := VALOR_TABLA(&inegi, 'F', 'INDIRECTO_EXTRAS' )
+IMP ( '   2.-HORAS TEC. DE PRODUCCION', COL(30), DER( $( _h2 ), 10 ), COL(50), DER( $( _m2 ), 10 ), COL(70), DER ( $( _total2), 10) ) ;; IMPRIME
+_total3 := VALOR_TABLA( &inegi, 'M', 'ADMON_EXTRAS' ) + VALOR_TABLA( &inegi, 'F', 'ADMON_EXTRAS' )
+_h3     := VALOR_TABLA(&inegi, 'M', 'ADMON_EXTRAS' )
+_m3     := VALOR_TABLA(&inegi, 'F', 'ADMON_EXTRAS' )
+IMP ( '   3.-HORAS ADMINISTRATIVOS', COL(30), DER( $( _h3 ), 10 ), COL(50), DER( $( _m3 ), 10 ), COL(70), DER ( $( _total3), 10) ) ;; IMPRIME
+IMPRIME
+LETRA( 'LETRA ENFATISADA' )
+IMP ( '       T O T A L', COL(30), DER( $( _h1 + _h2 + _h3 ), 10 ), COL(50), DER( $( _m1 + _m2 + _m3 ), 10 ), COL(70), DER ( $( _total1 + _total2 + _total3 ), 10) ) ;; IMPRIME
+IMPRIME
+
+LETRA( 'LETRA ENFATISADA' )
+IMP ( 'V.-HORAS EXTRAS MONTOS' ) ;; IMPRIME
+IMPRIME
+LETRA( 'LETRA NORMAL' )
+_total1 := VALOR_TABLA( &inegi, 'M', 'DIRECTO_EXMONTO' ) + VALOR_TABLA( &inegi, 'F', 'DIRECTO_EXMONTO' )
+_h1     := VALOR_TABLA(&inegi, 'M', 'DIRECTO_EXMONTO' )
+_m1     := VALOR_TABLA(&inegi, 'F', 'DIRECTO_EXMONTO' )
+IMP ( '   1.-HORAS OBREROS', COL(30), DER( $( _h1 ), 10 ), COL(50), DER( $( _m1 ), 10 ), COL(70), DER ( $( _total1), 10) ) ;; IMPRIME
+_total2 := VALOR_TABLA( &inegi, 'M', 'INDIRECTO_EXMONTO' ) + VALOR_TABLA( &inegi, 'F', 'INDIRECTO_EXMONTO' )
+_h2     := VALOR_TABLA(&inegi, 'M', 'INDIRECTO_EXMONTO' )
+_m2     := VALOR_TABLA(&inegi, 'F', 'INDIRECTO_EXMONTO' )
+IMP ( '   2.-HORAS TEC. DE PRODUCCION', COL(30), DER( $( _h2 ), 10 ), COL(50), DER( $( _m2 ), 10 ), COL(70), DER ( $( _total2), 10) ) ;; IMPRIME
+_total3 := VALOR_TABLA( &inegi, 'M', 'ADMON_EXMONTO' ) + VALOR_TABLA( &inegi, 'F', 'ADMON_EXMONTO' )
+_h3     := VALOR_TABLA(&inegi, 'M', 'ADMON_EXMONTO' )
+_m3     := VALOR_TABLA(&inegi, 'F', 'ADMON_EXMONTO' )
+IMP ( '   3.-HORAS ADMINISTRATIVOS', COL(30), DER( $( _h3 ), 10 ), COL(50), DER( $( _m3 ), 10 ), COL(70), DER ( $( _total3), 10) ) ;; IMPRIME
+IMPRIME
+LETRA( 'LETRA ENFATISADA' )
+IMP ( '       T O T A L', COL(30), DER( $( _h1 + _h2 + _h3 ), 10 ), COL(50), DER( $( _m1 + _m2 + _m3 ), 10 ), COL(70), DER ( $( _total1 + _total2 + _total3 ), 10) ) ;; IMPRIME
+IMPRIME
+
+LETRA( 'LETRA ENFATISADA' )
+IMP ( 'VI.-PAGOS POR LIQUIDACION' ) ;; IMPRIME
+IMPRIME
+LETRA( 'LETRA NORMAL' )
+_total1 := VALOR_TABLA( &inegi, 'M', 'DIRECTO_LIQ' ) + VALOR_TABLA( &inegi, 'F', 'DIRECTO_LIQ' )
+_h1     := VALOR_TABLA(&inegi, 'M', 'DIRECTO_LIQ' )
+_m1     := VALOR_TABLA(&inegi, 'F', 'DIRECTO_LIQ' )
+IMP ( '   1.-LIQ. OBREROS', COL(30), DER( $( _h1 ), 10 ), COL(50), DER( $( _m1 ), 10 ), COL(70), DER ( $( _total1), 10) ) ;; IMPRIME
+_total2 := VALOR_TABLA( &inegi, 'M', 'INDIRECTO_LIQ' ) + VALOR_TABLA( &inegi, 'F', 'INDIRECTO_LIQ' )
+_h2     := VALOR_TABLA(&inegi, 'M', 'INDIRECTO_LIQ' )
+_m2     := VALOR_TABLA(&inegi, 'F', 'INDIRECTO_LIQ' )
+IMP ( '   2.-LIQ. TEC. DE PRODUCCION', COL(30), DER( $( _h2 ), 10 ), COL(50), DER( $( _m2 ), 10 ), COL(70), DER ( $( _total2), 10) ) ;; IMPRIME
+_total3 := VALOR_TABLA( &inegi, 'M', 'ADMON_LIQ' ) + VALOR_TABLA( &inegi, 'F', 'ADMON_LIQ' )
+_h3     := VALOR_TABLA(&inegi, 'M', 'ADMON_LIQ' )
+_m3     := VALOR_TABLA(&inegi, 'F', 'ADMON_LIQ' )
+IMP ( '   3.-LIQ. ADMINISTRATIVOS', COL(30), DER( $( _h3 ), 10 ), COL(50), DER( $( _m3 ), 10 ), COL(70), DER ( $( _total3), 10) ) ;; IMPRIME
+IMPRIME
+LETRA( 'LETRA ENFATISADA' )
+IMP ( '       T O T A L', COL(30), DER( $( _h1 + _h2 + _h3 ), 10 ), COL(50), DER( $( _m1 + _m2 + _m3 ), 10 ), COL(70), DER ( $( _total1 + _total2 + _total3 ), 10) ) ;; IMPRIME
+IMPRIME
+
+IMP ( 'VII.-DIAS EFECTIVAMENTE TRABAJADOS', COL(70), DER( $( _dias_efectivos ), 10 ) )
+IMPRIME

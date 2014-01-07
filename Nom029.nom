@@ -1,0 +1,152 @@
+#CALCULO DE SUBSIDIO
+#VERSION 1.0
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+SALIDA := $salida
+COLUMNAS := 85
+DECIMALES := 2
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO   
+   $titulo_reporte := 'CALCULO DE SUBSIDIO'
+   encabezado_ini
+   IMP ( COL(1), 'CONCEPTO', COL(40), DER('GRAVADO',15), COL(55), DER('EXENTO',15), COL(70), DER('TOTAL', 15) ) IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+#VARIABLES GLOBALES
+VAR_T ( &subtotales )
+VAR_T ( &totales )
+_renglon   := 0
+$concepto  := ''
+_indice    := 0
+_gravado   := 0
+_exento    := 0
+_total     := 0
+_tot_grav  := 0
+_tot_exen  := 0
+_tot_total := 0
+_porporcion:= 0
+_subsidio  := 0
+$saux      := ''
+
+SUB_RUTINA formato_trabajador
+   DECIMALES := 2
+   PRIMER_REGISTRO( 'EMPACUM' )
+   MIENTRAS( FIN_BASE('EMPACUM') = FALSO )
+     $saux := 'EMPACUM':'CONCEPTO'
+     SI ( TRAE_REGISTRO ( 'CONCEPTO', 'EMPACUM':'CONCEPTO' ) )
+       #SOLO PERCEPCIONES
+       SI ( 'CONCEPTO':'PDC' = 0 )
+         SI ( ACUM_ANUAL( 'EMPACUM':'CONCEPTO' ) <> 0 )
+           INCREMENTA_TABLA( &totales, 'GRAVADO', 'EMPACUM':'CONCEPTO', ACUM_ANUAL( 'EMPACUM':'CONCEPTO' ) )
+           INCREMENTA_TABLA( &subtotales, 'GRAVADO', 'EMPACUM':'CONCEPTO', ACUM_ANUAL( 'EMPACUM':'CONCEPTO' ) )
+         FIN_SI
+       FIN_SI
+       SI ( SUBSTR( 'EMPACUM':'CONCEPTO', 1, 2 ) = 'EX' )
+         SI ( ACUM_ANUAL( 'EMPACUM':'CONCEPTO' ) <> 0 )
+           INCREMENTA_TABLA( &totales, 'EXENTO', 'EMPACUM':'CONCEPTO', ACUM_ANUAL( 'EMPACUM':'CONCEPTO' ) )
+           INCREMENTA_TABLA( &subtotales, 'EXENTO', 'EMPACUM':'CONCEPTO', ACUM_ANUAL( 'EMPACUM':'CONCEPTO' ) )
+         FIN_SI
+       FIN_SI
+     FIN_SI
+     SIGUIENTE_REGISTRO( 'EMPACUM' )
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+  DECIMALES := 2
+  _renglon := 0
+  $concepto := TRAE_VALOR_TABLA( &subtotales, 0, _renglon )
+  MIENTRAS (( $concepto <> '' ) AND ( SUBSTR( $concepto, 1, 2 ) <> 'EX' ))
+    SI ( TRAE_REGISTRO ( 'CONCEPTO', $concepto ) )
+      IMP ( COL(1), 'CONCEPTO':'CLAVE', COL(5), 'CONCEPTO':'DESCRIPCION' )
+    SI_NO
+      IMP ( COL(1), 'CONCEPTO':'CLAVE' )
+    FIN_SI
+    _gravado := VALOR( TRAE_VALOR_TABLA( &subtotales, 1, _renglon ) )
+    _tot_grav := _tot_grav + _gravado
+    DECIMALES := 2
+    IMP ( COL(40), DER( $( _gravado ), 15 ) )
+    _indice := TRAE_INDICE_COL( &subtotales, 0, 'EX' + $concepto )
+    _exento := 0
+    SI ( _indice >= 0 )
+      _exento := VALOR( TRAE_VALOR_TABLA( &subtotales, 2, _indice ) )
+      _tot_exen := _tot_exen + _exento
+      DECIMALES := 2
+      IMP ( COL(55), DER( $( _exento ), 15 ) )
+    FIN_SI
+    _total := _gravado + _exento
+    _tot_total := _tot_total + _total
+    DECIMALES := 2
+    IMP ( COL(70), DER( $( _total ), 15 ) )      
+    IMPRIME
+    _renglon := _renglon + 1
+    $concepto := TRAE_VALOR_TABLA( &subtotales, 0, _renglon )
+  FIN_MIENTRAS
+  DECIMALES := 2
+  IMP ( COL(40), DER( '____________', 15 ), COL(55), DER( '____________', 15 ), COL(70), DER( '____________', 15 ) )
+  IMPRIME
+  IMP ( COL(40), DER( $( _tot_grav ), 15 ), COL(55), DER( $( _tot_exen ), 15 ), COL(70), DER( $( _tot_total ), 15 ) )
+  IMPRIME
+  IMPRIME
+  IMP ( COL(70), 'PROPORCION' )
+  IMPRIME
+  IMP ( COL(1), 'INGRESOS GRAVADOS', COL(40), DER( $( _tot_grav ), 15 ) )
+  DECIMALES := 8
+  _porporcion := _tot_grav / _tot_total
+  IMP ( COL(70), _porporcion )
+  IMPRIME
+  _subsidio := ( ( _porporcion - 1 ) * 2 ) + 1
+  DECIMALES := 2
+  IMP ( COL(1), 'EROGACIONES', COL(40), DER( $( _tot_total ), 15 ) )
+  IMPRIME
+  IMPRIME
+  DECIMALES := 8
+  IMP ( COL(1), 'SUBSIDIO ACREEDITABLE', COL(55), DER( $( _subsidio ), 15 ) )
+  IMPRIME
+  IMPRIME
+  LIMPIA_TABLA( &subtotales )
+  _tot_grav  := 0
+  _tot_exen  := 0
+  _tot_total := 0
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ACUM_ANUAL('TOTA') <> 0 )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+IMPRIME
+IMPRIME
+ASIGNA_TABLA( &totales, &subtotales )
+sub_totales
+TERMINA_REPORTE

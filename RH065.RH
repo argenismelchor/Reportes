@@ -1,0 +1,168 @@
+#CARTA DE CERTIFICACION DE INGRESOS
+#FORMA GASTOS FUNERARIOS
+#USUARIO =*
+#NO EDITAR
+#VERSION 1.000
+#DESCRIPCION
+#Descripcion no disponible.
+#FIN_DESCRIPCION
+#
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+NUEVO_PARAMETRO     ('AJUSTE EN X','0', _x )
+NUEVO_PARAMETRO     ('AJUSTE EN Y','0', _y )
+NUEVO_PARAMETRO     ('LUGAR DE EMISION: ','GUADALAJARA', $lugar )
+NUEVO_PARAMETRO_FEC ('FECHA DE EMISION: ','', _fecha )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_PESOS := 2
+FORMATO_FECHA := 2
+MODO_IMPRESION ('GRAFICO')
+
+SI ( $salida = 'EXCEL' )
+  SALIDA := 'PANTALLA'
+SI_NO
+  SALIDA := $salida
+FIN_SI
+RENGLONES:=65
+COLUMNAS:=80
+
+#DRAFT:='S'
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &totales )
+VAR_T ( &indices )
+_num_ind := 0
+$indice  := ''
+$tipo   := ''
+_cont   := 0
+_imp    := 0
+_ff     := 0
+_sdo    := 0
+_sdoint := 0
+_sdoime := 0
+_ocupado := 0
+_aux1   := 0
+
+SUB_RUTINA sumatoria
+  DECIMALES:=2
+  #Incremeto de valores para los indices seleccionados
+  _num_ind := 0
+  REPITE
+    _num_ind := _num_ind + 1
+  HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   _sdo   := 0
+   _sdoint:= 0
+   _sdoime:= 0
+   _ff := FECHA_HOY
+   CAMBIA_LETRA( 'Arial', 8, '' )
+   IMP_XY ( 600 + _x, 530 + _y, SUBSTR('EMPPRIN':'NOMBREP',1, 15 ) ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 900 + _x, 530 + _y, SUBSTR('EMPPRIN':'NOMBREM',1, 15 ) ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1200 + _x, 530 + _y, SUBSTR('EMPPRIN':'NOMBREN',1, 15 ) ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1600 + _x, 530 + _y, FORMATO ( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' ) ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 590 + _x, 650 + _y, 'EMPPRIN':'CURP' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1000 + _x, 650 + _y, FORMATO ('EMPPRIN':'AFILIACION', 'XXXXXXXXXX-X' ) ) ;; IMPRIME_SIN_SALTO
+   ULTIMO_REGISTRO ('EMPSDO')
+   SI ( 'EMPSDO':'TIPO' = 'B' )
+      REGISTRO_ANTERIOR ('EMPSDO')
+   FIN_SI
+   _sdo   := 'EMPSDO':'SDO1'
+   _sdoint:= 'EMPSDO':'SDO3'
+   _sdoime:= 'EMPSDO':'SDO3' * 30
+   IMP_XY ( 1400 + _x, 650 + _y, DER ($(_sdo),10 ) ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1700 + _x, 650 + _y, DER ($(_sdoint),10 ) ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1700 + _x, 790 + _y, DER ($(_sdoime),10 ) ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1700 + _x, 910 + _y, DER ($(0.00),10 ) ) ;; IMPRIME_SIN_SALTO
+   SI ( TRAE_REGISTRO( 'PUESTO' , TRAE_DSP ('P',_ff )));; FIN_SI
+   IMP_XY ( 620 + _x , 820 + _y, 'PUESTO':'DESCRIPCION' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1700 + _x, 1000 + _y, DER ($(_sdoime),10 ) ) ;; IMPRIME_SIN_SALTO
+   SI ( TRAE_REGISTRO( 'DEPTO' , TRAE_DSP ('D',_ff )));; FIN_SI
+   IMP_XY ( 650 + _x , 1040 + _y, 'DEPTO':'DESCRIPCION' ) ;; IMPRIME_SIN_SALTO
+   FORMATO_FECHA := 5
+   _aux1 := 'EMPPRIN':'INGRESO'
+   IMP_XY ( 650 + _x , 1150+ _y, FECHA('EMPPRIN':'INGRESO') ) ;; IMPRIME_SIN_SALTO
+   FORMATO_FECHA := 2   
+   SI ( 'EMPPRIN':'PE' = 'P' )
+       IMP_XY ( 1580 + _x , 1240 + _y, 'X' ) ;; IMPRIME_SIN_SALTO
+     SI_NO
+       IMP_XY ( 1700 + _x , 1240 + _y, 'X' ) ;; IMPRIME_SIN_SALTO
+   FIN_SI
+   SI (( 'PUESTO':'TIPO EMPLEADO' = 'SA') OR ( 'PUESTO':'TIPO EMPLEADO' = 'SB') OR ( 'PUESTO':'TIPO EMPLEADO' = 'SD') )
+       IMP_XY ( 1580 + _x , 1280 + _y, 'X' ) ;; IMPRIME_SIN_SALTO       
+     SI_NO
+       IMP_XY ( 1700 + _x , 1280 + _y, 'X' ) ;; IMPRIME_SIN_SALTO
+   FIN_SI
+   IMP_XY ( 300 + _x , 1470 + _y, 'EMPRESA':'NOMBRE' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1500 + _x , 1470+ _y, 'EMPRESA':'RFC' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 300 + _x , 1550 + _y, 'PATRONAL':'CALLE' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1100 + _x , 1550+ _y, 'PATRONAL':'NUMERO' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1500 + _x , 1550+ _y, 'PATRONAL':'REGISTRO PATRONAL' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 300 + _x , 1660 + _y, 'PATRONAL':'COLONIA' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1100 + _x , 1660+ _y, 'GUADALAJARA' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1700 + _x , 1660+ _y, 'PATRONAL':'C P' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 300 + _x , 1740 + _y, 'PATRONAL':'MUNICIPIO' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1100 + _x , 1740+ _y, 'PATRONAL':'ESTADO' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 1600 + _x , 1740+ _y, 'PATRONAL':'TELEFONO' ) ;; IMPRIME_SIN_SALTO
+   IMP_XY ( 300 + _x , 2070+ _y, $lugar ) ;; IMPRIME_SIN_SALTO
+   FORMATO_FECHA := 5
+   IMP_XY ( 1300 + _x , 2070+ _y, FECHA ( _fecha ) ) ;; IMPRIME_SIN_SALTO
+   FORMATO_FECHA := 2   
+FIN_SUB_RUTINA
+
+
+
+SUB_RUTINA sub_totales
+  #
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+_omitir_total_general := 1
+_omitir_encabezados   := 0
+_omitir_sub_totales   := 0
+_incluir_pue := 1
+_incluir_dep := 1
+_incluir_suc := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+$campos_extras := 'E. NOMBREP, E. NOMBREM, E. NOMBREN, E. AFILIACION, E. RFC, E.CURP, E. PE'
+
+base_trabajadores
+
+USA_ARCHIVO ('EMPPRIN','EMPFAM','CLAVE')
+USA_ARCHIVO ('EMPPRIN','EMPSDO','CLAVE')
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( FUE_VIGENTE ( _ff, _ff))
+      datos_trabajador
+      AVANZA_HOJA
+      IMPRIME
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte
+
+$indice := 'TOTAL'
+sub_totales

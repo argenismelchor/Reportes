@@ -1,0 +1,94 @@
+#EDAD DE LOS EMPLEADOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 1.0
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','', _fi )
+NUEVO_PARAMETRO_FEC ('FECHA FINAL'  ,'', _ff )
+NUEVO_PARAMETRO_SEL ( 'EMPLEADOS', 'MENORES A 18/TODOS', _opcion )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 6
+SALIDA := $salida
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'EDAD DE LOS EMPLEADOS' )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( 'CLAVE         NOMBRE                             EDAD       F.NACIMIENTO' ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+_edad := 0
+_fecha_hoy := FECHA_HOY 
+_anob   := 0
+_fechab := 0
+_ant    := 0
+_ano_hoy := 0 
+_ano_nac := 0
+
+SUB_RUTINA formato_trabajador
+   FORMATO_FECHA := 6
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 8 ), SUBSTR ('EMPPRIN':'NOMBRE', 1 , 40 ) , COL (52) ,  DER ( _edad, 2 ) )
+   IMP ( COL ( 60 ), SUBSTR ( FECHA ( 'EMPRH':'FECHA_NACIMIENTO'),1,2) +'/'+ SUBSTR ( FECHA ( 'EMPRH':'FECHA_NACIMIENTO'),3,2) +'/'+  SUBSTR ( FECHA ( 'EMPRH':'FECHA_NACIMIENTO'),5,4)   )
+
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+$campo_extras := 'E. INGRESO'
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO ('EMPPRIN','EMPRH','CLAVE')
+
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   DECIMALES := 0
+   _ano_hoy := VALOR( SUBSTR( FECHA( _fecha_hoy ), 5, 4 ) )
+   _ano_nac := VALOR( SUBSTR( FECHA( 'EMPRH':'FECHA_NACIMIENTO'  ), 5, 4 ) )
+   _fechab := CALCULA_FECHA( _anob, VALOR( SUBSTR( FECHA( 'EMPRH':'FECHA_NACIMIENTO' ), 3, 2 ) ), VALOR( SUBSTR( FECHA( 'EMPRH':'FECHA_NACIMIENTO' ), 1, 2 ) ) )
+   SI ( _fechab >= _fecha_hoy )
+      _edad := ( _ano_hoy - _ano_nac ) + 1
+   SI_NO
+      _edad := ( _ano_hoy - _ano_nac ) 
+   FIN_SI
+
+   SI ( _opcion = 0 )
+      SI ( _edad <= 18 )
+         SI ( FUE_VIGENTE ( _fi , _ff ) )   
+            datos_trabajador
+         FIN_SI
+      FIN_SI
+   SI_NO
+      SI ( FUE_VIGENTE ( _fi , _ff ) )   
+         datos_trabajador
+      FIN_SI
+   FIN_SI
+
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

@@ -1,0 +1,160 @@
+#ALTAS DE TARJETAS SANTANDER
+#ALTAS DE SANTANDER
+#ALTAS DE SANTANDER
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte altas santander
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'EXCEL', $salida)
+NUEVO_PARAMETRO_CHEQ ( 'MARCAR' , '' , _marcar ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+$salida2 := $salida 
+$salida  := 'PANTALLA'
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'RFC'
+_longitud  := 25
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+
+_condensado := 0
+$titulo_reporte := 'REPORTE DE ALTAS DE TARJETAS HSBC'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+$clave := '' ;;  $nombrep := '' ;; $nombrem := '' ;; $nombren := '';; $rfc := ''  ;; $sexo := '' ;; $fechanac := '' ;; $clavenac := '' 
+$paisnac := '' ;; $ecivil := '' ;; $calle := '' ;; $exterior := '' ;; $interior := '' ;; $colonia := '' ;; $municipio := '' ;; $estado := ''
+$cp := '' ;; $tarjeta := '' ;; $c := SUBSTR ( '''' , 1 , 1 ) 
+_filaexcel := 9
+
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , 'c:\GIRO\REPORTES\altas sant.xlsm' ) 
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+
+   $clave := '' ;;  $nombrep := '' ;; $nombrem := '' ;; $nombren := '';; $rfc := ''  ;; $sexo := '' ;; $fechanac := '' ;; $clavenac := '' 
+   $paisnac := '' ;; $ecivil := '' ;; $calle := '' ;; $exterior := '' ;; $interior := '' ;; $colonia := '' ;; $municipio := '' ;; $estado := '' 
+   $cp := '' ;; $tarjeta := '' 
+
+   $clave   := $c +   SUBSTR ( 'EMPPRIN':'CLAVE' , 3 , ( LONGITUD ( 'EMPPRIN':'CLAVE'   ) -  3  ) + 1  ) 
+   $nombrep := 'EMPPRIN':'NOMBREP'
+   $nombrem := 'EMPPRIN':'NOMBREM'
+   $nombren := 'EMPPRIN':'NOMBREN'
+   $rfc     := $c + 'EMPPRIN':'RFC'  
+   $sexo    := 'EMPPRIN':'SEXO'
+   
+   FORMATO_FECHA := 3
+   $fechanac := FECHA ( 'EMPPRIN':'INGRESO' ) 
+   $clavenac := 'MEXI'
+   $paisnac  := 'MEXICO'
+   $ecivil   := 'EMPPRIN':'ESTADO_CIVIL'
+
+   SI ( $ecivil = 'SOL' ) ;;  $ecivil := 'S' ;; FIN_SI
+   SI ( $ecivil = 'CAS' ) ;;  $ecivil := 'C' ;; FIN_SI
+   SI ( $ecivil = 'DIV' ) ;;  $ecivil := 'D' ;; FIN_SI
+   SI ( $ecivil = 'ULI' ) ;;  $ecivil := 'U' ;; FIN_SI
+   SI ( $ecivil = 'VIU' ) ;;  $ecivil := 'V' ;; FIN_SI
+
+   $calle     := 'EMPPRIN':'CALLE'
+   $exterior  := 'EMPPRIN':'NUMERO'
+   $interior  := 'EMPPRIN':'INTERIOR'
+   $colonia   := 'EMPPRIN':'COLONIA'
+   $municipio := 'EMPPRIN':'MUNICIPIO' 
+   $estado    := 'EMPPRIN':'ESTADO'
+
+   DECIMALES := 0  
+   $cp        := .('EMPPRIN':'CP')
+   $tarjeta   := 'EMPPRIN':'CTA_TARJETA'
+
+   $valor := $clave
+   imprime_columna
+
+   $valor := $nombrep + ' ' + $nombrem + ' ' + $nombren
+   imprime_columna
+
+   $valor := $rfc
+   imprime_columna
+   imprime_renglon
+
+   SI ( $salida2 = 'EXCEL'  )  
+        EXCEL ( 'PON_VALOR' , 3   , _filaexcel , $c + $clave     )  
+        EXCEL ( 'PON_VALOR' , 4   , _filaexcel , $nombrep        ) 
+        EXCEL ( 'PON_VALOR' , 5   , _filaexcel , $nombrem        ) 
+        EXCEL ( 'PON_VALOR' , 6   , _filaexcel , $nombren        ) 
+        EXCEL ( 'PON_VALOR' , 7   , _filaexcel , $c + $rfc       ) 
+        EXCEL ( 'PON_VALOR' , 9   , _filaexcel , $c + $clave     ) 
+
+        EXCEL ( 'PON_VALOR' , 10   , _filaexcel , $sexo           ) 
+        EXCEL ( 'PON_VALOR' , 11   , _filaexcel , $c + $fechanac  ) 
+        EXCEL ( 'PON_VALOR' , 12  , _filaexcel , $clavenac        ) 
+        EXCEL ( 'PON_VALOR' , 13  , _filaexcel , $paisnac         ) 
+        EXCEL ( 'PON_VALOR' , 14  , _filaexcel , $ecivil          ) 
+        EXCEL ( 'PON_VALOR' , 15  , _filaexcel , $calle           ) 
+        EXCEL ( 'PON_VALOR' , 16  , _filaexcel , $exterior        )    
+        EXCEL ( 'PON_VALOR' , 17  , _filaexcel , $interior        ) 
+        EXCEL ( 'PON_VALOR' , 18  , _filaexcel , $colonia         ) 
+        EXCEL ( 'PON_VALOR' , 19  , _filaexcel , $municipio       ) 
+        EXCEL ( 'PON_VALOR' , 20  , _filaexcel , $municipio       ) 
+        EXCEL ( 'PON_VALOR' , 21  , _filaexcel , $estado          ) 
+        EXCEL ( 'PON_VALOR' , 22  , _filaexcel , $c + $cp         ) 
+        EXCEL ( 'PON_VALOR' , 26  , _filaexcel , $c + $tarjeta    ) 
+        _filaexcel := ( _filaexcel + 1  ) 
+   FIN_SI
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E.*,EH.*'
+$bases_extras  := 'EMPRH EH'
+$condiciones_extras := 'E.CLAVE = EH.CLAVE' 
+base_trabajadores
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+USA_ARCHIVO ( 'EMPPRIN', 'EMPEXT' , 'CLAVE' ) 
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ( 'EMPEXT':'ALTA_TARJETA' = 0 ) AND  (  ( 'EMPEXT':'BANCO'  = '1'  )  OR ( 'EMPEXT':'BANCO'  = '2'  ) )  )
+        formato_trabajador 
+
+        SI ( _marcar = 1 ) 
+             'EMPEXT':'ALTA_TARJETA' := 1
+             GRABA_BASE ( 'EMPEXT' )
+        FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+TERMINA_REPORTE

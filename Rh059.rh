@@ -1,0 +1,143 @@
+#FORMA DE VACACIONES MANUAL
+#FORMA DE VACACIONES KARDEX
+#USUARIO =*
+#VERSION 1.0
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_TAB ( 'EMPLEADO', 'EMPPRIN/CLAVE/EMPLEADOS', $empleado )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL', '', _fi )
+NUEVO_PARAMETRO     ( 'DIAS', '1', _dias )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+INCLUYE GRAFICO.DAT
+
+#VARIABLES
+$depto   := ''
+_ver := 0
+_fin := 0
+
+SUB_RUTINA formato_trabajador
+
+   imprime_marco   
+
+   imprime_empresa
+
+   $titulo_reporte := 'SOLICITUD DE VACACIONES'
+   imprime_titulo
+
+   avanza_linea
+
+   FORMATO_FECHA := 5
+   _tam_letra := 12
+
+   $titulo := 'FECHA :'
+   $valor := FECHA( FECHA_HOY )
+   imprime_campo_salto
+
+   $titulo := 'NO. NOMINA :'
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_campo_salto
+   
+   $titulo := 'FECHA DE INGRESO :'
+   $valor := FECHA( 'EMPPRIN':'INGRESO' )
+   imprime_campo_salto
+
+   $titulo := 'NOMBRE :'
+   $valor := 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN'
+   imprime_campo_salto
+   
+   $depto := ''
+   SI ( TRAE_REGISTRO( 'CENTROC', TRAE_DSP( 'D', FECHA_HOY ) ) )
+     SI ( TRAE_REGISTRO( 'DEPTO', 'CENTROC':'DEPARTAMENTO' ) )
+       $depto := 'DEPTO':'DESCRIPCION'
+     FIN_SI
+   FIN_SI
+   $titulo := 'DEPARTAMENTO :'
+   $valor := $depto
+   imprime_campo
+
+   _x_act := 1000
+   $titulo := 'LINEA :'
+   $valor := TRAE_DSP( 'D', FECHA_HOY )
+   imprime_campo
+
+   _x_act := 1450
+   $titulo := 'TURNO :'
+   $valor := 'EMPPRIN':'TURNO'
+   imprime_campo_salto
+
+   $titulo := 'FECHA DE INICIO DE VACACIONES :'
+   $valor := FECHA( _fi )
+   imprime_campo_salto 
+
+   DECIMALES := 0
+   RELLENO := '0'
+   $titulo := 'NO. DIAS A TOMAR :'
+   $valor := .( _dias )
+   imprime_campo
+
+   DECIMALES := 2
+   _x_act := 1000
+   $titulo := 'DIAS A PAGAR :'
+   $valor := .( _dias * 1.2 )
+   imprime_campo_salto 
+
+   _fin := EXTIENDE_PERIODO( _fi, _dias, 'EMPPRIN':'CALENDARIO', 0, 0 )
+   $titulo := 'FECHA EN QUE DEBERA PRESENTARSE A TRABAJAR :'
+   _fin := _fin + 1
+   MIENTRAS( DIAS_INHABILES( _fin, _fin, 'EMPPRIN':'CALENDARIO' , 0, 0 ) > 0 )
+     _fin := _fin + 1
+   FIN_MIENTRAS
+   $valor := FECHA( _fin )
+   imprime_campo_salto 
+
+   DECIMALES := 2
+   $titulo := 'DIAS PENDIENTES POR DISFRUTAR :'
+   $valor := .( SDO_VACACIONAL_DIAS ( _fin ) )
+   imprime_campo_salto 
+
+   avanza_linea
+   avanza_linea
+   avanza_linea
+
+   CAMBIA_LETRA( $letra, 16, '\N' ) IMPRIME
+   $valor := 'C O N F O R M E'
+   imprime_centro
+
+   avanza_linea
+   avanza_linea
+   avanza_linea
+
+   CAMBIA_LETRA( $letra, 12, '\N' ) IMPRIME
+   $valor := '_______________________________'
+   imprime_centro
+   _y_act := _y_act - 30
+   $valor := 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN'
+   imprime_centro
+   IMP_XY ( 300, 2100 + _ver, 'AUTORIZA' )
+   IMP_XY ( 1500, 2100 + _ver, 'RECIBIDO' )
+   IMP_XY ( 250, 2300 + _ver, '_____________' )
+   IMP_XY ( 1400, 2300 + _ver, '______________' )
+   IMP_XY ( 250, 2350 + _ver, 'GERENTE DEPTO' )
+   IMP_XY ( 1400, 2350 + _ver, 'DEPTO PERSONAL' )
+   IMP_XY ( 200, 2500 + _ver, 'RECIBIDO DEPTO DE CONTABILIDAD: _______________________________' )
+
+   avanza_hoja
+
+FIN_SUB_RUTINA
+
+ABRE_BASE ( 'EMPPRIN' )
+SI ( TRAE_REGISTRO ( 'EMPPRIN', $empleado ) )
+  formato_trabajador
+SI_NO
+  MENSAJE( 'LA CLAVE DEL EMPLEADO ' + $empleado + ' NO EXISTE EN LA BASE DE DATOS' )
+FIN_SI
+

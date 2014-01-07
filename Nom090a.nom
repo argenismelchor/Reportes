@@ -1,0 +1,162 @@
+#ALTAS BANCRECER
+#VERSION 1.000
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Generación de archivo de altas para Bancrecer
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','',_fi)
+NUEVO_PARAMETRO_FEC ('FECHA FINAL','',_ff)
+NUEVO_PARAMETRO     ( 'CONSECUTIVO' , '01' , $consecutivo )
+NUEVO_PARAMETRO     ( 'SUCURSAL', '6930', $sucursal )
+NUEVO_PARAMETRO     ( 'PROMOTOR', '04689327', $promotor )
+NUEVO_PARAMETRO     ( 'SERVICIO', '14263', $servicio )
+NUEVO_PARAMETRO     ( 'ESTADO', '26', $estado )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+
+$archivo := 'N14263' + $consecutivo + '.ALT'
+NUEVO_PARAMETRO     ( 'ARCHIVO' , DIRECTORIO_TRABAJO + '\'+ $archivo , $archivo2 )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA_REPORTE ( $archivo2 )
+$salida := 'DISCO'
+SALIDA  := $salida
+
+MODO_IMPRESION ( 'DIRECTO' )
+FORMATO_PESOS := 2
+FORMATO_FECHA := 2
+
+$civil  := ''
+$puesto := ''
+$tipo_emp := ''
+
+### VARIABLES GLOBALES DEL REPORTE
+$tipo := ''
+_cont := 0
+_cont2 := 0
+_imp := 0
+_sueldo := 0
+
+SUB_RUTINA formato_trabajador
+  IMP ( COL (1), 'D' )
+  IMP ( COL (2), DER ( 'EMPPRIN':'CLAVE', 8 ))
+  IMP ( COL (10), SUBSTR('EMPPRIN':'NOMBREN', 1, 20 ) )
+  IMP ( COL (30), SUBSTR('EMPPRIN':'NOMBREP', 1, 20 ) )
+  IMP ( COL (50), SUBSTR('EMPPRIN':'NOMBREM', 1, 20 ) )
+
+  IMP ( COL (70), SUBSTR( 'EMPPRIN':'NOMBREN' + ' ' + 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' , 1, 24 ))
+  IMP ( COL (94), 'CA' )
+  IMP ( COL (96), SUBSTR('EMPRH':'CALLE', 1, 24 ) )
+  IMP ( COL (120), SUBSTR('EMPRH':'NUMERO', 1, 7 ) )
+  IMP ( COL (127), '01' )
+  IMP ( COL (129), '' )
+  IMP ( COL (131), '' )
+  IMP ( COL (133), '' )
+  IMP ( COL (137), SUBSTR('EMPRH':'COLONIA', 1, 20 ) )
+
+  ##DELEGACION
+  IMP ( COL(157), SUBSTR('EMPRH':'MUNICIPIO', 1, 25 ) )
+  ##POBLACION
+  IMP ( COL(182), SUBSTR('EMPRH':'MUNICIPIO', 1, 28 ) )
+  ##ESTADO
+  IMP ( COL(210), $estado )
+  ##CODIGO POSTAL
+  DECIMALES := 0
+  IMP ( COL(212), DER(.('EMPRH':'CP'), 5) )
+  ##PREFIJO TELEFONICO
+  IMP ( COL(217), '' )
+  ##TELEFONO
+  IMP ( COL(220), SUBSTR('EMPRH':'TELEFONO_1', 1, 7 ) )
+  ##SEXO
+  IMP ( COL(227), SUBSTR('EMPRH':'SEXO', 1, 1 ))
+  ##FECHA DE NACIMIENTO
+  FORMATO_FECHA := 6 
+  IMP ( COL(228), FECHA( 'EMPRH':'FECHA_NACIMIENTO' ) )
+
+  SI ( 'EMPRH':'ESTADO_CIVIL' = 'SOL' ) 
+     $civil := 'S'    
+  FIN_SI
+  SI ( 'EMPRH':'ESTADO_CIVIL' = 'CAS' ) 
+     $civil := 'C'    
+  FIN_SI
+  SI ( 'EMPRH':'ESTADO_CIVIL' = 'VIU' ) 
+     $civil := 'V'    
+  FIN_SI
+  SI ( ('EMPRH':'ESTADO_CIVIL' <> '' ) AND ( 'EMPRH':'ESTADO_CIVIL' <> 'CAS' ) AND
+         ('EMPRH':'ESTADO_CIVIL' <> 'SOL' ) AND ( 'EMPRH':'ESTADO_CIVIL' <> 'VIU' ) )
+     $civil := 'X'    
+  FIN_SI
+  IMP ( COL(236), SUBSTR( $civil, 1, 1 ))
+  IMPRIME
+
+  $puesto := TRAE_DSP ( 'P' , _ff ) 
+  SI ( TRAE_REGISTRO ('PUESTO' , $puesto ) )
+     $tipo_emp  := 'PUESTO':'TIPO EMPLEADO' 
+  FIN_SI 
+  $tipo_emp  := '10'
+
+  IMP ( COL(1), SUBSTR( $tipo_emp, 1, 2 ))
+  IMP ( COL(3), 'EMPPRIN':'RFC')
+  IMP ( COL(16), '0202' )
+  DECIMALES:=2
+  _sueldo := SUELDO_ACTUAL ( _fi,_ff )
+  IMP ( COL(20), DER ( SUBSTR ( . ( _sueldo ), 1, POS ( '.', . ( _sueldo ))-1 )  + SUBSTR ( . ( _sueldo ), POS ( '.', . ( _sueldo )) + 1, 2 ), 10 ))
+  IMP ( COL(30), '0' )
+  IMPRIME
+FIN_SUB_RUTINA
+
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_incluir_pue := 1
+_incluir_dep := 1
+_incluir_suc := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+
+$campos_extras:='E.NOMBREN, E.NOMBREP, E.NOMBREM, E.RFC'
+base_trabajadores
+USA_ARCHIVO('EMPPRIN','EMPRH', 'CLAVE' )
+USA_ARCHIVO('EMPPRIN','EMPPUES', 'CLAVE' )
+USA_ARCHIVO('EMPPRIN','EMPSDO', 'CLAVE' )
+
+## PRIMER CICLO PARA ENCABEZADO 
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( FUE_VIGENTE ( _fi, _ff))
+      _cont2 := _cont2 + 1
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+## IMPRESION DE REGISTRO DE ENCABEZADO.
+IMP ( COL(1), 'H' )
+IMP ( COL(2), 'NE' )
+IMP ( COL(4), $sucursal )
+IMP ( COL(8), $promotor )
+IMP ( COL(16), $servicio )
+IMP ( COL(21), SUBSTR ( $consecutivo , 1 , 2  ))
+DECIMALES := 0
+IMP ( COL(23), DER ( . ( _cont2 ), 6 ))
+IMP ( COL(29), REPITETXT ( ' ', 208 ))
+IMPRIME 
+IMP ( COL(1), REPITETXT ( ' ', 30 ))
+IMPRIME 
+
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( FUE_VIGENTE ( _fi, _ff))
+      datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte

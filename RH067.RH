@@ -1,0 +1,65 @@
+#KARDEX ANUAL DE FALTAS (DE KARDEX)
+#VERSION 2.5
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Proceso que permite imprimir el kardex anual de ausentismos del kardex.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA', $salida)
+NUEVO_PARAMETRO_FEC ( 'FECHA DE VIGENCIA', '', _fi )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+_ff    := _fi
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'IMPRESION DE KARDEX DE AUSENTISMOS'
+   encabezado_ini
+   IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+  pie_estandar
+FIN_PIE
+
+# PARAMETROS
+DECIMALES := 2
+COLUMNAS := 80
+RENGLONES := 65
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   IMPRIME
+   KARDEX_AUSENTISMO ( 1 )
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+$campos_extras := 'E. CALENDARIO'
+
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE ( _fi ))
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+TERMINA_REPORTE

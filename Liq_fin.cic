@@ -1,0 +1,175 @@
+_total_dias_ti:=0
+_trab:=0
+_mensual := _mensual
+_bimestral := _bimestral
+_ano := _ano
+_mes := _mes
+$mes_act := $mes_act
+$ano_act := $ano_act
+_num_ind := 0
+
+INCLUYE UTIL2.DAT
+
+_reporte_ssocial := 1
+$sreg := TRAE_VALOR_TABLA( &in, 11, 0 )
+$ssuc := TRAE_VALOR_TABLA( &in, 11, 1 )
+$sucursales := ''
+_i := 0
+$val_tabla := ''
+
+SUB_RUTINA trae_sucursales
+  $sucursales := ''
+  ABRE_BASE ( 'SUCURSAL' )
+  PRIMER_REGISTRO('SUCURSAL')
+  SI ( $sreg <> '' )
+    REPITE
+      SI ( POS(',', $sreg) > 0 )
+        $val_tabla := SUBSTR( $sreg, 1, POS(',', $sreg) - 1 )
+        $sreg := ELIMINA( $sreg, 1, POS(',', $sreg) )
+      SI_NO
+        $val_tabla := $sreg
+        $sreg := ''
+      FIN_SI
+      $val_tabla := SUBSTR( $val_tabla, 2, LONGITUD( $val_tabla ) - 2 )
+      PRIMER_REGISTRO( 'SUCURSAL' )
+      MIENTRAS( FIN_BASE( 'SUCURSAL' ) = FALSO )
+        SI ( 'SUCURSAL':'REGISTRO PATRONAL' = $val_tabla )
+          SI ( $sucursales <> '' )
+             $sucursales := $sucursales + ', '
+          FIN_SI
+          $sucursales:=$sucursales+'"'+$val_tabla+'"'
+        FIN_SI
+        SIGUIENTE_REGISTRO( 'SUCURSAL' )
+      FIN_MIENTRAS     
+    HASTA( $sreg = '' )
+  SI_NO
+    SI ( $ssuc = '' )
+      PRIMER_REGISTRO( 'SUCURSAL' )
+      MIENTRAS( FIN_BASE('SUCURSAL') = FALSO )
+        SI ( $sucursales <> '' )
+          $sucursales:=$sucursales+', '
+        FIN_SI        
+        $sucursales:=$sucursales+'"'+'SUCURSAL':'CLAVE'+'"'
+        SIGUIENTE_REGISTRO('SUCURSAL')
+      FIN_MIENTRAS
+    SI_NO
+      $sucursales := $ssuc
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SI ( $salida = 'DISCO' )
+  #_imp_encabezado := 0
+  #_imp_subtotales := 0
+FIN_SI
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+parametros
+
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+FORMATO_FECHA := 2
+SI ( _mensual = 1 )
+  _fi:=CALCULA_FECHA(_ano,_mes,1)
+  _ff:=CALCULA_FECHA(_ano,_mes,31)
+  $mes_act:=.(_mes)
+  $ano_act:=.(_ano)
+  SI (_mes<10)
+    $mes_act:=SUBSTR($mes_act,1,1)
+  SI_NO
+    $mes_act:=SUBSTR($mes_act,1,2)
+  FIN_SI
+  $ano_act:=SUBSTR($ano_act,1,2)
+FIN_SI
+
+SI ( _bimestral = 1 )
+  _fi:=CALCULA_FECHA(_ano,(_mes*2)-1,1)
+  _ff:=CALCULA_FECHA(_ano,_mes*2,31)
+  _mes:=_mes * 2
+  $mes_act:=.(_mes)
+  $ano_act:=.(_ano)
+  $ano_act:=SUBSTR($ano_act,1,2)
+  SI ( _mes < 10 )
+    $mes_act:=SUBSTR($mes_act,1,1)
+  SI_NO
+    $mes_act:=SUBSTR($mes_act,1,2)
+  FIN_SI
+FIN_SI
+
+ABRE_BASE ('PAGOIMSS')
+SI ( TRAE_REGISTRO_VIG( 'PAGOIMSS', _fi ) = FALSO )
+  MENSAJE('NO HAY CUOTAS VIGENTES PARA EL CALCULO...')
+  TERMINA_REPORTE
+FIN_SI
+ABRE_BASE ('MINIMO')
+
+$campos_extras:='E. AFILIACION, E. RFC, E. "SEMANA REDUCIDA", E. "JORNADA REDUCIDA"'
+$campos_extras:=$campos_extras+ ', E.CREDITO_INFONAVIT, E."TIPO DESCUENTO", E. "INICIO DESCUENTO INF", E. "VALOR DESCUENTO"'
+base_trabajadores
+
+USA_ARCHIVO('EMPPRIN', 'EMPSDO', 'CLAVE')
+USA_ARCHIVO('EMPPRIN', 'EMPINC', 'CLAVE')
+
+trae_sucursales
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+  _fecha_ini:=_fi
+  _fecha_fin:=_ff
+  _fecha_ant:=0
+  _primera:=0
+  REPITE
+    _inicio := PRIMER_DIA_REGISTRO( _fecha_ini, _fecha_fin, $sucursales )
+    _finall := ULTIMO_DIA_REGISTRO( _fecha_ini, _fecha_fin, $sucursales )
+    SI ( _inicio > 0 )
+    REPITE
+      _finicio := INICIA_RANGO_FECHA ( _inicio, _finall )
+      _ffinal  := TERMINA_RANGO_FECHA ( _inicio, _finall )
+      SI ( _finicio > 0 )
+        SI ( _primera=0 ) ;;  _trab := _trab + 1 ;; FIN_SI
+        _no_faltas:=TOTAL_FALTAS( _finicio, _ffinal, 'S' )
+        #_no_faltas := _no_faltas - TRAE_FALTAS( _finicio, _ffinal, 'V' )
+        SI ( _no_faltas < 0 )
+          _no_faltas := 0
+        FIN_SI
+        _no_incap    := TRAE_INCAPACIDADES ( _finicio, _ffinal, '*' )
+        _no_incap_eg := TRAE_INCAPACIDADES ( _finicio, _ffinal, 'EG' )
+        _dias_tari   := _ffinal - _finicio - _no_faltas - _no_incap + 1
+        SI ( _no_faltas > 14 ) ;; _no_faltas:=14 ;; FIN_SI
+        _dias_tai    := _ffinal - _finicio - _no_faltas - _no_incap + 1
+        _dias_taieg  := _ffinal - _finicio - _no_faltas - ( _no_incap - _no_incap_eg ) + 1
+        _dias_ti     := _ffinal - _finicio - _no_incap + 1
+        _dias_ta     := _ffinal - _finicio - _no_faltas + 1
+        datos_trabajador
+        _fecha_ant       := 'EMPSDO':'FECHA'
+        _total_dias_ti   := _total_dias_ti + _dias_ti
+        _total_dias_ta   := _total_dias_ta + _dias_ta
+        _total_dias_tai  := _total_dias_tai + _dias_tai
+        _total_dias_tari := _total_dias_tari + _dias_tari
+        _total_faltas    := _total_faltas + _no_faltas
+        _total_incap     := _total_incap + _no_incap
+      FIN_SI  
+      _inicio:=_ffinal+1
+    HASTA( ( _ffinal = _finall ) OR ( _finicio = 0 ) OR ( _ffinal = 0 ) )
+    FIN_SI
+    _fecha_ini:=_finall+1
+  HASTA ( ( _finall = _ff ) OR ( _inicio = 0 ) )
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte

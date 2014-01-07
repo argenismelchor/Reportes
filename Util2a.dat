@@ -1,0 +1,54 @@
+#DESCRIPCION
+#Esta utileria checa los tipos de nomina seleccionados para definir la fecha de la consulta
+#FIN_DESCRIPCION
+$tipos_nomina    := ''
+_fecha_consulta  := 0
+_nomina_multiple := 0
+_per_sel         := 0
+SUB_RUTINA checa_tipo_nomina
+  ABRE_BASE( 'TIPONOM' )
+  $tipos_nomina := TRAE_VALOR_TABLA( &in, 11, 6 )
+  SI ( $tipos_nomina = '' )
+    #SI ( TOTAL_REGISTROS( 'TIPONOM' ) = 1 )
+      _nomina_multiple := 1
+      PRIMER_REGISTRO( 'TIPONOM' )
+      $tipos_nomina := 'TIPONOM':'CLAVE'
+    #FIN_SI
+  SI_NO
+    SI ( POS(',', $tipos_nomina) > 0 )
+      $tipos_nomina := SUBSTR( $tipos_nomina, 1, POS(',', $tipos_nomina) - 1 )
+      _nomina_multiple := 1
+    FIN_SI
+    $tipos_nomina := ELIMINA( $tipos_nomina, 1, 1 )
+    $tipos_nomina := ELIMINA( $tipos_nomina, LONGITUD( $tipos_nomina ), 1 )
+  FIN_SI
+  SI ( TRAE_REGISTRO( 'TIPONOM', $tipos_nomina ) )
+    _per_sel := 'TIPONOM':'ACTUAL'
+    SI ( _nomina_multiple = 0 )
+      BORRA_PARAMETROS
+      DECIMALES := 0
+      NUEVO_PARAMETRO ( 'PERIODO ' + $tipos_nomina, .( _per_sel ), _per_sel )
+      LEE_PARAMETROS
+    FIN_SI
+    SI ( TRAE_REGISTRO( 'PERIODO', 'TIPONOM':'CLAVE', _per_sel ) )
+      SI ( CAMBIA_PERIODO( 'TIPONOM':'CLAVE', _per_sel, FALSO ) = FALSO )
+        MENSAJE( 'EL PERIODO ' + .(_per_sel) + ' NO PUDO SER CONSULTADO...' )
+      SI_NO
+        _fecha_consulta := 'PERIODO':'FECHA FINAL'
+        #USA_ARCHIVO ( 'EMPPRIN', 'EMPNOM', 'CLAVE' )
+      FIN_SI      
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+#   SI ( _reporte_nomina = 5 )
+#      SI ( TRAE_REGISTRO( 'TIPONOM', 'EMPPRIN':'TIPO_NOM' ) )
+#         SI ( TRAE_REGISTRO ( 'PERIODO', 'TIPONOM':'CLAVE', 'TIPONOM':'ACTUAL' ) )
+#            USA_ARCHIVO ( 'EMPPRIN', 'EMPNOM', 'CLAVE' )
+#         SI_NO
+#            MENSAJE ( 'PERIODO ' + .('TIPONOM':'ACTUAL') + ' DE NOMINA INEXISTENTE !' )
+#         FIN_SI
+#      SI_NO
+#         MENSAJE ( 'TIPO DE NOMINA INEXISTENTE ! ' + 'EMPPRIN':'TIPO_NOM' + ' EMPLEADO : ' + 'EMPPRIN':'CLAVE' )
+#      FIN_SI
+#   FIN_SI

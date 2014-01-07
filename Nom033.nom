@@ -1,0 +1,195 @@
+#CALCULO SUBSIDIOS
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Proceso para el cálculo de subsidios acreditables y no acreditables.
+#Es necesario indicar claves de Tablas de Impuestos a utilizar, Total de Percepciones, Total de Exentos, ISPT y Credito.
+#El proceso requiere que el ajuste anual de impuestos ya este efectuado y no calculara aquellas personas que tengan una diferencia mayor a la indicada en Impuestos calculados y Reales.
+#El proceso permite anualizar el calculo para personas con baja o ingresos depués del 1 de Enero.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida )
+NUEVO_PARAMETRO ( 'CVE. DIAS'      , 'DVIG' , $cve_dias )
+NUEVO_PARAMETRO ( 'CVE. ISPT'      , '51'   , $cve_ispt )
+NUEVO_PARAMETRO ( 'CVE. CRED'      , '51A'  , $cve_cred )
+NUEVO_PARAMETRO ( 'CVE. PERC GRAV' , 'PGRA' , $cve_pgra )
+NUEVO_PARAMETRO ( 'CVE. SUBS ACRED', 'SUBS' , $cve_suba )
+NUEVO_PARAMETRO ( 'CVE. SUBS NO AC', 'SUBNO', $cve_subna)
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+NUEVO_PARAMETRO ( 'TABLA ISPT'     , 'ISPT' , $tab_ispt )
+NUEVO_PARAMETRO ( 'TABLA SUBSIDIO' , 'SUBS' , $tab_subs )
+NUEVO_PARAMETRO ( 'TABLA CREDITO'  , 'CRED' , $tab_cred )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+NUEVO_PARAMETRO      ( 'AÑO DE CALCULO'    , '98' , _ano )
+NUEVO_PARAMETRO_CHEQ ( 'ANUALIZAR CALCULO' , ''   , _anualizar )
+NUEVO_PARAMETRO      ( 'DIF. DE CALCULO $' , '10' , _ispt_dif )
+NUEVO_PARAMETRO_CHEQ ( 'ACTUALIZAR SUBSIDIOS' , '' , _actualizar )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+
+ENCABEZADO   
+   $titulo_reporte := 'CALCULO ANUAL DE SUBSIDIOS'
+   encabezado_ini
+   IMP ( COL ( 1 ), 'CLAVE', COL ( 10 ), 'NOMBRE' ) IMPRIME
+   IMP ( COL ( 23 ), 'P.GRAV', COL ( 33 ), 'ISPT', COL ( 43 ), 'ISPT REAL', COL ( 53 ), 'SUBS A', COL ( 63 ), 'SUB NO A', COL ( 73 ), 'CREDITO', COL ( 83 ), 'CRED REAL', COL ( 93 ), 'DIFERENCIA', COL ( 105 ), 'ACTUALIZAR' ) IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+_base   := 0
+_ispt   := 0
+_subsa  := 0
+_subsna := 0
+_cred   := 0
+_isptr  := 0
+_dif    := 0
+_inicio_ano  := CALCULA_FECHA ( _ano, 1, 1   )
+_termino_ano := CALCULA_FECHA ( _ano, 12, 31 )
+_vigente     := 0
+
+SUB_RUTINA actualiza_acumulado
+   'EMPACUM':'ENE' := 0
+   'EMPACUM':'FEB' := 0
+   'EMPACUM':'MAR' := 0
+   'EMPACUM':'ABR' := 0
+   'EMPACUM':'MAY' := 0
+   'EMPACUM':'JUN' := 0
+   'EMPACUM':'JUL' := 0
+   'EMPACUM':'AGO' := 0
+   'EMPACUM':'SEP' := 0
+   'EMPACUM':'OCT' := 0
+   'EMPACUM':'NOV' := 0
+   'EMPACUM':'DIC' := 0
+FIN_SUB_RUTINA
+
+
+
+SUB_RUTINA formato_trabajador
+
+   DECIMALES := 10
+
+   SI ( ES_VIGENTE ( _inicio_ano ) Y ES_VIGENTE ( _termino_ano ))
+      _vigente := 1
+   SI_NO
+      _vigente := 0
+   FIN_SI
+
+   _base := ACUM_ANUAL ( 'PGRA' )
+
+   SI ( _vigente = 0 )
+      _base := ( _base / ACUM_ANUAL ( $cve_dias )) * 365
+   FIN_SI
+
+   SI ( TRAE_REGISTRO ( 'TABISPT', $tab_ispt ))
+      _ispt := CALCULA_ISPT ( _base )
+   SI_NO
+      MENSAJE ( 'TABLA DE IMPUESTO INVALIDA' )
+      TERMINA_REPORTE
+   FIN_SI
+
+   SI ( TRAE_REGISTRO ( 'TABISPT', $tab_subs ))
+      _subsa  := CALCULA_SUBSIDIO ( _base )
+      _subsna := ( _subsa / ( 'TABISPT':'SUBSIDIO' / 100 )) * ( 1 - ( 'TABISPT':'SUBSIDIO' / 100 ))
+   SI_NO
+      MENSAJE ( 'TABLA DE IMPUESTO INVALIDA' )
+      TERMINA_REPORTE
+   FIN_SI
+
+   SI ( TRAE_REGISTRO ( 'TABISPT', $tab_cred ))
+      _cred := CALCULA_ISPT ( _base )
+   SI_NO
+      MENSAJE ( 'TABLA DE IMPUESTO INVALIDA' )
+      TERMINA_REPORTE
+   FIN_SI
+
+   SI ( _vigente = 0 )
+      _ispt   := ( _ispt   / 365 ) * ACUM_ANUAL ( $cve_dias )
+      _subsa  := ( _subsa  / 365 ) * ACUM_ANUAL ( $cve_dias )
+      _subsna := ( _subsna / 365 ) * ACUM_ANUAL ( $cve_dias )
+      _cred   := ( _cred   / 365 ) * ACUM_ANUAL ( $cve_dias )
+   FIN_SI
+
+   DECIMALES := 2
+
+   LETRA ( 'LETRA CONDENSADA' )
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   IMPRIME
+
+   IMP ( COL ( 20 ), DER ( $ ( _base   ), 10 ))
+   IMP ( COL ( 30 ), DER ( $ ( _ispt   ), 10 ))
+   IMP ( COL ( 40 ), DER ( $ ( ACUM_ANUAL ( $cve_ispt )), 10 ))
+   IMP ( COL ( 50 ), DER ( $ ( _subsa  ), 10 ))
+   IMP ( COL ( 60 ), DER ( $ ( _subsna ), 10 ))
+   IMP ( COL ( 70 ), DER ( $ ( _cred   ), 10 ))
+   IMP ( COL ( 80 ), DER ( $ ( ACUM_ANUAL ( $cve_cred )), 10 ))
+   SI ( ACUM_ANUAL ( $cve_cred ) > 0 )
+      _dif := ( _ispt - _subsa - _cred ) - ( ACUM_ANUAL ( $cve_ispt ) - ACUM_ANUAL ( $cve_cred ))
+   SI_NO
+      _dif := ( _ispt - _subsa - _cred ) - ( ACUM_ANUAL ( $cve_ispt ) + ACUM_ANUAL ( $cve_cred ))
+   FIN_SI
+   IMP ( COL ( 90 ), DER ( $ ( _dif ), 10 ))
+
+   SI ( _dif < 0 )
+      _dif := _dif * -1
+   FIN_SI
+   SI ( _dif <= _ispt_dif )
+      IMP ( COL ( 106 ), 'SI' )
+      SI ( _actualizar )
+         SI ( TRAE_REGISTRO ( 'EMPACUM', 'EMPPRIN':'CLAVE', $cve_suba ) = FALSO )
+            AGREGA_REGISTRO ( 'EMPACUM' )
+            'EMPACUM':'CLAVE'    := 'EMPPRIN':'CLAVE'
+            'EMPACUM':'CONCEPTO' := $cve_suba
+            GRABA_BASE ( 'EMPACUM' )
+         FIN_SI
+         actualiza_acumulado
+         'EMPACUM':'ENE' := _subsa
+         GRABA_BASE ( 'EMPACUM' )
+
+         SI ( TRAE_REGISTRO ( 'EMPACUM', 'EMPPRIN':'CLAVE', $cve_subna ) = FALSO )
+            AGREGA_REGISTRO ( 'EMPACUM' )
+            'EMPACUM':'CLAVE'    := 'EMPPRIN':'CLAVE'
+            'EMPACUM':'CONCEPTO' := $cve_subna
+            GRABA_BASE ( 'EMPACUM' )
+         FIN_SI
+         actualiza_acumulado
+         'EMPACUM':'ENE' := _subsna
+         GRABA_BASE ( 'EMPACUM' )
+      FIN_SI
+   SI_NO
+      IMP ( COL ( 106 ), 'NO' )
+   FIN_SI
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+
+USA_ARCHIVO ( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO' , 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

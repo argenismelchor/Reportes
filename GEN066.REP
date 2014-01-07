@@ -1,0 +1,121 @@
+#VALIDACION DE EMPLEADOS DUPLICADOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.5
+#DESCRIPCION
+#Verifica la duplicación de Empleados , ya sea por Nombre, Afiliación o RFC
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_CHEQ ( 'VIGENTES', '', _vigentes )
+NUEVO_PARAMETRO_FEC  ( 'FECHA INICIAL', '', _fi )
+NUEVO_PARAMETRO_FEC  ( 'FECHA FINAL', '', _ff )
+NUEVO_PARAMETRO_SEL  ( 'TIPO', 'NOMBRE/AFILIACION/RFC', $tipo )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'VALIDACION DE EMPLEADOS DUPLICADOS POR ' + $tipo
+   encabezado_ini
+   IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE', COL(70), 'ESTATUS' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+  pie_estandar
+FIN_PIE
+
+# PARAMETROS
+DECIMALES     := 2
+COLUMNAS      := 85
+RENGLONES     := 65
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+VAR_T ( &empleados )
+_duplicados := 0
+$valor      := ''
+_indice     := 0
+_renglon    := 0
+$empleado   := ''
+_vigente    := 0
+_fecha      := FECHA_HOY
+_fechab     := 0
+
+SUB_RUTINA formato_trabajador
+   $valor := 'EMPPRIN':$tipo
+   SI ( $valor <> '' )
+     _indice := TRAE_INDICE_COL( &empleados, 0, $valor )
+     SI ( _indice < 0 )
+       PON_VALOR_TABLA( &empleados, 0, _renglon, $valor )
+       PON_VALOR_TABLA( &empleados, 1, _renglon, 'EMPPRIN':'CLAVE' )
+       _renglon := _renglon + 1
+     SI_NO
+       $empleado := TRAE_VALOR_TABLA( &empleados, 1, _indice )
+       SI ( TRAE_REGISTRO( 'EMPSDO2', $empleado ) )
+         _vigente := 0
+         _fechab := 0
+         MIENTRAS(( 'EMPSDO2':'CLAVE' = $empleado ) AND ( FIN_BASE( 'EMPSDO2') = FALSO ) AND ( _vigente = 0 ) )
+           SI (( 'EMPSDO2':'FECHA' <= _fecha ) AND ( 'EMPSDO2':'FECHA SALIDA' >= _fecha ))
+             SI ( 'EMPSDO2':'TIPO' <> 'B' )
+               _vigente := 1
+             SI_NO
+               _fechab := 'EMPSDO2':'FECHA'
+             FIN_SI
+           FIN_SI
+           SIGUIENTE_REGISTRO('EMPSDO2')
+         FIN_MIENTRAS
+       FIN_SI
+       IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), SUBSTR( 'EMPPRIN':'NOMBRE', 1, 30 ) )
+       IMP ( COL (45), 'DUPLICADO CON : ', TRAE_VALOR_TABLA( &empleados, 1, _indice ) )
+       SI ( _vigente = 1 )
+         IMP ( COL(70), 'VIGENTE' )
+       SI_NO
+         IMP ( COL(70), 'BAJA' )
+         SI ( _fechab > 0 )
+           IMP ( COL(76), FECHA( _fechab ) )
+         FIN_SI
+       FIN_SI
+       IMPRIME     
+       _duplicados := _duplicados + 1
+     FIN_SI
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+ABRE_BASE2 ( 'EMPSDO', 'EMPSDO2' )
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+
+$campos_extras := 'E. AFILIACION, E. RFC'
+base_trabajadores
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( _vigentes = 0 )
+     datos_trabajador
+   SI_NO
+     SI ( FUE_VIGENTE ( _fi, _ff ) )
+       datos_trabajador
+     FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+IMPRIME IMPRIME
+
+DECIMALES := 0
+IMP ( 'TOTAL DE EMPLEADOS DUPLICADOS : ', .( _duplicados ) )
+IMPRIME
+
+TERMINA_REPORTE

@@ -1,0 +1,133 @@
+#LISTADO DE ENTRENAMIENTO POR EMPLEADO
+#EXCEL
+#USUARIO =*
+#NO EDITAR
+#VERSION 2.5
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'LISTADO DE ENTRENAMIENTO'
+   encabezado_ini
+   IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE', COL(50), 'TURNO', COL(60), 'INGRESO', COL(75), 'CENTRO C'  ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+  pie_estandar
+FIN_PIE
+
+# PARAMETROS
+DECIMALES     := 2
+COLUMNAS      := 85
+RENGLONES     := 65
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+VAR_T ( &excel )
+_col_excel  := 0
+_ren_excel  := 0
+_ren_nombre := 0
+_avance     := 0
+
+PON_VALOR_TABLA( &excel, 0, _ren_nombre, 'CLAVE' )
+PON_VALOR_TABLA( &excel, 1, _ren_nombre, 'NOMBRE' )
+PON_VALOR_TABLA( &excel, 2, _ren_nombre, 'TURNO' )
+PON_VALOR_TABLA( &excel, 3, _ren_nombre, 'INGRESO' )
+PON_VALOR_TABLA( &excel, 4, _ren_nombre, 'CENTRO COSTO' )
+_ren_nombre := 1
+
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   IMP ( COL(50), 'EMPPRIN':'TURNO' )
+   IMP ( COL(60), FECHA( 'EMPPRIN':'INGRESO' ) )
+   IMP ( COL(75), 'EMPPRIN':'DEP_CLAVE' )
+   IMPRIME
+   PON_VALOR_TABLA( &excel, 0, _ren_nombre, 'EMPPRIN':'CLAVE' )
+   PON_VALOR_TABLA( &excel, 1, _ren_nombre, 'EMPPRIN':'NOMBRE' )
+   PON_VALOR_TABLA( &excel, 2, _ren_nombre, 'EMPPRIN':'TURNO' )
+   PON_VALOR_TABLA( &excel, 3, _ren_nombre, FECHA( 'EMPPRIN':'INGRESO' ) )
+   PON_VALOR_TABLA( &excel, 4, _ren_nombre, 'EMPPRIN':'DEP_CLAVE' )
+   _ren_nombre := _ren_nombre + 1
+   
+   PRIMER_REGISTRO( 'EMPENT' )
+   MIENTRAS( FIN_BASE( 'EMPENT' ) = FALSO )
+     SI ( 'EMPENT':'CD_DC' = 'EMPPRIN':'DEP_CLAVE' )
+       IMP ( COL(5), 'EMPENT':'ENTRENAMIENTO' )
+       SI ( 1 = 1 )       
+         _avance := 'EMPENT':'AVANCE'
+         SI ( _avance > VALOR_TABLA( &excel, 'EMPENT':'ENTRENAMIENTO', 'EMPPRIN':'CLAVE' ) )
+           ASIGNA_VALOR_TABLA( &excel, 'EMPENT':'ENTRENAMIENTO', 'EMPPRIN':'CLAVE', _avance )
+         FIN_SI
+       FIN_SI
+       SI ( TRAE_REGISTRO( 'TABENT', 'EMPENT':'ENTRENAMIENTO' ) )
+         IMP ( COL(10), 'TABENT':'DESCRIPCION' )
+       FIN_SI
+       IMP ( COL(45), FECHA( 'EMPENT':'FECHA' ) )
+       IMP ( COL(60), DER( .( 'EMPENT':'AVANCE' ), 10 ) ) 
+       IMPRIME
+     FIN_SI
+     SIGUIENTE_REGISTRO( 'EMPENT' )
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_incluir_dep := 1
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPENT', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+_ren := 1
+_col := 0
+SI ( $salida = 'EXCEL' )
+  EXCEL( 'PON_VALOR', 1, 1, 'CLAVE' )
+  EXCEL( 'PON_VALOR', 2, 1, 'NOMBRE' )
+  EXCEL( 'PON_VALOR', 3, 1, 'TURNO' )
+  EXCEL( 'PON_VALOR', 4, 1, 'INGRESO' )
+  EXCEL( 'PON_VALOR', 5, 1, 'CENTRO COSTO' )
+  _col := 5
+  MIENTRAS( TRAE_VALOR_TABLA ( &excel, _col, 0 ) <> '' )  
+    SI ( TRAE_REGISTRO( 'TABENT', TRAE_VALOR_TABLA ( &excel, _col, 0 ) ) )
+      EXCEL ( 'PON_VALOR', _col + 1, 1, 'TABENT':'DESCRIPCION' )
+    FIN_SI
+    _col := _col + 1
+  FIN_MIENTRAS
+
+  MIENTRAS( TRAE_VALOR_TABLA ( &excel, 0, _ren ) <> '' )
+    EXCEL( 'PON_VALOR', 1, _ren + 1, TRAE_VALOR_TABLA ( &excel, 0, _ren ) )
+    EXCEL( 'PON_VALOR', 2, _ren + 1, TRAE_VALOR_TABLA ( &excel, 1, _ren ) )
+    EXCEL( 'PON_VALOR', 3, _ren + 1, TRAE_VALOR_TABLA ( &excel, 2, _ren ) )
+    EXCEL( 'PON_VALOR', 4, _ren + 1, TRAE_VALOR_TABLA ( &excel, 3, _ren ) )
+    EXCEL( 'PON_VALOR', 5, _ren + 1, TRAE_VALOR_TABLA ( &excel, 4, _ren ) )
+    _col := 5
+    MIENTRAS( TRAE_VALOR_TABLA ( &excel, _col, 0 ) <> '' )  
+      EXCEL ( 'PON_VALOR', _col + 1, _ren + 1, TRAE_VALOR_TABLA ( &excel, _col, _ren ) )
+      _col := _col + 1
+    FIN_MIENTRAS 
+    _ren := _ren + 1
+  FIN_MIENTRAS
+FIN_SI
+
+TERMINA_REPORTE

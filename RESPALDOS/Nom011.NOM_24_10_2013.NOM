@@ -1,0 +1,230 @@
+#POLIZA ESTÁNDAR GIRO
+#NO EDITAR
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra la poliza estandar de los empleados que tuvieron alguna cantidad pagada en el periodo seleccionado.
+#Este reporte imprime la poliza de los indices seleccionados en 3 columnas ( Pecepciones, Deducciones, Conceptos ). 
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_CHEQ( 'PROVISION', '', _prov )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_factor := 1
+_dias   := 0
+
+SI ( _prov = 1 )
+  NUEVO_PARAMETRO  ( 'DIAS', '7', _dias )
+  NUEVO_PARAMETRO  ( 'PROVISION', '7', _prov )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS  
+  DECIMALES := 2
+  _factor := _prov / _dias
+FIN_SI
+
+BORRA_PARAMETROS
+
+_ac := 5      ;; #Ancho de la clave del concepto
+_ad := 20     ;; #Ancho de la descripcion del concepto
+_at := 12     ;; #Ancho del total del concepto
+_sc := 5      ;; #Separacion entre las columnas de percepciones, deducciones y conceptos
+_c1 := 5      ;; #Inicio de la primera columna
+_d1 := _c1 + _ac
+_t1 := _c1 + _ac + _ad - 2
+_c2 := _c1 + _ac + _ad + _at + _sc
+_d2 := _c2 + _ac
+_t2 := _c2 + _ac + _ad - 2
+_c3 := _c2 + _ac + _ad + _at + _sc
+_d3 := _c3 + _ac
+_t3 := _c3 + _ac + _ad - 2
+_per_sel    := 0
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+
+ENCABEZADO
+   DECIMALES := 0
+   SI ( _per_sel = 0 )
+     $titulo_reporte := 'Poliza de Nomina ' + 'TIPONOM':'CLAVE' + ' ' + .('TIPONOM':'ACTUAL') + ' Del '+ FECHA ('PERIODO':'FECHA INICIAL')+ ' al ' + FECHA ('PERIODO':'FECHA FINAL')
+   SI_NO
+     $titulo_reporte := 'Poliza de Nomina ' + 'TIPONOM':'CLAVE' + ' ' + .(_per_sel) + ' Del '+ FECHA ('PERIODO':'FECHA INICIAL')+ ' al ' + FECHA ('PERIODO':'FECHA FINAL')
+   FIN_SI
+   encabezado_ini
+   IMP ( COL (10) , 'P E R C E P C I O N E S' )
+   IMP ( COL (55) , 'D E D U C C I O N E S' )
+   IMP ( COL (96) ,' C O N C E P T O S' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+COLUMNAS      := 130
+RENGLONES     := 65
+
+#Variables Globales
+$tipo_act := ''
+VAR_T ( &kardex )
+VAR_T ( &indices )
+_num_ind := 0
+$indice := ''
+_ren := 0
+_col := 0
+_num := 0
+
+#Subrutina diversas
+
+SUB_RUTINA _imp_tot
+   PRIMER_REGISTRO ( 'NOMINA' ) 
+   MIENTRAS ( FIN_BASE ( 'NOMINA' ) = 0 )
+      SI ( 'NOMINA':'TOTAL' <> 0 )
+         SI  ( TRAE_REGISTRO ( 'CONCEPTO', 'NOMINA':'CLAVE' ))
+            SI ( 'CONCEPTO':'IMPRIMIR' <> 0 )
+               IMP ( 'CONCEPTO':'CLAVE', COL (10), 'CONCEPTO':'DESCRIPCION' )
+               SI ( 'CONCEPTO':'PDC' = 0 ) ;; COL (45) ;; FIN_SI
+               SI ( 'CONCEPTO':'PDC' = 1 ) ;; COL (55) ;; FIN_SI        
+               SI ( 'CONCEPTO':'PDC' = 2 ) ;; COL (65) ;; FIN_SI
+               IMP ( DER ( $ ( 'NOMINA':'TOTAL' ), 10 ))
+               IMPRIME
+            FIN_SI
+         SI_NO
+            IMP ( COL (11), 'DESCONOCIDO' )
+            IMP ( DER ( $ ( 'NOMINA':'TOTAL' ), 10 ))
+            IMPRIME
+         FIN_SI
+      FIN_SI
+      SIGUIENTE_REGISTRO ( 'NOMINA' )
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA provisiona
+  SI ( _factor <> 1 )
+    _ren := 0
+    _col := 5
+    DECIMALES := 2
+    MIENTRAS( TRAE_VALOR_TABLA( &kardex, _col, _ren ) <> '' )
+      _num := VALOR( QUITA_CARACTER( ',', TRAE_VALOR_TABLA( &kardex, _col, _ren ) ) )
+      _num := _num * _factor
+      PON_VALOR_TABLA( &kardex, _col, _ren, DER( $( _num ), 14 ) )
+      _ren := _ren + 1
+    FIN_MIENTRAS
+
+    _ren := 0
+    _col := 11
+    DECIMALES := 2
+    MIENTRAS( TRAE_VALOR_TABLA( &kardex, _col, _ren ) <> '' )
+      _num := VALOR( QUITA_CARACTER( ',', TRAE_VALOR_TABLA( &kardex, _col, _ren ) ) )
+      _num := _num * _factor
+      PON_VALOR_TABLA( &kardex, _col, _ren, DER( $( _num ), 14 ) )
+      _ren := _ren + 1
+    FIN_MIENTRAS
+
+    _ren := 0
+    _col := 17
+    DECIMALES := 2
+    MIENTRAS( TRAE_VALOR_TABLA( &kardex, _col, _ren ) <> '' )
+      _num := VALOR( QUITA_CARACTER( ',', TRAE_VALOR_TABLA( &kardex, _col, _ren ) ) )
+      _num := _num * _factor
+      PON_VALOR_TABLA( &kardex, _col, _ren, DER( $( _num ), 14 ) )
+      _ren := _ren + 1
+    FIN_MIENTRAS
+
+  FIN_SI  
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   DECIMALES := 2
+   #Incremeto de valores para los indices seleccionados
+   _num_ind := 0
+   REPITE
+     ACUMULA_TOTALES ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) )
+     _num_ind := _num_ind + 1
+   HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+   LETRA ( 'LETRA CONDENSADA' )
+   IMPRIME
+   IMP ( COL (45) , 'SubTotales ' , $indice ) ;; IMPRIME
+   IMPRIME
+   DECIMALES:=2
+   USA_KARDEX( $indice )
+   TABULA_KARDEX_NOMINA ( &kardex, 12 )
+   provisiona
+   IMPRIME_TABLA ( &kardex , 5 , 10 , 0 ,0 ,0 , 30 , 50 , 55 , 0 , 0 , 0 , 75 , 0 , 96 , 0 , 0 , 0 , 116 )
+   PON_TOTAL_0
+   USA_KARDEX('GENERAL')
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+_ad := 20     ;; #Ancho de la descripcion del concepto
+_d1 := _c1 + _ac
+_t1 := _c1 + _ac + _ad - 2
+_c2 := _c1 + _ac + _ad + _at + _sc
+_d2 := _c2 + _ac
+_t2 := _c2 + _ac + _ad - 2
+_c3 := _c2 + _ac + _ad + _at + _sc
+_d3 := _c3 + _ac
+_t3 := _c3 + _ac + _ad - 2
+
+COLUMNAS := 130
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+#Creacion de Kardex para los indices seleccionados
+_num_ind := 0
+REPITE
+  CREA_KARDEX ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) )
+  _num_ind := _num_ind + 1
+HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+
+base_trabajadores
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI (( TOTAL ('TOTA') <> 0 ) O ( TOTAL ('PERC') <> 0 ) O ( TOTAL ('DEDU') <> 0 ))
+     datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte
+
+AVANZA_HOJA
+IMPRIME ;; IMPRIME
+IMP ( COL (59) , 'Total Global' ) ;; IMPRIME
+IMP ( COL (59) , '------------' ) ;; IMPRIME
+IMPRIME ;; IMPRIME
+DECIMALES:=2
+LETRA ( 'LETRA CONDENSADA' )
+IMPRIME ;; IMPRIME
+USA_KARDEX('TOTAL')
+TABULA_KARDEX_NOMINA ( &kardex, 12 )
+provisiona
+IMPRIME_TABLA ( &kardex , 5 , 10 , 0 ,0 ,0 , 30 , 50 , 55 , 0 , 0 , 0 , 75 , 0 , 96 , 0 , 0 , 0 , 116 )

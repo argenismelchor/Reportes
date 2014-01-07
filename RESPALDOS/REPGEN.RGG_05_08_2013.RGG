@@ -1,0 +1,189 @@
+#TRABAJADORES VIGENTES
+#VERSION 1.000
+#NO EDITAR
+#EXCEL
+#DESCRIPCION
+#Descripcion no disponible.
+#FIN_DESCRIPCION
+#
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA/EXCEL',$salida)
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','',_fi)
+NUEVO_PARAMETRO_FEC ('FECHA FINAL','',_ff)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( $salida = 'EXCEL' )
+  SALIDA := 'PANTALLA'
+SI_NO
+  SALIDA := $salida
+FIN_SI
+
+INCLUYE REPUTIL.DAT
+
+# CONFIGURACION INICIAL
+FORMATO_PESOS := 2
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+
+DRAFT:='S'
+
+# DEFINICION DE COLUMNAS DE ENCABEZADO
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'AFILIACION'
+_longitud  := 14
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE COMPLETO'
+_longitud  := 50
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'F. INGRESO'
+_longitud  := 12
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SUELDO ACT'
+_longitud  := 10
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TURNO'
+_longitud  := 5
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INT IMSS'
+_longitud  := 10
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SUELDO ACT'
+_longitud  := 10
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'T. NOM'
+_longitud  := 6
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CUENTA DE TARJETA'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'RFC'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TURNO DESCRIPCION'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SUCURSAL'
+_longitud  := 8
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+# DEFINICION TITULO
+_condensado := 0
+$titulo_reporte := 'TRABAJADORES VIGENTES'
+define_encabezado
+
+# SUBRUTINA DE IMPRESION DE DATOS DEL TRABAJADOR
+SUB_RUTINA formato_trabajador
+  $valor := 'EMPPRIN':'CLAVE'
+  imprime_columna
+
+  $valor := FORMATO( 'EMPPRIN':'AFILIACION', 'XXXX-XX-XXXX-X' )
+  imprime_columna
+
+  $valor := 'EMPPRIN':'NOMBRE'
+  imprime_columna
+
+  $valor := FECHA( 'EMPPRIN':'INGRESO' )
+  imprime_columna
+
+  DECIMALES:=2
+  $valor := $( SUELDO_ACTUAL(_fi,_ff) )
+  imprime_columna
+
+  $valor := 'EMPPRIN':'TURNO'
+  imprime_columna
+
+  $valor := $( INT_IMSS_ACTUAL(_fi,_ff) )
+  imprime_columna
+
+  $valor := $( SUELDO_ACTUAL(_fi,_ff) )
+  imprime_columna
+
+  $valor := 'EMPPRIN':'TIPO_NOM'
+  imprime_columna
+
+  $valor := 'EMPPRIN':'CTA_TARJETA'
+  imprime_columna
+
+  $valor := FORMATO( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' )
+  imprime_columna
+
+  SI ( TRAE_REGISTRO( 'TURNO1', 'EMPPRIN':'TURNO' ) )
+    $valor := 'TURNO1':'DESCRIPCION'
+  FIN_SI
+  imprime_columna
+
+  $valor := 'EMPPRIN':'SUCURSAL'
+  imprime_columna
+
+
+  imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 0
+_incluir_pue := 1
+_incluir_dep := 1
+_incluir_suc := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+$campos_extras:='E.AFILIACION, E.TURNO, E.CTA_TARJETA, E.RFC, E.SUCURSAL'
+base_trabajadores
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( FUE_VIGENTE ( _fi, _ff))
+      datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte
+
+$indice := 'TOTAL'
+sub_totales

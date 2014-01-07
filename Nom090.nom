@@ -1,0 +1,135 @@
+#NOMINA BANCRECER
+#VERSION 1.000
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Generación de Archivo ASCII para pago electrónico de nómina con BANCRECER.
+#FIN_DESCRIPCION
+#
+_fi := 0
+_ff := 0
+
+NUEVO_PARAMETRO ( 'ARCHIVO: ' , DIRECTORIO_TRABAJO + '\N1426301.PAG' , $arch )
+NUEVO_PARAMETRO ( 'No. EMPRESA' , '14263' , $noemp )
+NUEVO_PARAMETRO ( 'No. SUCURSAL' , '6930' , $nosuc )
+NUEVO_PARAMETRO ( 'Estado' , '26' , $estado )
+NUEVO_PARAMETRO_FEC ( 'FECHA DE APLICACION' , '' , _ff )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_PESOS := 3
+FORMATO_FECHA := 0
+$salida       := 'DISCO'
+SALIDA        := $salida
+MODO_IMPRESION ('DIRECTO')
+SALIDA_REPORTE ( $arch )
+
+RENGLONES := 65
+COLUMNAS  := 80
+DRAFT     := 'S'
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &indices )
+VAR_A ( _d )
+VAR_A ( _m )
+VAR_A ( _a )
+_num_ind := 0
+$tipo    := ''
+_cont    := 0
+_cont2   := 0
+_imp     := 0
+$indice  := ''
+_total   := 0
+_l       := 0
+_aux1    := 0
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina       := 1
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+# Definicion de variables en base a los parametros
+SALIDA   := $salida
+$ind_act := ''
+$nom_ind := ''
+
+# Definicion de la tabla de indices utilizados
+REPITE
+   $nom_ind := TRAE_VALOR_TABLA ( &in , 2 , _num_ind )
+   $ind_act := TRAE_VALOR_TABLA ( &in , 0 , _num_ind )
+   SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+      AGREGA_VALOR_COL ( &indices , 0 , $nom_ind )
+   FIN_SI
+   _num_ind := _num_ind + 1
+HASTA ( $nom_ind = '' )
+AGREGA_VALOR_COL ( &indices , 0 , 'TOTAL' )
+
+$campos_extras := 'E.CTA_TARJETA, E. RFC'
+base_trabajadores
+
+PRIMER_REGISTRO ('EMPPRIN')
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   SI ( FUE_VIGENTE ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' ) )
+      SI (( VALOR ( 'EMPPRIN':'CTA_TARJETA' ) <> 0 ) AND ( TOTAL ('TOTA') > 0 ))
+         _total := _total + TOTAL ('TOTA')
+         _cont2 := _cont2 + 1
+      FIN_SI 
+  FIN_SI
+  SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+
+_consecutivo := 0
+$rfc := ''
+
+SUB_RUTINA imprime_empleado
+   DECIMALES := 2
+   _consecutivo := _consecutivo + 1
+   $rfc := 'EMPPRIN':'RFC'
+   MIENTRAS ( LONGITUD ( $rfc ) < 13 )
+      $rfc := $rfc + ' '
+   FIN_MIENTRAS
+   IMP ( COL (1 ), 'D' )
+   IMP ( COL (2 ), DER ( 'EMPPRIN':'CLAVE', 8 ))
+   IMP ( COL (10), DER ( 'EMPPRIN':'CTA_TARJETA', 16 ))
+   IMP ( COL (26), DER ( SUBSTR ( . ( TOTAL ( 'TOTA' )), 1, POS ( '.', . ( TOTAL ( 'TOTA' )))-1 )  + SUBSTR ( . ( TOTAL ( 'TOTA' )), POS ( '.', . ( TOTAL ( 'TOTA' ))) + 1, 2 ), 10 ))
+   IMP ( COL (36), '161' )
+   IMP ( COL (39), '1' )
+   IMP ( COL (40), '0000' )
+   IMP ( COL (44), $estado )
+   IMP ( COL (46), '000' )
+   IMP ( COL (49), $rfc )
+   IMPRIME
+FIN_SUB_RUTINA
+
+
+# ---------- Impresión del Encabezado
+DECIMALES := 0
+FORMATO_FECHA := 0
+IMP ( COL ( 1 ) , 'H' )
+IMP ( COL ( 2 ) , 'NE' )
+IMP ( COL ( 4 ) , SUBSTR ( $nosuc, 1, 4 ))
+IMP ( COL ( 8 ) , SUBSTR ( $noemp, 1, 5 ))
+IMP ( COL ( 13) , '01' )
+IMP ( COL ( 15) , SUBSTR ( FECHA (_ff) , 5 , 2 ) , COL (17) , SUBSTR ( FECHA (_ff) , 3 , 2 ), SUBSTR ( FECHA (_ff) , 1 , 2 ))
+DECIMALES := 2
+IMP ( COL ( 21) , DER ( SUBSTR ( . ( _total ), 1, POS ( '.', . ( _total ))-1 ) + SUBSTR ( . ( _total ), POS ( '.', . ( _total )) + 1, 2 ), 12 ))
+DECIMALES := 0
+IMP ( COL ( 33) , DER ( . ( _cont2 ), 6 ))
+IMP ( COL ( 39) , REPITETXT ( ' ', 23 ))
+IMPRIME
+
+# ---------- Detalle de Trabajadores
+PRIMER_REGISTRO ('EMPPRIN')
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+   SI ( FUE_VIGENTE ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' ) )
+      SI (( VALOR ( 'EMPPRIN':'CTA_TARJETA' ) <> 0 ) AND ( TOTAL ('TOTA') > 0 ))
+         imprime_empleado
+      FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+
+#termina_reporte

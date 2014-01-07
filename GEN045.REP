@@ -1,0 +1,455 @@
+#IMPORTACIONES GENERALES
+#VERSION 2.5
+#USUARIO =*
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SEL ( 'TIPO DE FORMATO', 'NUEVO/EXISTENTE', _tipo )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+$salida := 'PANTALLA'
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+
+# VARIABLES GLOBALES
+VAR_T ( &definicion )
+# COLUMNA 1    NOMBRE CAMPO
+# COLUMNA 2    COLUMNA INICIAL
+# COLUMNA 3    LONGITUD
+# COLUMNA 4    FORMATO
+# COLUMNA 5    UTILIZAR
+# COLUMNA 6    TIPO
+
+VAR_T ( &campos )   # CONTIENE UNICAMENTE LOS CAMPOS A UTILIZAR.
+_ind_encabezado  := 0
+_ind_encabezado2 := 0
+$cmp_encabezado  := ''
+$nombre_layout   := ''
+
+ENCABEZADO
+   $titulo_reporte := 'IMPORTACION GENERALES DE TABLA ' + $nombre_layout
+   encabezado_ini
+   _ind_encabezado := 0
+   $cmp_encabezado := TRAE_VALOR_TABLA( &campos, 0, _ind_encabezado )
+   MIENTRAS( $cmp_encabezado <> '' )
+     _ind_encabezado2 := TRAE_INDICE_COL( &definicion, 0, $cmp_encabezado )
+     SI ( TRAE_VALOR_TABLA( &definicion, 4, _ind_encabezado2 ) = 'SI' )
+       SI ( TRAE_VALOR_TABLA( &definicion, 5, _ind_encabezado2 ) = 'CADENA' )
+         IMP ( COL( VALOR( TRAE_VALOR_TABLA( &definicion, 1, _ind_encabezado2 ) ) ), $cmp_encabezado )
+       SI_NO
+         IMP ( COL( VALOR( TRAE_VALOR_TABLA( &definicion, 1, _ind_encabezado2 ) ) ), DER( $cmp_encabezado, VALOR( TRAE_VALOR_TABLA( &definicion, 2, _ind_encabezado2 ) ) ) )
+       FIN_SI
+     FIN_SI
+     _ind_encabezado := _ind_encabezado + 1
+     $cmp_encabezado := TRAE_VALOR_TABLA( &campos, 0, _ind_encabezado )  
+   FIN_MIENTRAS
+   IMPRIME   
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+  pie_estandar
+FIN_PIE
+
+# PARAMETROS
+DECIMALES     := 2
+COLUMNAS      := 80
+RENGLONES     := 65
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+VAR_T ( &layouts    )
+$destino       := ''
+$origen        := ''
+$llaves        := ''
+_ind_campo     := 0
+_ind_lay       := 0
+
+# DEFINICION DEL LAYOUT
+_incluir       := 0
+$campo         := ''
+_col_campo     := 0
+_lon_campo     := 0
+$formato_campo := ''
+$tipo_campo    := ''
+
+# CARGA DE LOS LAYOUTS EXISTENTES
+_grabar_layout    := 0
+$nombre_layout    := ''
+_total_layouts    := 0
+$opciones_layout  := ''
+_modificar_layout := 0
+_sobreescribir    := 0
+_ind_grabar       := 0
+_grabar_datos     := 0
+_existe_registro  := 0
+
+_ind_columna   := 0
+_iaux   := 0
+$saux   := ''
+_max_columna   := 0
+_primer_reg    := 1
+
+$nombre_campo  := ''
+$campo1        := ''
+$campo2        := ''
+$campo3        := ''
+$valor         := ''
+_valor         := 0
+
+_reg_agregados    := 0
+_reg_actualizados := 0
+
+
+_ind_layout    := 1
+DECIMALES      := 0
+$layout        := LEE_INI ( 'LAYOUTS', 'LAYOUT' + .( _ind_layout ), '' )
+MIENTRAS ( $layout <> '' )
+  AGREGA_VALOR_COL( &layouts, 0, $layout )
+  _total_layouts := _total_layouts + 1
+  _ind_layout    := _ind_layout + 1
+  $layout        := LEE_INI ( 'LAYOUTS', 'LAYOUT' + .( _ind_layout ), '' )
+FIN_MIENTRAS
+
+SUB_RUTINA carga_layout
+  $origen  := LEE_INI ( 'LAYOUT_' + $nombre_layout, 'ARCHIVO', '' )
+  $destino := LEE_INI ( 'LAYOUT_' + $nombre_layout, 'TABLA', '' )
+  _ind_campo    := 0
+  $campo := LEE_INI ( 'LAYOUT_' + $nombre_layout, 'CAMPO_' + .( _ind_campo + 1 ), '' )
+  MIENTRAS( $campo <> '' )
+    _ind_lay := TRAE_INDICE_COL( &definicion, 0, $campo )
+    SI ( _ind_lay >= 0 )
+      PON_VALOR_TABLA( &definicion, 1, _ind_lay, LEE_INI( 'LAYOUT_' + $nombre_layout, 'INICIO_' + .( _ind_campo + 1 ), '0' ) )
+      PON_VALOR_TABLA( &definicion, 2, _ind_lay, LEE_INI( 'LAYOUT_' + $nombre_layout, 'LONGITUD_' + .( _ind_campo + 1 ), '0' ) )
+      PON_VALOR_TABLA( &definicion, 3, _ind_lay, LEE_INI( 'LAYOUT_' + $nombre_layout, 'FORMATO_' + .( _ind_campo + 1 ), '' ) )
+      PON_VALOR_TABLA( &definicion, 4, _ind_lay, 'SI' )
+      PON_VALOR_TABLA( &definicion, 5, _ind_lay, LEE_INI( 'LAYOUT_' + $nombre_layout, 'TIPO_' + .( _ind_campo + 1 ), 'CADENA' ) )
+    FIN_SI
+    _ind_campo    := _ind_campo + 1
+    $campo := LEE_INI ( 'LAYOUT_' + $nombre_layout, 'CAMPO_' + .( _ind_campo + 1 ), '' )
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA inicializa_layout
+  ABRE_BASE( $destino )
+  _ind_campo    := 0
+  MIENTRAS( NOMBRE_CAMPO( $destino, _ind_campo ) <> '' )
+    PON_VALOR_TABLA( &definicion, 0, _ind_campo, NOMBRE_CAMPO( $destino, _ind_campo ) )
+    PON_VALOR_TABLA( &definicion, 1, _ind_campo, '0'  )
+    PON_VALOR_TABLA( &definicion, 2, _ind_campo, '0'  )
+    PON_VALOR_TABLA( &definicion, 3, _ind_campo, ''   )
+    PON_VALOR_TABLA( &definicion, 4, _ind_campo, 'NO' )
+    PON_VALOR_TABLA( &definicion, 5, _ind_campo, 'CADENA' )
+    _ind_campo := _ind_campo + 1      
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA graba_layout
+  DECIMALES := 0
+  ESCRIBE_INI ( 'LAYOUT_' + $nombre_layout, 'TABLA', $destino )
+  ESCRIBE_INI ( 'LAYOUT_' + $nombre_layout, 'ARCHIVO', $origen )
+  ESCRIBE_INI ( 'LAYOUT_' + $nombre_layout, 'LLAVES', $llaves )
+  _ind_campo    := 0
+  _ind_grabar   := 1
+  $campo := TRAE_VALOR_TABLA( &definicion, 0, _ind_campo )
+  MIENTRAS( $campo <> '' )
+    SI ( TRAE_VALOR_TABLA( &definicion, 4, _ind_campo ) = 'SI' )
+      ESCRIBE_INI( 'LAYOUT_' + $nombre_layout, 'CAMPO_' + .( _ind_grabar ), $campo )
+      ESCRIBE_INI( 'LAYOUT_' + $nombre_layout, 'INICIO_' + .( _ind_grabar ), TRAE_VALOR_TABLA( &definicion, 1, _ind_campo ) )
+      ESCRIBE_INI( 'LAYOUT_' + $nombre_layout, 'LONGITUD_' + .( _ind_grabar ), TRAE_VALOR_TABLA( &definicion, 2, _ind_campo ) )
+      ESCRIBE_INI( 'LAYOUT_' + $nombre_layout, 'FORMATO_' + .( _ind_grabar ), TRAE_VALOR_TABLA( &definicion, 3, _ind_campo ) )
+      ESCRIBE_INI( 'LAYOUT_' + $nombre_layout, 'TIPO_' + .( _ind_grabar ), TRAE_VALOR_TABLA( &definicion, 5, _ind_campo ) )
+      _ind_grabar := _ind_grabar + 1
+    FIN_SI
+    _ind_campo    := _ind_campo + 1
+    $campo := TRAE_VALOR_TABLA( &definicion, 0, _ind_campo )
+  FIN_MIENTRAS
+  ESCRIBE_INI( 'LAYOUT_' + $nombre_layout, 'CAMPO_' + .( _ind_campo + 1 ), 'FIN' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA define_layout
+  NUEVO_PARAMETRO  ( 'NUMERO DE LLAVES', $llaves, $llaves )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+  _ind_campo    := 0
+  $campo := TRAE_VALOR_TABLA( &definicion, 0, _ind_campo )
+  MIENTRAS( $campo <> '' )
+     NUEVO_PARAMETRO_CHEQ  ( $campo, 'INCLUIR', _incluir )
+     NUEVO_PARAMETRO       ( 'COLUMNA INICIAL', TRAE_VALOR_TABLA( &definicion, 1, _ind_campo ), _col_campo )
+     NUEVO_PARAMETRO       ( 'LONGUITUD', TRAE_VALOR_TABLA( &definicion, 2, _ind_campo ), _lon_campo )
+     NUEVO_PARAMETRO       ( 'FORMATO CAMPO', TRAE_VALOR_TABLA( &definicion, 3, _ind_campo ), $formato_campo )
+     SI ( TRAE_VALOR_TABLA( &definicion, 5, _ind_campo ) = 'CADENA' )
+       NUEVO_PARAMETRO_SEL ( 'TIPO', 'CADENA/NUMERO/FECHA', $tipo_campo )
+     FIN_SI
+     SI ( TRAE_VALOR_TABLA( &definicion, 5, _ind_campo ) = 'NUMERO' )
+       NUEVO_PARAMETRO_SEL ( 'TIPO', 'NUMERO/CADENA/FECHA', $tipo_campo )
+     FIN_SI
+     SI ( TRAE_VALOR_TABLA( &definicion, 5, _ind_campo ) = 'FECHA' )
+       NUEVO_PARAMETRO_SEL ( 'TIPO', 'FECHA/NUMERO/CADENA', $tipo_campo )
+     FIN_SI
+     LEE_PARAMETROS
+     BORRA_PARAMETROS      
+     PON_VALOR_TABLA( &definicion, 1, _ind_campo, .( _col_campo ) )
+     PON_VALOR_TABLA( &definicion, 2, _ind_campo, .( _lon_campo ) )
+     PON_VALOR_TABLA( &definicion, 3, _ind_campo, $formato_campo )
+     PON_VALOR_TABLA( &definicion, 5, _ind_campo, $tipo_campo )
+     SI ( _incluir = 1 )
+       PON_VALOR_TABLA( &definicion, 4, _ind_campo, 'SI' )
+     SI_NO
+       PON_VALOR_TABLA( &definicion, 4, _ind_campo, 'NO' )
+     FIN_SI
+     _ind_campo := _ind_campo + 1
+     $campo := TRAE_VALOR_TABLA( &definicion, 0, _ind_campo )
+  FIN_MIENTRAS
+
+  REPITE
+    NUEVO_PARAMETRO  ( 'ARCHIVO ORIGEN', $origen, $origen )
+    LEE_PARAMETROS
+    BORRA_PARAMETROS
+    SI ( EXISTE_ARCHIVO( $origen ) = FALSO )
+      MENSAJE( 'EL ARCHIVO ' + $origen + ' NO EXISTE EN EL PATH SELECCIONADO.' )
+    FIN_SI
+  HASTA ( EXISTE_ARCHIVO( $origen ) )
+
+  NUEVO_PARAMETRO_CHEQ ( 'GRABAR LAYOUT', '', _grabar_layout )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS      
+  SI ( _grabar_layout = 1 )
+    REPITE
+      _sobreescribir := 0
+      NUEVO_PARAMETRO ( 'NOMBRE LAYOUT', $nombre_layout, $nombre_layout )
+      LEE_PARAMETROS
+      BORRA_PARAMETROS
+      SI ( TRAE_INDICE_COL( &layouts, 0, $nombre_layout ) >= 0 )
+        SI ( PREGUNTA( 'YA EXISTE UN LAYOUT CON ESE NOMBRE. SOBREESCRIBIR?' ) )
+          _sobreescribir := 1
+        SI_NO
+          _sobreescribir := 0
+        FIN_SI
+      SI_NO
+        _sobreescribir := 1
+      FIN_SI
+    HASTA( _sobreescribir > 0 )
+    SI (( _tipo = 0 ) AND ( _sobreescribir = 1 ))
+      _total_layouts := _total_layouts + 1
+      DECIMALES := 0
+      ESCRIBE_INI( 'LAYOUTS', 'LAYOUT' + .( _total_layouts ), $nombre_layout )
+    FIN_SI
+    graba_layout
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA define_archivo_origen
+  CREA_BASE_TXT ( 'ORIGEN', $origen, 'FIJO' )
+  _ind_campo    := 0
+  $campo := TRAE_VALOR_TABLA( &definicion, 0, _ind_campo )
+  MIENTRAS( $campo <> '' )
+    SI ( TRAE_VALOR_TABLA( &definicion, 4, _ind_campo ) = 'SI' )
+      DEFINE_CAMPO_TXT ( 'ORIGEN', $campo, VALOR( TRAE_VALOR_TABLA( &definicion, 1, _ind_campo ) ), VALOR( TRAE_VALOR_TABLA( &definicion, 2, _ind_campo ) ) )
+      AGREGA_VALOR_COL( &campos, 0, $campo )
+    FIN_SI
+    _ind_campo    := _ind_campo + 1
+    $campo := TRAE_VALOR_TABLA( &definicion, 0, _ind_campo )
+  FIN_MIENTRAS 
+  ABRE_BASE_TXT ( 'ORIGEN', 'EDICION' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA checa_llave
+  _existe_registro := 0
+  SI ( VALOR( $llaves ) = 1 )
+    $campo1 := TRAE_VALOR_TABLA( &campos, 0, 0 )
+    SI ( TRAE_REGISTRO( $destino, 'ORIGEN':$campo1 ) )
+      _existe_registro := 1
+    FIN_SI
+  FIN_SI
+  SI ( VALOR( $llaves ) = 2 )
+    $campo1 := TRAE_VALOR_TABLA( &campos, 0, 0 )
+    $campo2 := TRAE_VALOR_TABLA( &campos, 0, 1 )
+    SI ( TRAE_REGISTRO( $destino, 'ORIGEN':$campo1, 'ORIGEN':$campo2 ) )
+      _existe_registro := 1
+    FIN_SI
+  FIN_SI
+  SI ( VALOR( $llaves ) = 3 )
+    $campo1 := TRAE_VALOR_TABLA( &campos, 0, 0 )
+    $campo2 := TRAE_VALOR_TABLA( &campos, 0, 1 )
+    $campo3 := TRAE_VALOR_TABLA( &campos, 0, 2 )
+    SI ( TRAE_REGISTRO( $destino, 'ORIGEN':$campo1, 'ORIGEN':$campo2, 'ORIGEN':$campo3 ) )
+      _existe_registro := 1
+    FIN_SI
+  FIN_SI
+  SI ( _existe_registro = 0 )
+    AGREGA_REGISTRO( $destino )
+    SI ( VALOR( $llaves ) = 1 )
+      $destino:$campo1 := 'ORIGEN':$campo1
+    FIN_SI
+    SI ( VALOR( $llaves ) = 2 )
+      $destino:$campo1 := 'ORIGEN':$campo1
+      $destino:$campo2 := 'ORIGEN':$campo2
+    FIN_SI
+    SI ( VALOR( $llaves ) = 3 )
+      $destino:$campo1 := 'ORIGEN':$campo1
+      $destino:$campo2 := 'ORIGEN':$campo2
+      $destino:$campo3 := 'ORIGEN':$campo3
+    FIN_SI
+    _reg_agregados := _reg_agregados + 1
+  SI_NO
+    _reg_actualizados := _reg_actualizados + 1
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_valor
+  $valor := 'ORIGEN':$nombre_campo
+  MIENTRAS (( SUBSTR( $valor, LONGITUD( $valor ), 1 ) < '0' ) AND ( LONGITUD( $valor ) > 0 ))
+    $valor := ELIMINA( $valor, LONGITUD( $valor ), 1 )
+  FIN_MIENTRAS
+  MIENTRAS ( ( ( SUBSTR( $valor, 1, 1 ) = ' ' ) OR ( SUBSTR( $valor, 1, 1 ) = '' ) ) AND ( LONGITUD( $valor ) > 0 ) )
+    $valor := ELIMINA( $valor, 1, 1 )
+  FIN_MIENTRAS
+  SI ( $tipo_campo = 'NUMERO' )
+    MIENTRAS( POS( ',', $valor ) > 0 )
+      $valor := ELIMINA( $valor, POS( ',', $valor ), 1 )
+    FIN_MIENTRAS
+    DECIMALES := 2
+    $valor := .( VALOR( $valor ) )
+  FIN_SI
+  SI ( $tipo_campo = 'FECHA' )
+    $valor := $valor
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_campo
+  $nombre_campo := $campo
+  carga_valor
+  $destino:$campo := $valor
+FIN_SUB_RUTINA
+
+SUB_RUTINA checa_registro
+  SI ( _grabar_datos = 1 )
+    checa_llave   
+  FIN_SI
+  _ind_columna   := 0
+  $campo := TRAE_VALOR_TABLA( &campos, 0, _ind_columna )
+  MIENTRAS( $campo <> '' )
+    _ind_campo := TRAE_INDICE_COL( &definicion, 0, $campo )
+    SI ( TRAE_VALOR_TABLA( &definicion, 4, _ind_campo ) = 'SI' )
+      $formato_campo := TRAE_VALOR_TABLA( &definicion, 3, _ind_campo )
+      $tipo_campo := TRAE_VALOR_TABLA( &definicion, 5, _ind_campo )
+      _lon_campo := VALOR( TRAE_VALOR_TABLA( &definicion, 2, _ind_campo ) )
+      SI ( TRAE_VALOR_TABLA( &definicion, 5, _ind_campo ) = 'CADENA' )
+        IMP ( COL( VALOR( TRAE_VALOR_TABLA( &definicion, 1, _ind_campo ) ) ), 'ORIGEN':$campo )
+      SI_NO
+        DECIMALES := 2
+        IMP ( COL( VALOR( TRAE_VALOR_TABLA( &definicion, 1, _ind_campo ) ) ), DER( 'ORIGEN':$campo, VALOR( TRAE_VALOR_TABLA( &definicion, 2, _ind_campo ) ) ) )
+      FIN_SI
+      SI ( _primer_reg = 1 )
+        SI ( VALOR( TRAE_VALOR_TABLA( &definicion, 1, _ind_campo ) ) >= _max_columna )
+          _max_columna := VALOR( TRAE_VALOR_TABLA( &definicion, 1, _ind_campo ) )
+          _max_columna := _max_columna + VALOR( TRAE_VALOR_TABLA( &definicion, 2, _ind_campo ) )
+        FIN_SI
+      FIN_SI
+      SI ( _grabar_datos = 1 )
+        carga_campo
+      FIN_SI
+    FIN_SI
+    _ind_columna := _ind_columna + 1
+    $campo := TRAE_VALOR_TABLA( &campos, 0, _ind_columna )
+  FIN_MIENTRAS
+  SI ( _primer_reg = 1 )
+    SI ( _max_columna < 80 )
+      _max_columna := 80
+    FIN_SI
+    COLUMNAS := _max_columna
+  FIN_SI
+  IMPRIME
+  GRABA_BASE( $destino )
+  _primer_reg := 0
+FIN_SUB_RUTINA
+
+SUB_RUTINA importa_archivo
+  SI ( _modificar_layout = 0 )
+    REPITE
+      NUEVO_PARAMETRO  ( 'ARCHIVO ORIGEN', $origen, $origen )
+      LEE_PARAMETROS
+      BORRA_PARAMETROS
+      SI ( EXISTE_ARCHIVO( $origen ) = FALSO )
+        MENSAJE( 'EL ARCHIVO ' + $origen + ' NO EXISTE EN EL PATH SELECCIONADO.' )
+      FIN_SI
+    HASTA ( EXISTE_ARCHIVO( $origen ) )    
+  FIN_SI
+  NUEVO_PARAMETRO_CHEQ  ( 'GRABAR DATOS', '', _grabar_datos )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+
+  define_archivo_origen
+  PRIMER_REGISTRO( 'ORIGEN' )
+  MIENTRAS( FIN_BASE( 'ORIGEN' ) = FALSO )
+    $nombre_campo := TRAE_VALOR_TABLA( &campos, 0, 0 )
+    carga_valor
+    SI ( $valor <> '' )
+      checa_registro
+    FIN_SI
+    SIGUIENTE_REGISTRO( 'ORIGEN' )
+  FIN_MIENTRAS
+  IMPRIME
+  IMP ( 'ESTATUS DE LA IMPORTACION' ) IMPRIME
+  DECIMALES := 0
+  IMP ( 'REGISTROS AGREGADOS    : ', _reg_agregados    ) IMPRIME
+  IMP ( 'REGISTROS ACTUALIZADOS : ', _reg_actualizados ) IMPRIME
+FIN_SUB_RUTINA
+
+SI ( _tipo = 0 )
+  #NUEVO LAYOUT
+  NUEVO_PARAMETRO  ( 'TABLA DESTINO', '', $destino )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+  
+  SI ( EXISTE_ARCHIVO( DIRECTORIO_TRABAJO + '\' + $destino + '.DB' ) )
+    inicializa_layout
+    define_layout
+    importa_archivo
+  SI_NO
+    MENSAJE( 'EL ARCHIVO ' + $destino + ' NO EXISTE EN EL DIRECTORIO DE TRABAJO' )
+  FIN_SI
+SI_NO
+  SI ( _total_layouts > 0 )
+    _ind_layout := 0
+    $opciones_layout := ''
+    $nombre_layout := TRAE_VALOR_TABLA( &layouts, 0, _ind_layout )
+    MIENTRAS( $nombre_layout <> '' )
+      $opciones_layout := $opciones_layout + $nombre_layout + '/'
+      _ind_layout := _ind_layout + 1
+      $nombre_layout := TRAE_VALOR_TABLA( &layouts, 0, _ind_layout )
+    FIN_MIENTRAS
+    SI ( SUBSTR( $opciones_layout, LONGITUD( $opciones_layout ), 1 ) = '/' )
+      $opciones_layout := ELIMINA( $opciones_layout, LONGITUD( $opciones_layout ), 1 )
+    FIN_SI
+
+    NUEVO_PARAMETRO_SEL  ( 'NOMBRE LAYOUT', $opciones_layout, $nombre_layout )
+    LEE_PARAMETROS
+    BORRA_PARAMETROS
+    
+    $destino := LEE_INI ( 'LAYOUT_' + $nombre_layout, 'TABLA', '' )
+    $llaves  := LEE_INI ( 'LAYOUT_' + $nombre_layout, 'LLAVES', '1' )
+    inicializa_layout
+    carga_layout
+
+    NUEVO_PARAMETRO_CHEQ  ( 'MODIFICAR LAYOUT', '', _modificar_layout )
+    LEE_PARAMETROS
+    BORRA_PARAMETROS
+
+    SI ( _modificar_layout = 1 )
+      define_layout
+    FIN_SI
+    importa_archivo
+
+  SI_NO
+    MENSAJE( 'NO HAY LAYOUTS DEFINIDOS ACTUALMENTE' )
+  FIN_SI
+FIN_SI
+
+TERMINA_REPORTE

@@ -1,0 +1,63 @@
+#CATALOGO DE SALARIOS MINIMOS
+#NO EDITAR
+#USUARIO =*
+#DESCRIPCION
+#Este reporte imprime los salarios minimos. Puede seleccionar una fecha para que imprima el registro vigente o seleccionar todos los registros
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+NUEVO_PARAMETRO_FEC ('FECHA','', _fecha )
+NUEVO_PARAMETRO_CHEQ('TODOS', '', _todos )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 3
+SALIDA        := $salida
+COLUMNAS      := 82
+RENGLONES     := 65
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO   
+   SI ( _todos = 0 )
+     $titulo_reporte := 'SALARIO MINIMO VIGENTE AL ' + FECHA( _fecha  )
+   SI_NO
+     $titulo_reporte := 'SALARIOS MINIMOS'
+   FIN_SI
+   encabezado_ini
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+SUB_RUTINA imprime_registro
+    IMP ( COL(1), 'FECHA : ', FECHA ( 'MINIMO':'FECHA' ) ) ;; IMPRIME
+    IMPRIME
+    IMP ( COL(5), 'MINIMO A       : ', DER( $( 'MINIMO':'MINIMO A' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'MINIMO B       : ', DER( $( 'MINIMO':'MINIMO B' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'MINIMO C       : ', DER( $( 'MINIMO':'MINIMO C' ), 10 ) ) ;; IMPRIME
+    IMPRIME
+    IMP ( COL(5), 'TOPE EG        : ', DER( $( 'MINIMO':'TOPE EG' ), 10 ) ) ;; IMPRIME  
+    IMP ( COL(5), 'TOPE IVCM      : ', DER( $( 'MINIMO':'TOPE IVCM' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'TOPE RT        : ', DER( $( 'MINIMO':'TOPE RT' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'TOPE INFONAVIT : ', DER( $( 'MINIMO':'TOPE INFONAVIT' ), 10 ) ) ;; IMPRIME
+    IMPRIME
+    IMPRIME
+FIN_SUB_RUTINA
+
+IMPRIME
+IMPRIME
+FORMATO_FECHA := 3
+DECIMALES := 2
+SI ( _todos = 0 )
+  SI ( TRAE_REGISTRO_VIG( 'MINIMO', _fecha ) )    
+    imprime_registro
+  FIN_SI
+SI_NO
+  ABRE_BASE( 'MINIMO' )
+  PRIMER_REGISTRO( 'MINIMO' )
+  MIENTRAS( FIN_BASE( 'MINIMO' ) = FALSO )
+    imprime_registro
+    SIGUIENTE_REGISTRO( 'MINIMO' )
+  FIN_MIENTRAS
+FIN_SI

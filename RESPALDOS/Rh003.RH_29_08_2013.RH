@@ -1,0 +1,89 @@
+#TRABAJADORES VIGENTES CON FOTO
+#VERSION 2.500
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra los trabajadores vigentes de la empresa.
+#Este reporte pide fecha inicial y final y permite mostrar la foto del empleado.
+#Este reporte imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC  ( 'FECHA INICIAL' , '' , _fi ) 
+NUEVO_PARAMETRO_FEC  ( 'FECHA FINAL' , '' , _ff )
+NUEVO_PARAMETRO_CHEQ ( 'FOTOGRAFIA' , '' , _fotografia )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+VAR_N (_espacio)
+MODO_IMPRESION ( 'GRAFICO' )
+TAMAÑO_HOJA( 2700, 2100 )
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'Trabajadores Vigentes Del ' + FECHA (_fi) + ' al ' + FECHA (_ff)
+   encabezado_ini
+   SI ( _espacio = 0 )
+      IMP ( COL (1) , 'FOTO' ) ;; IMPRIME
+   FIN_SI
+   SI ( CD_DC = 0 )
+      IMP ( COL (9-_espacio) , 'Clave' , COL (18-_espacio) , 'Nombre' , COL (50) , DER ( 'SUCURSAL' , 10 ) , COL (60) , DER ( 'DEPTO' , 10 ) , COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   SI_NO
+      IMP ( COL (9-_espacio) , 'Clave' , COL (18-_espacio) , 'Nombre' , COL (50) , DER ( 'SUCURSAL' , 10 ) , COL (60) , DER ( 'C.C.' , 10 ) , COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   FIN_SI
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+
+#Variables Globales
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+  IMP ( COL (9-_espacio) , 'EMPPRIN':'CLAVE' , COL (18-_espacio) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 30 ) )
+  IMP ( COL (50) , DER ( 'EMPPRIN':'SUC_CLAVE' , 10 ) , COL (60) , DER ( 'EMPPRIN':'DEP_CLAVE' , 10 ) , COL (70) , DER ( 'EMPPRIN':'PUE_CLAVE' , 10 ) )
+  IMPRIME
+  SI ( _fotografia = 1 )
+     SI ( 'EMPPRIN':'FOTO' <> '' )
+       SI ( EXISTE_ARCHIVO( 'EMPRESA':'PATH FOTOS' + '\' + 'EMPPRIN':'FOTO' ) )
+          IMPRIME_IMAGEN ( 'EMPPRIN':'FOTO' , 40 , Y_ACTUAL - 20 , 100 , 100 )
+       FIN_SI
+     FIN_SI    
+     VE_Y ( Y_ACTUAL + 100 )
+  FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+SALIDA := $salida
+SI ( _fotografia = 0 )
+   _espacio := 8
+SI_NO
+   _espacio := 0
+FIN_SI
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+$campos_extras := 'E. FOTO'
+base_trabajadores
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE ( _fi , _ff ) )
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte

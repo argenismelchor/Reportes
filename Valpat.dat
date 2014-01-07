@@ -1,0 +1,27 @@
+#DESCRIPCION
+#Esta utileria valida los registros patronales con la finalidad de evitar que selecciona mas de un registro.
+#FIN_DESCRIPCION
+$registros := TRAE_VALOR_TABLA( &in, 11, 0 )
+ABRE_BASE( 'PATRONAL' )
+SI ( $salida = 'DISCO' )
+  SI ( $registros = '' )
+    SI ( TOTAL_REGISTROS( 'PATRONAL' ) = 1 )
+      PRIMER_REGISTRO( 'PATRONAL' )
+    SI_NO
+      MENSAJE( 'NO PUEDE SELECCIONAR TODOS LOS REGISTROS PATRONALES CUANDO TIENE MAS DE 1.' )
+      TERMINA_REPORTE
+    FIN_SI
+  SI_NO
+    SI ( POS(',', $registros) > 0 )
+      MENSAJE( 'DEBE SELECCIONAR SOLO 1 REGISTRO PATRONAL' )
+      TERMINA_REPORTE
+    SI_NO
+      $registros := ELIMINA( $registros, 1, 1 )
+      $registros := ELIMINA( $registros, LONGITUD($registros), 1 )
+      SI ( TRAE_REGISTRO( 'PATRONAL', $registros ) = FALSO )
+        MENSAJE( 'EL REGISTRO PATRONAL SELECCIONADO NO EXISTE...' )
+        TERMINA_REPORTE
+      FIN_SI
+    FIN_SI
+  FIN_SI
+FIN_SI

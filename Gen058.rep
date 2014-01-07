@@ -1,0 +1,77 @@
+#ASIGNACION DE FOTOS
+#VERSION 1.0
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este Reporte permite asignar las fotografías a los empleados de manera automática.
+#El archivo de fotografía ya deberá existir en el directorio correspondiente y deberá tener como nombre la clave de cada empleado.
+#Mediante el parámetro ajustar permite ajustar los nombres de las fotos 5 espacios a la derecha (Caracter de relleno=0)
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_FEC ( 'FECHA VIG.', '', _fecha )
+NUEVO_PARAMETRO_SEL ( 'EXT. FOTOS', 'BMP/JPG', $ext )
+NUEVO_PARAMETRO_CHEQ( 'AJUSTAR', '', _ajustar )
+NUEVO_PARAMETRO_CHEQ( 'GRABAR', '', _grabar )
+LEE_PARAMETROS
+
+_longitud := 5
+$relleno := '0'
+SI ( _ajustar = 1 )
+  BORRA_PARAMETROS  
+  NUEVO_PARAMETRO ( 'LONGITUD CLAVES', '5', _longitud )
+  NUEVO_PARAMETRO ( 'RELLENO', '0', $relleno )  
+  LEE_PARAMETROS
+FIN_SI
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+$foto := ''
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'ASIGNACION DE FOTOS' )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( 'CLAVE', COL(10), 'NOMBRE', COL(60), 'FOTO' ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+SUB_RUTINA formato_trabajador
+   $foto := 'EMPPRIN':'CLAVE'
+   SI ( _ajustar = 1 )
+     RELLENO := $relleno
+     $foto := DER( $foto, _longitud )
+   FIN_SI
+   $foto := $foto + '.' + $ext
+   SI ( _grabar = 1 )
+     'EMPPRIN':'FOTO' := $foto
+     GRABA_BASE( 'EMPPRIN' )
+   FIN_SI   
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN', COL(60), $foto )
+   IMPRIME
+FIN_SUB_RUTINA
+
+ABRE_BASE( 'EMPPRIN' )
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE( _fecha ) )   
+     formato_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+TERMINA_REPORTE

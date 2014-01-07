@@ -1,0 +1,57 @@
+#AJUSTE DE MOVIMIENTOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 1.0
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+_baja  := 0
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   IMPRIME
+
+   PRIMER_REGISTRO ( 'EMPSDO' )
+   SI ( 'EMPSDO':'TIPO' <> 'A' )
+     'EMPSDO':'TIPO' := 'A'
+     GRABA_BASE( 'EMPSDO' )
+   FIN_SI
+   MIENTRAS( FIN_BASE( 'EMPSDO' ) = FALSO )
+     SI ( _baja = 1 )
+       SI ( 'EMPSDO':'TIPO' = 'M' )
+         'EMPSDO':'TIPO' := 'R'
+         GRABA_BASE( 'EMPSDO' )
+       FIN_SI
+     FIN_SI
+     SI ( 'EMPSDO':'TIPO' = 'B' )
+       _baja := 1
+     SI_NO
+       _baja := 0
+     FIN_SI
+     SIGUIENTE_REGISTRO( 'EMPSDO' )
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MUESTRA_AVANCE( 'EMPPRIN', 'AVANCE' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

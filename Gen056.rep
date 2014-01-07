@@ -1,0 +1,99 @@
+#TRABAJADORES DOBLE TOTA EN 0
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra los trabajadores vigentes de la empresa.
+#Este reporte imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal, de los sueldos permite imprimir los 5 sueldos.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+ENCABEZADO   
+   IMPRIME 
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+   IMP ( CENTRA ('DEPURACION DE TOTA') ) ;; IMPRIME
+   IMP ( REPITETXT('=',80));; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(60), DER('TOTAL', 10) );; IMPRIME
+   IMP ( REPITETXT('-',80) );; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME 
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+#Variables Globales
+_aux1  := 0
+$aux1  := ''
+_tot   := 0
+_total := 0
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+  DECIMALES := 2
+  IMP('EMPPRIN':'CLAVE', COL(10), 'EMPPRIN':'NOMBRE' )
+  IMP ( COL(60), DER( $( _total ), 10) )
+  IMPRIME
+  _tot := _tot + _total
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+base_trabajadores
+
+_eliminado := 0
+PRIMER_REGISTRO( 'EMPPRIN' )
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   _eliminado := 0
+   _total := TOTAL('TOTA')
+   SI ( TRAE_REGISTRO( 'NOMINA', 'TOTA' ) )
+     MIENTRAS(( 'NOMINA':'CLAVE' = 'TOTA' ) AND ( FIN_BASE('NOMINA') = FALSO ))
+       SI ( 'NOMINA':'TOTAL' = 0 )
+         BORRA_REGISTRO( 'NOMINA' )
+         _eliminado := 1
+       FIN_SI      
+       SIGUIENTE_REGISTRO('NOMINA')
+     FIN_MIENTRAS
+     SI ( _eliminado = 1 )
+       GRABA_BASE('EMPNOM')
+       datos_trabajador
+     FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+
+DECIMALES := 2
+IMPRIME
+IMP ( 'TOTAL GENERAL : ', $( _tot ) ) ;; IMPRIME
+
+TERMINA_REPORTE
+

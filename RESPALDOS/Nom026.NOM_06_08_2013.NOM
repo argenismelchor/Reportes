@@ -1,0 +1,415 @@
+#ACUMULADOS POR MES ( TODOS )
+#VERSION 2.000
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra los acumulados de los trabajadores vigentes de la empresa, este reporte permite filtrar la informacion en base al registro patronal, la sucursal, el centro de costo,
+#el departamento, el puesto, el tipo de empleado. Este reporte permite elegir los indices a considerar y si lo desea puede
+#alterar el orden del los mismos.
+#ADVERTENCIA : ESTE REPORTE DEBE IMPRIMIRSE CON HOJA ANCHA U HOJA GRANDE, PUES ESTÁ DEFINIDO PARA PAPEL MAYOR A TAMAÑO CARTA.
+#FIN_DESCRIPCION
+
+RENGLONES := 65
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO      ( 'CONCEPTO(S)' , '*' , $conceptos )
+NUEVO_PARAMETRO_FEC  ( 'F.Inicio' , '' , _fi )
+NUEVO_PARAMETRO_FEC  ( 'F.Final'  , '' , _ff )
+NUEVO_PARAMETRO_CHEQ ( 'SOLO TOTALES' , '' , _solot )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( $salida = 'DISCO' )
+   SALIDA_REPORTE ( DIRECTORIO_TRABAJO + '\SALIDA.TXT' )
+   MODO_IMPRESION ( 'DIRECTO' )
+FIN_SI
+
+VAR_A ( _nom )
+_dec   := 13
+_col   := 0
+_mes1  := 0 ;; _mes2 := 0 ;; _mes3 := 0 ;; _mes4 := 0  ;; _mes5 := 0  ;; _mes6 := 0
+_mes7  := 0 ;; _mes8 := 0 ;; _mes9 := 0 ;; _mes10 := 0 ;; _mes11 := 0 ;; _mes12 := 0
+_mes13 := 0
+
+NUEVO_PARAMETRO_CHEQ ( 'MESES' , 'ENE' , _mes1 )
+NUEVO_PARAMETRO_CHEQ ( '' , 'FEB' , _mes2 )
+NUEVO_PARAMETRO_CHEQ ( '' , 'MAR' , _mes3 )
+NUEVO_PARAMETRO_CHEQ ( '' , 'ABR' , _mes4 )
+NUEVO_PARAMETRO_CHEQ ( '' , 'MAY' , _mes5 )
+NUEVO_PARAMETRO_CHEQ ( '' , 'JUN' , _mes6 )
+NUEVO_PARAMETRO_CHEQ ( '' , 'JUL' , _mes7 )
+NUEVO_PARAMETRO_CHEQ ( '' , 'AGO' , _mes8 )
+NUEVO_PARAMETRO_CHEQ ( '' , 'SEP' , _mes9 )
+NUEVO_PARAMETRO_CHEQ ( '' , 'OCT' , _mes10 )
+NUEVO_PARAMETRO_CHEQ ( '' , 'NOV' , _mes11 )
+NUEVO_PARAMETRO_CHEQ ( '' , 'DIC' , _mes12 )
+# NUEVO_PARAMETRO_CHEQ ( '' , 'ANUAL' , _mes13 )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+COLUMNAS := 230
+
+SI ( $salida <> 'DISCO' )
+   ENCABEZADO
+      $titulo_reporte := 'ACUMULADOS POR MES'
+      encabezado_ini
+      IMP ( COL (1)   , 'Clave' , COL (11) , 'Nombre' , COL (42) , 'Depto' , COL (53) , 'Puesto' , COL (90) , 'R.F.C.' , COL (120) , 'No. IMSS' ) ;; IMPRIME
+      IMP ( COL (11)  , 'CONCEPTO' )
+      _col := 50
+      SI ( _mes1  = 1 ) ;; IMP ( COL (_col) , DER ( 'ENE' , _dec ) ) ;; _col := _col + _dec ;; FIN_SI
+      SI ( _mes2  = 1 ) ;; IMP ( COL (_col) , DER ( 'FEB' , _dec ) ) ;; _col := _col + _dec ;; FIN_SI
+      SI ( _mes3  = 1 ) ;; IMP ( COL (_col) , DER ( 'MAR' , _dec ) ) ;; _col := _col + _dec ;; FIN_SI
+      SI ( _mes4  = 1 ) ;; IMP ( COL (_col) , DER ( 'ABR' , _dec ) ) ;; _col := _col + _dec ;; FIN_SI
+      SI ( _mes5  = 1 ) ;; IMP ( COL (_col) , DER ( 'MAY' , _dec ) ) ;; _col := _col + _dec ;; FIN_SI
+      SI ( _mes6  = 1 ) ;; IMP ( COL (_col) , DER ( 'JUN' , _dec ) ) ;; _col := _col + _dec ;; FIN_SI
+      SI ( _mes7  = 1 ) ;; IMP ( COL (_col) , DER ( 'JUL' , _dec ) ) ;; _col := _col + _dec ;; FIN_SI
+      SI ( _mes8  = 1 ) ;; IMP ( COL (_col) , DER ( 'AGO' , _dec ) ) ;; _col := _col + _dec ;; FIN_SI
+      SI ( _mes9  = 1 ) ;; IMP ( COL (_col) , DER ( 'SEP' , _dec ) ) ;; _col := _col + _dec ;; FIN_SI
+      SI ( _mes10 = 1 ) ;; IMP ( COL (_col) , DER ( 'OCT' , _dec ) ) ;; _col := _col + _dec ;; FIN_SI
+      SI ( _mes11 = 1 ) ;; IMP ( COL (_col) , DER ( 'NOV' , _dec ) ) ;; _col := _col + _dec ;; FIN_SI
+      SI ( _mes12 = 1 ) ;; IMP ( COL (_col) , DER ( 'DIC' , _dec ) ) ;; _col := _col + _dec ;; FIN_SI
+      IMP ( COL (_col) , DER ( 'Total' , 20 ) ) ;; IMPRIME
+      encabezado_fin
+  FIN_ENCABEZADO
+FIN_SI
+
+
+PIE
+#
+FIN_PIE
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+COLUMNAS      := 230
+RENGLONES     := 65
+MODO_IMPRESION ( 'DIRECTO' )
+TAMAÑO_HOJA ( 2800 , 3500 )
+
+#Variables Globales
+VAR_T ( &indices   )
+VAR_T ( &st_reg    )
+VAR_T ( &st_suc    )
+VAR_T ( &st_cen    )
+VAR_T ( &st_dep    )
+VAR_T ( &st_pue    )
+VAR_T ( &st_emp    )
+VAR_T ( &st_nom    )
+VAR_T ( &acum      )
+VAR_T ( &tab_imp   )
+VAR_T ( &conceptos )
+$tipo_act  := ''
+_num_ind   := 0
+_acum_tot  := 0
+_tacum_tot := 0
+_nren      := 0
+_ncol      := 0
+_ren       := 0
+_col       := 0
+_acum      := 0
+_long      := 0
+_nconc     := 0
+$straux    := ''
+$mes       := ''
+$aux       := ''
+$conc      := ''
+$conc1     := ''
+$acum_tot  := ''
+$tacum_tot := ''
+_primera   := 0
+$indice    := ''
+$depto     := ''
+$puesto    := ''
+
+# Subrutinas diversas
+
+SUB_RUTINA lista_tabla
+   DECIMALES := 2
+   _ren   := 0
+   $conc1 := TRAE_VALOR_TABLA ( &tab_imp , 0 , _ren )
+   MIENTRAS ( $conc1 <> '' )
+      _col       := 1
+      $tacum_tot := ''
+      _tacum_tot := 0
+      $straux    := TRAE_VALOR_TABLA ( &tab_imp , _col , _ren )
+      MIENTRAS ( $straux <> '' )
+         _acum      := VALOR ( $straux )
+         $tacum_tot := $tacum_tot + DER ( $ (_acum) , 13 )
+         _tacum_tot := _tacum_tot + _acum
+         _col       := _col + 1
+         $straux    := TRAE_VALOR_TABLA ( &tab_imp , _col , _ren )
+      FIN_MIENTRAS
+      SI ( _tacum_tot <> 0 )
+         LETRA ('LETRA CONDENSADA')
+         IMP ( COL (11) , $conc1 )
+         SI ( TRAE_REGISTRO ( 'CONCEPTO' , $conc1 ) )
+            IMP ( COL (17) , SUBSTR ( 'CONCEPTO':'DESCRIPCION' , 1 , 20 ) )
+         FIN_SI
+         DECIMALES  := 2
+# Imprime el total de los meses reportados ...
+         $tacum_tot := $tacum_tot + ' | ' + DER ( $ (_tacum_tot) , 18 )
+         IMP ( COL (50) , $tacum_tot )
+         IMPRIME
+      FIN_SI
+      _ren   := _ren + 1
+      $conc1 := TRAE_VALOR_TABLA ( &tab_imp , 0 , _ren )
+   FIN_MIENTRAS
+   LIMPIA_TABLA ( &tab_imp )
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_conceptos
+   SI ( $conceptos = '*' )
+      PRIMER_REGISTRO ('CONCEPTO')
+      MIENTRAS ( FIN_BASE ('CONCEPTO') = FALSO )
+         $conc := 'CONCEPTO':'CLAVE'
+         AGREGA_VALOR_COL ( &conceptos , 0 , $conc )
+         SIGUIENTE_REGISTRO ('CONCEPTO')
+      FIN_MIENTRAS
+   SI_NO
+      $aux := $conceptos
+      MIENTRAS ( LONGITUD ($aux) > 0 )
+         _long := POS ( ',' , $aux )
+         SI ( _long > 0 )
+            $conc := SUBSTR ( $aux , 1 , _long - 1 )
+            AGREGA_VALOR_COL ( &conceptos , 0 , $conc )
+            $aux  := ELIMINA ( $aux , 1 , _long )
+         SI_NO
+            $conc := $aux
+            AGREGA_VALOR_COL ( &conceptos , 0 , $conc )
+            $aux := ''
+         FIN_SI
+      FIN_MIENTRAS
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_acumulado
+   DECIMALES := 2
+   _ncol     := _ncol + 10
+   _acum     := ACUM_MENSUAL ( $mes , $conc )
+   _acum_tot := _acum_tot + _acum
+   $acum_tot := $acum_tot + DER ( $ (_acum) , 13 )
+FIN_SUB_RUTINA
+
+SUB_RUTINA incrementa_totales
+   DECIMALES := 2
+   _acum := ACUM_MENSUAL ( $mes , $conc )
+   INCREMENTA_TABLA ( &acum , $mes , $conc , _acum )
+   SI ( TRAE_INDICE_COL ( &indices , 0 , 'SUCURSAL' ) >= 0 )
+      INCREMENTA_TABLA ( &st_suc , $mes , $conc , _acum )
+   FIN_SI
+   SI ( TRAE_INDICE_COL ( &indices , 0 , 'REGISTRO PATRONAL' ) >= 0 )
+      INCREMENTA_TABLA ( &st_reg , $mes , $conc , _acum )
+   FIN_SI
+   SI ( TRAE_INDICE_COL ( &indices , 0 , 'CENTRO DE COSTO' ) >= 0 )
+      INCREMENTA_TABLA ( &st_cen , $mes , $conc , _acum )
+   FIN_SI
+   SI ( TRAE_INDICE_COL ( &indices , 0 , 'DEPARTAMENTO' ) >= 0 )
+      INCREMENTA_TABLA ( &st_dep , $mes , $conc , _acum )
+   FIN_SI
+   SI ( TRAE_INDICE_COL ( &indices , 0 , 'PUESTO' ) >= 0 )
+      INCREMENTA_TABLA ( &st_pue , $mes , $conc , _acum )
+   FIN_SI
+   SI ( TRAE_INDICE_COL ( &indices , 0 , 'TIPO DE EMPLEADO' ) >= 0 )
+      INCREMENTA_TABLA ( &st_emp , $mes , $conc , _acum )
+   FIN_SI
+   SI ( TRAE_INDICE_COL ( &indices , 0 , 'TIPO DE NOMINA' ) >= 0 )
+      INCREMENTA_TABLA ( &st_nom , $mes , $conc , _acum )
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_datos
+   SI ( _solot = 0 )
+      LETRA ('LETRA CONDENSADA')
+      DECIMALES := 0
+      IMP ( COL (11) , $conc )
+      SI ( TRAE_REGISTRO ( 'CONCEPTO' , $conc ) )
+         IMP ( COL (17) , SUBSTR ( 'CONCEPTO':'DESCRIPCION' , 1 , 20 ) )
+      FIN_SI
+      DECIMALES := 2
+# Imprime el total de los meses reportados ...
+      $acum_tot := $acum_tot + ' | ' + DER ( $ (_acum_tot) , 18 )
+      IMP ( COL (50) , $acum_tot )
+      IMPRIME
+   FIN_SI
+   SI ( _mes1  = 1 ) ;; $mes := 'ENE'   ;; incrementa_totales ;; FIN_SI
+   SI ( _mes2  = 1 ) ;; $mes := 'FEB'   ;; incrementa_totales ;; FIN_SI
+   SI ( _mes3  = 1 ) ;; $mes := 'MAR'   ;; incrementa_totales ;; FIN_SI
+   SI ( _mes4  = 1 ) ;; $mes := 'ABR'   ;; incrementa_totales ;; FIN_SI
+   SI ( _mes5  = 1 ) ;; $mes := 'MAY'   ;; incrementa_totales ;; FIN_SI
+   SI ( _mes6  = 1 ) ;; $mes := 'JUN'   ;; incrementa_totales ;; FIN_SI
+   SI ( _mes7  = 1 ) ;; $mes := 'JUL'   ;; incrementa_totales ;; FIN_SI
+   SI ( _mes8  = 1 ) ;; $mes := 'AGO'   ;; incrementa_totales ;; FIN_SI
+   SI ( _mes9  = 1 ) ;; $mes := 'SEP'   ;; incrementa_totales ;; FIN_SI
+   SI ( _mes10 = 1 ) ;; $mes := 'OCT'   ;; incrementa_totales ;; FIN_SI
+   SI ( _mes11 = 1 ) ;; $mes := 'NOV'   ;; incrementa_totales ;; FIN_SI
+   SI ( _mes12 = 1 ) ;; $mes := 'DIC'   ;; incrementa_totales ;; FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   SI ( _solot = 0 )
+      SI ( _primera = 0 )
+         LETRA ( 'LETRA CONDENSADA' )
+         $depto  := TRAE_DSP ( 'D' , _ff )
+         $puesto := TRAE_DSP ( 'P' , _ff )
+         SI ( TRAE_REGISTRO ( 'PUESTO' , $puesto ) ) ;; FIN_SI
+         IMP ( COL (1)   , 'EMPPRIN':'CLAVE' , COL (11) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 30 ) , COL (42) , $depto , COL (53) , 'PUESTO':'DESCRIPCION' , COL (90) , FORMATO ( 'EMPPRIN':'RFC' , 'XXXX-XXXXXX-XXX' ) )
+         IMP ( COL (120) , FORMATO ( 'EMPPRIN':'AFILIACION' , 'XXXX-XX-XXXX-X' ) ) ;; IMPRIME
+         _primera := 1
+      FIN_SI
+   FIN_SI
+   imprime_datos
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+   SI ( $indice = 'TOTAL' )
+      AVANZA_HOJA
+   FIN_SI
+   SI (( $indice = 'TIPO DE NOMINA' ) AND ( _solot = 0 ))
+      AVANZA_HOJA
+   FIN_SI 
+   IMPRIME 
+   IMP ( COL (11) , 'SubTOTALES ' , $indice ) ;; IMPRIME
+   IMPRIME
+   SI ( $indice = 'REGISTRO PATRONAL' )
+      ORDENA_COLUMNA ( &st_reg , 0 )
+      ASIGNA_TABLA ( &st_reg , &tab_imp )
+      lista_tabla
+      LIMPIA_TABLA ( &st_reg )
+   FIN_SI
+   SI ( $indice = 'SUCURSAL' )
+      ORDENA_COLUMNA ( &st_suc , 0 )
+      ASIGNA_TABLA ( &st_suc , &tab_imp )
+      lista_tabla
+      LIMPIA_TABLA ( &st_suc )
+   FIN_SI
+   SI ( $indice = 'CENTRO DE COSTO' )
+      ORDENA_COLUMNA ( &st_cen , 0 )
+      ASIGNA_TABLA ( &st_cen , &tab_imp )
+      lista_tabla
+      LIMPIA_TABLA ( &st_cen )
+   FIN_SI
+   SI ( $indice = 'DEPARTAMENTO' )
+      ORDENA_COLUMNA ( &st_dep , 0 )
+      ASIGNA_TABLA ( &st_dep , &tab_imp )
+      lista_tabla
+      LIMPIA_TABLA ( &st_dep )
+   FIN_SI
+   SI ( $indice = 'PUESTO' )
+      ORDENA_COLUMNA ( &st_pue , 0 )
+      ASIGNA_TABLA ( &st_pue , &tab_imp )
+      lista_tabla
+      LIMPIA_TABLA ( &st_pue )
+   FIN_SI
+   SI ( $indice = 'TIPO DE EMPLEADO' )
+      ORDENA_COLUMNA ( &st_emp , 0 )
+      ASIGNA_TABLA ( &st_emp , &tab_imp )
+      lista_tabla
+      LIMPIA_TABLA ( &st_emp )
+   FIN_SI
+   SI ( $indice = 'TIPO DE NOMINA' )
+      ORDENA_COLUMNA ( &st_nom , 0 )
+      ASIGNA_TABLA ( &st_nom , &tab_imp )
+      lista_tabla
+      LIMPIA_TABLA ( &st_nom )
+   FIN_SI
+   SI ( $indice = 'TOTAL' )
+      ORDENA_COLUMNA ( &st_nom , 0 )
+      ASIGNA_TABLA ( &st_nom , &tab_imp )
+      lista_tabla
+      LIMPIA_TABLA ( &st_nom )
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+SUB_RUTINA imprime_trabajador
+   _ncol  := 0
+   _nren  := 0
+   _nconc := 0
+   $conc  := TRAE_VALOR_TABLA ( &conceptos , 0 , _nconc )
+   MIENTRAS ( $conc <> '' )
+      _acum_tot := 0
+      $acum_tot := ''
+      DECIMALES := 2
+      _ncol     := 10
+      SI ( _mes1  = 1 ) ;; $mes := 'ENE'   ;; imprime_acumulado ;; FIN_SI
+      SI ( _mes2  = 1 ) ;; $mes := 'FEB'   ;; imprime_acumulado ;; FIN_SI
+      SI ( _mes3  = 1 ) ;; $mes := 'MAR'   ;; imprime_acumulado ;; FIN_SI
+      SI ( _mes4  = 1 ) ;; $mes := 'ABR'   ;; imprime_acumulado ;; FIN_SI
+      SI ( _mes5  = 1 ) ;; $mes := 'MAY'   ;; imprime_acumulado ;; FIN_SI
+      SI ( _mes6  = 1 ) ;; $mes := 'JUN'   ;; imprime_acumulado ;; FIN_SI
+      SI ( _mes7  = 1 ) ;; $mes := 'JUL'   ;; imprime_acumulado ;; FIN_SI
+      SI ( _mes8  = 1 ) ;; $mes := 'AGO'   ;; imprime_acumulado ;; FIN_SI
+      SI ( _mes9  = 1 ) ;; $mes := 'SEP'   ;; imprime_acumulado ;; FIN_SI
+      SI ( _mes10 = 1 ) ;; $mes := 'OCT'   ;; imprime_acumulado ;; FIN_SI
+      SI ( _mes11 = 1 ) ;; $mes := 'NOV'   ;; imprime_acumulado ;; FIN_SI
+      SI ( _mes12 = 1 ) ;; $mes := 'DIC'   ;; imprime_acumulado ;; FIN_SI
+      SI ( _acum_tot <> 0 )
+         SI ( _primera = 0 )
+            datos_trabajador
+         SI_NO
+            imprime_datos
+         FIN_SI
+      FIN_SI
+      _nconc := _nconc + 1
+      $conc  := TRAE_VALOR_TABLA ( &conceptos , 0 , _nconc )
+   FIN_MIENTRAS
+   SI ( _primera = 1 )
+      SI ( _solot = 0 )
+         IMPRIME
+      FIN_SI
+   FIN_SI
+FIN_SUB_RUTINA
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+   $nom_ind := TRAE_VALOR_TABLA ( &in , 2 , _num_ind )
+   $ind_act := TRAE_VALOR_TABLA ( &in , 0 , _num_ind )
+   SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+      AGREGA_VALOR_COL ( &indices , 0 , $nom_ind )
+   FIN_SI
+   _num_ind := _num_ind + 1
+HASTA ( $nom_ind = '' )
+AGREGA_VALOR_COL ( &indices , 0 , 'TOTAL' )
+
+#Parametros extras
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+$campos_extras := 'E.RFC, E. AFILIACION'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPACUM' , 'CLAVE' )
+
+carga_conceptos
+$antes := ''
+
+PRIMER_REGISTRO ('EMPPRIN')
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   SI ( FUE_VIGENTE ( _fi , _ff ) )
+      SI ( 'EMPPRIN':'TIPO_NOM' <> $antes )
+         USA_ARCHIVO ( 'EMPPRIN' , 'EMPACUM' , 'CLAVE' )
+         $antes := 'EMPPRIN':'TIPO_NOM'
+      FIN_SI
+      _primera := 0
+      imprime_trabajador
+   FIN_SI 
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte
+
+$indice := 'T0TAL'
+sub_totales
+
+IMPRIME ;; IMPRIME
+# IMPRIME_TABLA ( &acum , 1 , 10 , 20 , 30 , 40 , 50 , 60 )
+# ORDENA_COLUMNA ( &acum, 0 )
+# ASIGNA_TABLA ( &acum , &tab_imp )
+# lista_tabla

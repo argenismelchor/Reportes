@@ -1,0 +1,78 @@
+#IMPORTACION ACUMULADOS
+#VERSION 2.500
+#NO EDITAR
+#DESCRIPCION
+#Importacion datos de una archivo de texto "MES".TXT del directorio de trabajo con el siguiente formato:
+#CAMPO       COL LON JUST. FORMATO
+#CLAVE         1  10  IZQ
+#CONCEPTO     11  10  IZQ
+#ACUMULADO    31  20  DER XXXXX.XX
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO      ( 'ARCHIVO DE ACUMULADOS', DIRECTORIO_TRABAJO + '\ENE.TXT', $archivo )
+NUEVO_PARAMETRO_SEL  ( 'MES A ACUMULAR', 'ENE/FEB/MAR/ABR/MAY/JUN/JUL/AGO/SEP/OCT/NOV/DIC/ESPECIAL/FINIQUITO/AGUINALDO', $mes  )
+NUEVO_PARAMETRO_CHEQ ( 'SUMAR', '', _sumar )
+LEE_PARAMETROS
+
+CREA_BASE_TXT ( 'TABLA', $archivo, 'FIJO' )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'CLAVE' , 1   , 10  )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'CONC'  , 11  , 10  )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'ACUM'  , 31  , 10  )
+
+ABRE_BASE_TXT ( 'TABLA', 'EDICION' )
+
+# DECLARACION DE VARIABLES  GLOBALES
+$saux := ''
+_i    := 0
+_fin  := 0
+$tipo := ''
+_mas  := 0
+_act  := 0
+
+ABRE_BASE  ('EMPPRIN')
+USA_ARCHIVO( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'TABLA' )
+MIENTRAS ( FIN_BASE ( 'TABLA' ) = FALSO )
+
+######################################################################    ASIGNACION DATOS DE R.H.
+
+  SI ( TRAE_REGISTRO( 'EMPPRIN', 'TABLA':'CLAVE' ) )
+  
+    SI ( TRAE_REGISTRO( 'EMPACUM', 'TABLA':'CLAVE', 'TABLA':'CONC' ) = FALSO )
+      AGREGA_REGISTRO ('EMPACUM')
+      'EMPACUM':'CLAVE'    := 'TABLA':'CLAVE'
+      'EMPACUM':'CONCEPTO' := 'TABLA':'CONC'
+      $tipo := 'AGREGANDO'
+      _mas  := _mas + 1
+    SI_NO
+      $tipo := 'MODIFICANDO'
+      _act  := _act + 1
+    FIN_SI
+  
+  #######################################################   ASIGNACION MONTO DEL CONCEPTO
+
+    $saux := QUITA_CARACTER( ' ', 'TABLA':'ACUM' )
+  
+    IMP ( $tipo, ' EMPLEADO : ', 'TABLA':'CLAVE', COL(30), 'TABLA':'CONC', COL(40), $mes, COL(50), VALOR ( $saux ) ) ;; IMPRIME  
+   
+    SI ( _sumar )
+       'EMPACUM':$mes := VALOR ( $saux ) + 'EMPACUM':$mes
+    SI_NO
+       'EMPACUM':$mes := VALOR ( $saux )
+    FIN_SI
+  
+    GRABA_BASE ( 'EMPACUM' )
+
+  SI_NO
+    IMP ( 'EMPLEADO : ', 'TABLA':'CLAVE', ' NO ENCONTRADO...' ) ;; IMPRIME
+  FIN_SI
+  SIGUIENTE_REGISTRO( 'TABLA' )
+FIN_MIENTRAS
+
+IMPRIME ;; IMPRIME
+DECIMALES := 0
+IMP ( 'EMPLEADOS AGREGADOS    : ', _mas ) ;; IMPRIME
+IMP ( 'EMPLEADOS ACTUALIZADOS : ', _act ) ;; IMPRIME
+
+TERMINA_REPORTE

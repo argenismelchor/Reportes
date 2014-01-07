@@ -1,0 +1,197 @@
+#KARDEX ANUAL DE FALTAS
+#VERSION 2.5
+#USUARIO =*
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO     ( 'EMPLEADO', '', $clave_emp )
+DECIMALES := 0
+NUEVO_PARAMETRO     ( 'ANO', .( AÑO( FECHA_HOY ) ), _ano )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE GRAFICO.DAT
+
+VAR_T ( &meses )
+AGREGA_VALOR_COL( &meses, 0, 'ENE' )
+AGREGA_VALOR_COL( &meses, 0, 'FEB' )
+AGREGA_VALOR_COL( &meses, 0, 'MAR' )
+AGREGA_VALOR_COL( &meses, 0, 'ABR' )
+AGREGA_VALOR_COL( &meses, 0, 'MAY' )
+AGREGA_VALOR_COL( &meses, 0, 'JUN' )
+AGREGA_VALOR_COL( &meses, 0, 'JUL' )
+AGREGA_VALOR_COL( &meses, 0, 'AGO' )
+AGREGA_VALOR_COL( &meses, 0, 'SEP' )
+AGREGA_VALOR_COL( &meses, 0, 'OCT' )
+AGREGA_VALOR_COL( &meses, 0, 'NOV' )
+AGREGA_VALOR_COL( &meses, 0, 'DIC' )
+
+# PARAMETROS
+DECIMALES := 2
+COLUMNAS := 80
+RENGLONES := 65
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+INCLUYE FALTAS.DAT
+
+# VARIABLES GLOBALES
+VAR_T ( &resumen )
+_mes := 0
+_dia := 0
+_inicio_tabla := 1000
+$dia := ''
+_total := 0
+
+SUB_RUTINA formato_trabajador
+   imprime_marco
+   imprime_empresa
+ 
+   DECIMALES := 0
+   $titulo_reporte := 'KARDEX ANUAL DEL ' + .( _ano )
+   imprime_titulo
+
+   # INPRIME LOS TITULOS DEL MES
+   _mes := 0
+   _y_act := _inicio_tabla
+   _tam_letra := 12
+   $estilo := '\N'
+   MIENTRAS( _mes < 12 )
+     $valor := TRAE_VALOR_TABLA( &meses, 0, _mes )
+     _x_act := -50
+     IMPRIME_REC( 280 + _x_act, _y_act - 15, 50 * 31, _espacio_linea )
+     imprime_cadena_salto
+     _mes := _mes + 1
+   FIN_MIENTRAS
+
+   # INPRIME LOS TITULOS DE LOS DIAS
+   _dia := 1
+   _y_act := _inicio_tabla - 50
+   _x_act := 35
+   _tam_letra := 10
+   $estilo := '\N'
+   MIENTRAS( _dia <= 31 )
+     DECIMALES := 0
+     IMPRIME_REC( _x_act + 195, _y_act + 35, 50, _espacio_linea * 12 )
+     $valor := .( _dia )
+     SI ( LONGITUD( $valor ) < 2 )
+       $valor := '0' + $valor
+     FIN_SI
+     imprime_cadena
+     _x_act := _x_act + 50
+     _dia := _dia + 1
+   FIN_MIENTRAS
+
+   # IMPRIME EL CONTENIDO DEL KARDEX
+   _mes := 1
+   _y_act := _inicio_tabla
+   _tam_letra := 12
+   $estilo := '\N'
+   MIENTRAS( _mes <= 12 )
+     _ini_kardex  := CALCULA_FECHA( _ano, _mes, 01 )
+     _fin_kardex  := CALCULA_FECHA( _ano, _mes, 31 )
+     carga_kardex
+     
+     _x_act := 35
+     _dia   := 1
+     CAMBIA_LETRA( 'Arial', 14, '\N' )
+     MIENTRAS( _dia <= DIA( _fin_kardex ) )
+       $dia := SUBSTR( $kardex_faltas, _dia, 1 )
+       IMP_XY( _x_act + 205, _y_act - 3, $dia )
+       _x_act := _x_act + 50
+       _dia := _dia + 1
+       INCREMENTA_TABLA( &resumen, 'TOTAL', $dia, 1 )   
+     FIN_MIENTRAS
+     _y_act := _y_act + _espacio_linea
+     _mes := _mes + 1
+   FIN_MIENTRAS
+
+   avanza_linea   
+
+   # IMPRIME TOTALES
+   _dia := 1
+   _total := 0
+   _y_act := 2000
+   _x_act := 50
+   $dia := TRAE_VALOR_TABLA( &resumen, 0, _dia )
+   MIENTRAS( $dia <> '' )
+     _total := VALOR( TRAE_VALOR_TABLA( &resumen, 1, _dia ) )     
+     $titulo := $dia + ' :'
+     DECIMALES := 0
+     $valor := .( _total )
+     imprime_campo
+     _x_act := _x_act + 200
+     _dia := _dia + 1
+     $dia := TRAE_VALOR_TABLA( &resumen, 0, _dia )     
+   FIN_MIENTRAS
+
+   avanza_linea   
+   _tam_letra := 10
+
+   _y_act  := 550
+   $titulo := 'CLAVE :'
+   $valor  := 'EMPPRIN':'CLAVE'
+   imprime_campo_salto
+
+   $titulo := 'NOMBRE :'
+   $valor  := 'EMPPRIN':'NOMBRE'
+   imprime_campo
+
+   _x_act := 1000
+   $titulo := 'INGRESO :'
+   FORMATO_FECHA := 5
+   $valor  := FECHA( 'EMPPRIN':'INGRESO' )
+   imprime_campo_salto
+
+   $titulo := 'PUESTO :'
+   $valor  := ''
+   SI ( TRAE_REGISTRO( 'PUESTO', 'EMPPRIN':'PUE_CLAVE' ) )
+     $valor  := 'PUESTO':'DESCRIPCION'
+   FIN_SI
+   imprime_campo_salto
+
+  
+   _y_act  := 2500
+
+   $valor := '_____________________________'
+   imprime_centro
+
+   _y_act  := _y_act - 40
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_centro
+
+   avanza_hoja
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+
+_incluir_dep := 1
+_incluir_pue := 1
+#lee_parametros_seleccion
+#lee_parametros_indices
+$campos_extras := 'E. CALENDARIO'
+$condiciones_extras := 'E. CLAVE = "' + $clave_emp + '"'
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPAUS', 'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPINC', 'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPRET', 'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPVACA', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+TERMINA_REPORTE

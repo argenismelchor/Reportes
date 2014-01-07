@@ -1,0 +1,161 @@
+#CARTA DE FINIQUITOS
+#VERSION 1.0
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+LETRA ( 'LETRA NORMAL' )
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+
+#### VARIABLES GLOBALES.
+_fecha  := 0
+_ant    := 0
+_minimo := 0
+$desc   := ''
+_tipo   := 0
+_frec   := 0
+_aux1   := 0
+$dia    := ''
+$mes    := ''
+$ano    := ''
+$fecha  := ''
+
+
+SUB_RUTINA formato_trabajador
+      DECIMALES := 2
+      ULTIMO_REGISTRO ('EMPSDO')
+      SI ( 'EMPSDO':'TIPO' = 'B' )
+        _fecha := 'EMPSDO':'FECHA' 
+        REGISTRO_ANTERIOR( 'EMPSDO' )
+      FIN_SI   
+      _ant := (_fecha - 'EMPPRIN':'INGRESO') / 365    
+      #******************************************************
+      #IMPRESION DE DATOS PERSONALES
+      #******************************************************
+      LETRA( 'LETRA NORMAL' ) ;; IMPRIME
+      IMP (CENTRA('EMPRESA':'NOMBRE')) ;; IMPRIME
+      IMP (CENTRA('FINIQUITO O LIQUIDACION INDIVIDUAL')) ;; IMPRIME
+      IMP (REPITETXT ('=', 80)) ;; IMPRIME ;; IMPRIME
+      IMP ('CLAVE             : ','EMPPRIN':'CLAVE') ;; IMPRIME 
+      IMP ('NOMBRE            : ','EMPPRIN':'NOMBRE') ;; IMPRIME
+      IMP ('R.F.C.            : ', FORMATO('EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX')) ;; IMPRIME
+      IMP ('FECHA DE BAJA     : ', FECHA (_fecha)) ;; IMPRIME
+      IMP ('FECHA DE INGRESO  : ', FECHA ('EMPPRIN':'INGRESO')) ;; IMPRIME
+      IMP ('SALARIO DIARIO    : ', DER($('EMPSDO':'SDO1'), 10)) ;; IMPRIME
+      IMP ('SALARIO INTEGRADO : ', DER($('EMPSDO':'SDO3'), 10)) ;; IMPRIME
+      IMP ('ANTIGUEDAD        : ', _ant , ' AÑO(S)') ;; IMPRIME ;; IMPRIME
+      IMP (COL(27), 'DIAS', COL(40), 'PERCEP', COL(53), 'DEDUC', COL(66), 'NETOS') ;; IMPRIME
+      IMP (REPITETXT ('-', 80)) ;; IMPRIME ;; IMPRIME    
+
+      PRIMER_REGISTRO( 'NOMINA' )
+      MIENTRAS ( FIN_BASE( 'NOMINA' ) = FALSO )
+           DECIMALES := 2    
+           SI ( 'NOMINA':'TOTAL' <> 0 )
+               SI ( TRAE_REGISTRO( 'CONCEPTO', 'NOMINA':'CLAVE' ) )
+                 $desc := 'CONCEPTO':'DESCRIPCION'
+                 _tipo := 'CONCEPTO':'PDC'
+                 _frec := 'CONCEPTO':'FRECUENCIA'
+                 _aux1 := 'CONCEPTO':'CAP3'
+               SI_NO
+                 $desc := 'DESCONOCIDO'
+               FIN_SI    
+#*************************** DIAS DE  VIGENCIA  ****************************
+               SI (( _tipo = 2 ) AND ( 'NOMINA':'CLAVE' = 'DVIG' ))
+                   DECIMALES := 0
+                   IMP ( COL(1), 'NOMINA':'CLAVE', COL(6), SUBSTR( $desc,1,18)  , COL(27), DER ( $( 'NOMINA':'TOTAL' ), 4 ) ) ;; IMPRIME
+                   DECIMALES := 2  
+               FIN_SI
+#***************************  PERCEPCIONES  ********************************
+               SI ( _tipo = 0 ) 
+                   IMP ( COL(1), 'NOMINA':'CLAVE', COL(6), SUBSTR( $desc,1,18) , COL(37), DER ( $( 'NOMINA':'TOTAL' ), 8 ) ) ;; IMPRIME
+               FIN_SI
+#***************************  DEDUCCIONES   ********************************
+               SI ( _tipo = 1 )          
+                   IMP ( COL(1), 'NOMINA':'CLAVE', COL(6), SUBSTR( $desc,1,18) , COL(50), DER ( $( 'NOMINA':'TOTAL' ), 8 ) ) ;; IMPRIME
+               FIN_SI       
+#*************************** CONCEP. NETOS  ********************************
+               SI (( _tipo = 2 ) AND ( 'NOMINA':'CLAVE' = 'EXEN' ))
+                   IMP ( COL(1), 'NOMINA':'CLAVE', COL(6), SUBSTR( $desc,1,18) , COL(63), DER ( $( 'NOMINA':'TOTAL' ), 8 ) ) ;; IMPRIME                   
+               FIN_SI
+               SI (( _tipo = 2 ) AND ( 'NOMINA':'CLAVE' = 'PERC' ))
+                   IMP ( COL(1), 'NOMINA':'CLAVE', COL(6), SUBSTR( $desc,1,18) , COL(63), DER ( $( 'NOMINA':'TOTAL' ), 8 ) ) ;; IMPRIME                   
+               FIN_SI
+               SI (( _tipo = 2 ) AND ( 'NOMINA':'CLAVE' = 'PGRA' ))
+                   IMP ( COL(1), 'NOMINA':'CLAVE', COL(6), SUBSTR( $desc,1,18) , COL(63), DER ( $( 'NOMINA':'TOTAL' ), 8 ) ) ;; IMPRIME                   
+               FIN_SI
+               SI (( _tipo = 2 ) AND ( 'NOMINA':'CLAVE' = 'DEDU' ))
+                   IMP ( COL(1), 'NOMINA':'CLAVE', COL(6), SUBSTR( $desc,1,18) , COL(63), DER ( $( 'NOMINA':'TOTAL' ), 8 ) ) ;; IMPRIME                   
+               FIN_SI
+               SI (( _tipo = 2 ) AND ( 'NOMINA':'CLAVE' = 'TOTA' ))
+                   IMP ( COL(1), 'NOMINA':'CLAVE', COL(6), SUBSTR( $desc,1,18) , COL(63), DER ( $( 'NOMINA':'TOTAL' ), 8 ) ) ;; IMPRIME                   
+               FIN_SI
+           FIN_SI
+         SIGUIENTE_REGISTRO( 'NOMINA' )
+      FIN_MIENTRAS  
+
+      # ******************************************************
+      # IMPRESION DE LEYENDA
+      # ******************************************************
+         IMPRIME;;IMPRIME
+         IMP (REPITETXT ('-', 80)) ;; IMPRIME ;; IMPRIME ;; IMPRIME                   
+         IMP ('RECIBI DE ','EMPRESA':'NOMBRE',' LA CANTIDAD DE ', DER($( TOTAL ('TOTA') ), 10)    ) ;; IMPRIME
+         IMP ('(',CANTIDAD_LETRA(( TOTAL ('TOTA') )), ') ' ) ;; IMPRIME
+         IMP ('POR  CONCEPTO  DE  LA  LIQUIACION   FINIQUITO  QUE  ME  CORRESPONDE AL  DAR POR') ;; IMPRIME
+         IMP ('CONCLUIDO  EN FORMA VOLUNTARIA MI CONTRATO DE TRABAJO EN LOS TERMINOS DE LA LEY') ;; IMPRIME
+         IMP ('FEDERAL DEL TRABAJO.') ;; IMPRIME ;; IMPRIME
+         IMP ('HAGO CONSTAR  QUE AL RECIBIR LA CANTIDAD ANTES  MENCIONADA NO SE ME ADEUDA SUMA') ;; IMPRIME
+         IMP ('ALGUNA  POR  CONCEPTO  DE  SALARIOS  ORDINARIOS  O EXTRAORDINARIOS, VACACIONES,') ;; IMPRIME
+         IMP ('PRIMAS , NI  NINGUN  OTRO   CONCEPTO  QUE   POR  LEY  O  POR  CONTRATO  PUDIERA') ;; IMPRIME
+         IMP ('CORRESPONDERME, POR  LO  QUE  NO  TENGO  NINGUN  INCONVENIENTE EN EXTENDER A LA') ;; IMPRIME
+         IMP ('EMPRESA  EL  MAS  AMPLIO  FINIQUITO, RELEVANDOLE DE  CUALQUIER  RESPONSABILIDAD') ;; IMPRIME
+         IMP ('PRESENTE O FUTURA POR MOTIVO DE LEY, O DEL CONTRATO DE TRABAJO QUE HOY DOY  POR') ;; IMPRIME
+         IMP ('TERMINADO EN FORMA VOLUNTARIA.') ;; IMPRIME ;; IMPRIME ;; IMPRIME
+         IMP ('-----------------------     -----------------------     -----------------------') ;; IMPRIME
+         IMP ('   Vo.Bo.CONTABILDAD            RECURSOS HUMANOS          RECIBI DE CONFORMIDAD ') ;; IMPRIME ;; IMPRIME
+         FORMATO_FECHA:= 5
+         IMP ( CENTRA(('PATRONAL':'MUNICIPIO' + ', ' + 'PATRONAL':'ESTADO' + ' , ' + FECHA(_fecha) ))) ;; IMPRIME      
+         AVANZA_HOJA
+FIN_SUB_RUTINA
+
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina       := 1
+_omitir_encabezados   := 1
+_omitir_encabezado    := 1
+_omitir_sub_totales   := 1
+_omitir_sub_total     := 1
+_omitir_total_general := 1
+$campos_extras:='E. RFC, E. AFILIACION'  
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO ('EMPPRIN','EMPSDO','CLAVE')
+USA_ARCHIVO ('EMPPRIN','EMPNOM','CLAVE')
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( CAP1 ('FINI') = 1)
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

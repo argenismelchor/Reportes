@@ -1,0 +1,115 @@
+#DETALLE DE PAGOS TAR,EFE,CHE
+#DETALLE DE PAGOS TAR,EFE,CHE
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#detalle de pagos de tarjeta , cheque y efectivo
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/EXCEL', $salida)
+NUEVO_PARAMETRO_SEL ( 'TIPO PAGOS' , 'TARJETA/EFECTIVO' , _tipopago ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'PAGO'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TIPO PAGO'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+_condensado := 0
+$titulo_reporte := 'DETALLE DE PAGOS TAR,EFE,CHE'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+_numemp := 0  ;; $tipo := ''
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+
+   DECIMALES:= 2
+   $valor := $(TOTAL ( 'TOTA'))
+   imprime_columna
+
+   $valor := $tipo
+   imprime_columna
+
+   imprime_renglon
+
+   _numemp := _numemp + 1 
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. RFC,E.CTA_TARJETA,E.TIPO_PAGO'
+base_trabajadores
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ((( TOTAL ('PERC') <> 0 ) OR ( TOTAL ('DEDU') <> 0 )) AND (TOTAL ('TOTA') <> 0))
+     SI ( (_tipopago = 0  ) AND ( 'EMPPRIN':'CTA_TARJETA' <> '' ) )
+          $tipo:= 'TAR'
+          formato_trabajador
+     FIN_SI
+
+     SI ( (_tipopago = 1  ) AND ( 'EMPPRIN':'CTA_TARJETA' = '' ) )
+          $tipo:= 'EFE'
+          formato_trabajador
+     FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+   
+FIN_MIENTRAS
+
+IMPRIME
+IMPRIME
+
+DECIMALES := 0
+IMP ( COL(5) , 'TOTAL EMPLEADOS =>' + .(_numemp ) ) 
+IMPRIME
+
+
+SI ( $salida = 'EXCEL')
+     _ren_excel := _ren_excel + 2
+     EXCEL ( 'PON_VALOR' , 1 , _ren_excel , 'TOTAL EMPLEADOS' )
+     EXCEL ( 'PON_VALOR' , 2 , _ren_excel , _numemp )
+FIN_SI
+
+TERMINA_REPORTE

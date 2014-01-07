@@ -1,0 +1,82 @@
+#CAPTURA RÁPIDA DE CURSOS PROGRAMADOS
+#CAPTURA RÁPIDA DE CURSOS TOMADOS
+#USUARIO =*
+#VERSION 1.000
+#DESCRIPCION
+#Es un Proceso no un Reporte.
+#Este proceso permite hacer una captura rápida en el personal que ha de ser incluido en un curso PROGRAMADO en específico.
+#FIN_DESCRIPCION
+
+FORMATO_FECHA := 2
+SALIDA := 'P'
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), 'giro Ver 1.0' );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+   IMP ( CENTRA ('CAPTURA RAPIDA DE CURSOS PROGRAMADOS'));; IMPRIME
+   IMP ( REPITETXT('=',80));; IMPRIME
+   IMP ( 'CLAVE', COL ( 10 ), 'NOMBRE', COL (50), 'OBLIGA' );; IMPRIME
+   IMP ( REPITETXT('-',80) );; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+$curso := ''
+$clave := ''
+_obliga := 0
+
+ABRE_BASE ( 'EMPPRIN' )
+PRIMER_REGISTRO ( 'EMPPRIN' )
+
+ABRE_BASE ( 'EMPCAPAC' )
+PRIMER_REGISTRO ( 'EMPCAPAC' )
+
+REPITE
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO_TAB ('CURSO (0=SALIR)','CURSO/CLAVE/TABLA DE CURSOS', $curso)
+   LEE_PARAMETROS
+   SI ( TRAE_REGISTRO ( 'CURSO', $curso ))
+      SI ( PREGUNTA ( 'Es correcto el Curso : ' + $curso + ' ' + 'CURSO':'DESCRIPCION' ))
+         IMP ( COL ( 5 ), '*** ', $curso + '  ' + 'CURSO':'DESCRIPCION' ) ;; IMPRIME ;; IMPRIME
+         REPITE
+            BORRA_PARAMETROS
+            NUEVO_PARAMETRO_TAB ('EMPLEADO (0=SALIR)','EMPPRIN/CLAVE/TABLA DE EMPLEADOS', $clave)
+            NUEVO_PARAMETRO_CHEQ ('OBLIGATORIO' ,'', _obliga)
+            LEE_PARAMETROS
+            SI ( $clave <> '0' )
+               SI ( TRAE_REGISTRO ( 'EMPPRIN', $clave ))
+                  IMP ( 'EMPPRIN':'CLAVE', COL (10), 'EMPPRIN':'CLAVE' + ' ' + 'EMPPRIN':'NOMBREN' + ' ' + 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' )
+                  IMP ( COL ( 50 ), _obliga ) ;; IMPRIME
+                  SI ( TRAE_REGISTRO ( 'EMPCAPAC', $clave, $curso ))
+                     'EMPCAPAC':'OBLIGATORIO' := _obliga
+                  SI_NO
+                     AGREGA_REGISTRO ( 'EMPCAPAC' )
+                     'EMPCAPAC':'CLAVE' := $clave
+                     'EMPCAPAC':'CURSO' := $curso
+                     'EMPCAPAC':'OBLIGATORIO' := 1
+                  FIN_SI
+                  GRABA_BASE ( 'EMPCAPAC' )
+                  MENSAJE ( 'CURSO REGISTRADO A ' + 'EMPPRIN':'CLAVE' + ' ' + 'EMPPRIN':'NOMBREN' + ' ' + 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' )
+               SI_NO
+                  MENSAJE ( 'EMPLEADO ' + $clave + ' NO ENCONTRADO... RECTIFIQUE' )
+               FIN_SI
+            FIN_SI
+         HASTA ( $clave = '0' )
+         IMPRIME ;; IMPRIME
+      FIN_SI
+   SI_NO
+      SI ( $curso <> '0' )
+         MENSAJE ( 'CURSO NO ENCONTRADO' )
+      FIN_SI
+   FIN_SI
+HASTA ( $curso = '0' )

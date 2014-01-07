@@ -1,0 +1,113 @@
+#VACACIONES TOMADAS
+#VERSION 2.600
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra todos los trabajadores de la empresa aún cuando no esten vigentes.
+#Este reporte imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','',_fi) 
+NUEVO_PARAMETRO_FEC ('FECHA FINAL','',_ff)
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), 'giro Ver 1.0' );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+   IMP ( CENTRA ('VACACIONES TOMADAS DEL '+ FECHA (_fi)+ ' AL ' + FECHA (_ff)));; IMPRIME
+   IMP ( REPITETXT('=',80));; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(8), 'NOMBRE', COL(50), 'SUCURSAL' )
+   SI ( CD_DC = 0 )
+      IMP ( COL(60), 'DEPTO' )
+   SI_NO
+      IMP ( COL(60), 'C.C.' )
+   FIN_SI
+   IMP ( COL(70), 'PUESTO' );; IMPRIME
+   IMP ( COL(8), 'FECHA INICIO', COL(22), 'DUR.', COL(30), 'FECHA FINAL', COL(45), 'PRIMA VAC', COL(60), 'DIAS/DUR' ) ;; IMPRIME
+   IMP ( REPITETXT('-',80) );; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+### VARIABLES GLOBALES DEL REPORTE
+_dias:=0
+_fini:=0
+_ffin:=0
+_di:=0
+$ant_trab:=''
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+  SI ( $ant_trab<>'EMPPRIN':'CLAVE' )
+    IMP(COL(1), 'EMPPRIN':'CLAVE', COL(8), 'EMPPRIN':'NOMBRE', COL(50), TRAE_DSP('S', FECHA_HOY ), COL(60), TRAE_DSP('D', FECHA_HOY ), COL(70), TRAE_DSP('P', FECHA_HOY )) ;; IMPRIME
+    $ant_trab:='EMPPRIN':'CLAVE'
+  FIN_SI
+  DECIMALES:=0
+  IMP(COL(8), FECHA('EMPVACA':'FECHA'), COL(22), DER(.('EMPVACA':'DURACION'),3), COL(30), FECHA('EMPVACA':'FECHA FINAL') ) 
+  DECIMALES:=2
+  IMP(COL(46), DER(.('EMPVACA':'PRIMA VACACIONAL'), 8) )
+  DECIMALES:=0
+  SI ('EMPVACA':'FECHA'<=_fi)
+    _fini:=_fi
+  SI_NO
+   _fini:='EMPVACA':'FECHA'
+  FIN_SI
+  SI ('EMPVACA':'FECHA FINAL'>=_ff)
+    _ffin:=_ff
+  SI_NO
+   _ffin:='EMPVACA':'FECHA FINAL'
+  FIN_SI
+  _dias:=TRAE_VACACIONES(_fini, _ffin, VERDADERO)
+  IMP( COL(60), _dias, '/', 'EMPVACA':'DURACION' )
+  IMPRIME
+FIN_SUB_RUTINA
+
+FORMATO_FECHA := 3
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+$campos_extras:='E. CALENDARIO'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPVACA', 'CLAVE' )
+
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE ( _fi, _ff ))
+      PRIMER_REGISTRO('EMPVACA')
+      MIENTRAS( FIN_BASE('EMPVACA') = FALSO )
+        SI ((( 'EMPVACA':'FECHA' >= _fi ) AND ( 'EMPVACA':'FECHA' <= _ff )) OR (('EMPVACA':'FECHA FINAL'>=_fi) AND ('EMPVACA':'FECHA FINAL'<=_ff)) OR (('EMPVACA':'FECHA'<=_fi) AND ('EMPVACA':'FECHA FINAL'>=_ff)))
+          datos_trabajador
+        FIN_SI
+        SIGUIENTE_REGISTRO('EMPVACA')
+      FIN_MIENTRAS
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte

@@ -1,0 +1,70 @@
+#PUESTOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte despliega el catalogo de puestos.
+#Este reporte imprime la clave, la descripcion y el tipo de empleado del puesto.
+#FIN_DESCRIPCION
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_SEL ( 'ORDEN' , 'CLAVE/DESCRIPCION' , $orden )
+NUEVO_PARAMETRO_SEL ( 'POR T. DE EMPLEADO' , 'NO/SI' , $ordent )
+NUEVO_PARAMETRO_TAB ( 'T. DE EMPLEADO' , 'TIPOEMP/CLAVE/TIPO DE EMPLEADO' , &tipoe )
+LEE_PARAMETROS 
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+SALIDA        := $salida
+INCLUYE ENCPIE.DAT
+
+SI ( $salida = 'DISCO' )
+   SALIDA_REPORTE ( DIRECTORIO_TRABAJO + '\TABPUES.TXT' )
+FIN_SI
+
+ENCABEZADO
+   $titulo_reporte := 'Tabla de Puestos'
+   encabezado_ini
+   IMP ( COL (1) , 'CLAVE' , COL (11) , 'DESCRIPCION' , COL (41) , 'TIPO DE EMPLEADO' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+### DEFINICION DE LA TABLA PRINCIPAL
+VAR_T ( &sql )
+AGREGA_VALOR_COL ( &sql, 0, 'SELECT *' )
+AGREGA_VALOR_COL ( &sql, 0, 'FROM PUESTO, TIPOEMP' )
+AGREGA_VALOR_COL ( &sql, 0, 'WHERE TIPOEMP.CLAVE = PUESTO."TIPO EMPLEADO"' )
+SI ( TRAE_VALOR_TABLA ( &tipoe, 0, 0 ) <> '*' )
+  AGREGA_VALOR_COL ( &sql, 0, '      AND PUESTO."TIPO EMPLEADO" IN' )
+  CREA_SELECCION_SQL ( &sql, &tipoe )
+FIN_SI
+SI ( $ordent = 'SI' )
+   AGREGA_VALOR_COL ( &sql, 0, 'ORDER BY TIPOEMP.CLAVE,' )
+SI_NO
+   AGREGA_VALOR_COL ( &sql, 0, 'ORDER BY' )
+FIN_SI
+SI ( $orden = 'CLAVE' )
+   AGREGA_VALOR_COL ( &sql, 0, 'PUESTO.CLAVE' )
+SI_NO
+   AGREGA_VALOR_COL ( &sql, 0, 'PUESTO.DESCRIPCION' )
+FIN_SI
+CREA_CONSULTA ( 'PUESTO', &sql )
+
+### CICLO PRINCIPAL
+_tot := 0
+MUESTRA_AVANCE( 'PUESTO', 'PROGRESO...' )
+PRIMER_REGISTRO( 'PUESTO' )
+REPITE
+   IMP ( COL (1) , 'PUESTO':'CLAVE' , COL (11) , 'PUESTO':'DESCRIPCION' , COL (41) , 'PUESTO':'TIPO EMPLEADO' , COL (46) , 'PUESTO':'DESCRIPCION_1' ) ;; IMPRIME
+   _tot := _tot + 1
+   SIGUIENTE_REGISTRO ( 'PUESTO' )
+HASTA ( FIN_BASE ( 'PUESTO' ))
+
+IMPRIME
+IMPRIME
+DECIMALES := 0
+IMP ( COL(40), '--- Total : ', _tot, ' PUESTO(S)' ) ;; IMPRIME

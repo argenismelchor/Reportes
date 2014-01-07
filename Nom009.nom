@@ -1,0 +1,116 @@
+#TOTALES DE NOMINA POR CONCEPTO
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra las capturas de nomina, y de incidencias como faltas, incapacidades, etc..
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_PESOS := 2
+ 
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO ) ;; IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) ;; IMPRIME
+   IMP ( CENTRA ( 'REPORTE DE CAPTURA DE NOMINA' ))
+   IMPRIME
+   LETRA ( 'LETRA CONDENSADA' )
+   IMP ( REPITETXT ( '=', 120 )) ;; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL ( 50 ), 'FALTAS', COL ( 60 ), 'INCAPACIDADES' )
+   IMPRIME
+   IMP ( REPITETXT ( '-', 120 ));; IMPRIME;; IMPRIME 
+FIN_ENCABEZADO
+  
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+
+### VARIABLES GLOBALES DEL REPORTE 
+VAR_T ( &indices )
+_primera := 0
+
+SUB_RUTINA formato_trabajador
+   _primera := 1
+   PRIMER_REGISTRO ( 'NOMINA' )
+   MIENTRAS ( FIN_BASE ( 'NOMINA' ) = FALSO )
+      SI ( TRAE_REGISTRO ( 'CONCEPTO', 'NOMINA':'CLAVE' ))
+         SI (( 'CONCEPTO':'VOLUMEN' = 0 ) Y (( 'CONCEPTO':'CAP1' <> '' ) O ( 'CONCEPTO':'CAP2' <> '' ) O ( 'CONCEPTO':'CAP3' <> '' )))
+            SI ( _primera = 1 )
+               LETRA ( 'LETRA CONDENSADA' )
+               IMP ( COL(1), 'EMPPRIN':'CLAVE' )
+               IMP ( COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 25))
+               IMP ( COL(50), . ( TOTAL_FALTAS ( 'PERIODO':'FECHA INICIAL', 'PERIODO':'FECHA FINAL', '*' )))
+               IMP ( COL(60), . ( TRAE_INCAPACIDADES ( 'PERIODO':'FECHA INICIAL', 'PERIODO':'FECHA FINAL', '*' )))
+               IMPRIME
+               _primera := 0
+            FIN_SI
+            DECIMALES := 2
+            IMP ( COL ( 10 ), 'CONCEPTO':'CLAVE', COL ( 15 ), SUBSTR ( 'CONCEPTO':'DESCRIPCION', 1, 24 ))
+            SI ( 'CONCEPTO':'CAP1' <> '' )
+               IMP ( COL ( 41 ), 'CONCEPTO':'CAP1' )
+               SI ( 'CONCEPTO':'TIPO1' = 1 )
+                  IMP ( COL ( 50 ), DER ( FECHA ( 'NOMINA':'CAP1' ), 10 ))
+               SI_NO
+                  IMP ( COL ( 50 ), DER ( $ ( 'NOMINA':'CAP1' ), 10 ))
+               FIN_SI
+            FIN_SI
+            SI ( 'CONCEPTO':'CAP2' <> '' )
+               IMP ( COL ( 61 ), 'CONCEPTO':'CAP2' )
+               SI ( 'CONCEPTO':'TIPO1' = 1 )
+                  IMP ( COL ( 50 ), DER ( FECHA ( 'NOMINA':'CAP1' ), 10 ))
+               SI_NO
+                  IMP ( COL ( 70 ), DER ( $ ( 'NOMINA':'CAP2' ), 10 ))
+               FIN_SI
+            FIN_SI
+            SI ( 'CONCEPTO':'CAP3' <> '' )
+               IMP ( COL ( 81 ), 'CONCEPTO':'CAP3' )
+               SI ( 'CONCEPTO':'TIPO1' = 1 )
+                  IMP ( COL ( 50 ), DER ( FECHA ( 'NOMINA':'CAP1' ), 10 ))
+               SI_NO
+                  IMP ( COL ( 90 ), DER ( $ ( 'NOMINA':'CAP3' ), 10 ))
+               FIN_SI
+            FIN_SI
+            IMPRIME
+         FIN_SI
+      FIN_SI
+      SIGUIENTE_REGISTRO ( 'NOMINA' )
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+base_trabajadores
+
+INCLUYE SEL_PER.DAT
+
+USA_ARCHIVO ( 'EMPPRIN', 'EMPAUS', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPINC', 'CLAVE' )
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  datos_trabajador
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte

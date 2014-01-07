@@ -1,0 +1,106 @@
+#VALIDACION DE PRESTAMOS
+#VERSION 1.0
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte se utiliza para validar la transferencia. Este reporte debe ser ejecutado una vez que se ha realizado el cálculo de la nomina para comparar lo descontado en la nomina contra
+#el descuento que esta definido en el prestamo.
+#Este reporte utiliza los parametros estandares.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO     ( 'CONCEPTO PRESTAMO', '', $concepto )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( POS( ',', $concepto ) > 0 )
+  MENSAJE( 'SOLO PUEDE SELECCIONAR 1 CONCEPTO A LA VEZ.' )
+  TERMINA_REPORTE
+FIN_SI
+
+FORMATO_FECHA := 3
+SALIDA := $salida
+COLUMNAS := 90
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO   
+   $titulo_reporte := 'VALIDACION DE PRESTAMOS'
+   encabezado_ini
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE' ) IMPRIME
+   IMP ( COL(12), 'FECHA', COL(30), DER('MONTO', 12 ), COL(45), DER('SALDO', 12 ), COL(58), DER( 'DESCUENTO', 10), COL(70), DER( 'NOMINA', 10 ), COL(80), DER( 'ESTATUS', 10 ) ) IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+#VARIABLES GLOBALES
+$antes := ''
+_nomina := 0
+$status := ''
+_descuento := 0
+$vigente   := ''
+
+SUB_RUTINA imprime_totales
+  DECIMALES := 2
+  SI ( _nomina = _descuento )
+   $status := 'OK'
+  SI_NO
+   $status := 'ERROR'
+   SI ( $vigente = 'N' )
+     $status := 'NO VIG.'
+   FIN_SI
+  FIN_SI
+  IMP ( COL(30), 'SUBTOTAL', COL(58), DER( $( _descuento), 10 ), COL(70), DER( $(_nomina), 10), COL(80), DER( $status, 10 ) )
+  IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+  $antes := ''
+  imprime_totales
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   SI ( $antes <> 'EMPPRIN':'CLAVE' )
+     SI ( $antes <> '' )
+       imprime_totales
+     FIN_SI
+     IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+     SI ( FUE_VIGENTE( 'PERIODO':'FECHA INICIAL', 'PERIODO':'FECHA FINAL' ) > 0 )
+       $vigente := 'S'
+     SI_NO
+       $vigente := 'N'
+     FIN_SI
+     IMP ( COL(70), $vigente )
+     IMPRIME     
+     $antes := 'EMPPRIN':'CLAVE'
+     _descuento := 0
+   FIN_SI
+   DECIMALES := 2
+   SI ( 'EMPPRIN':'DESCUENTO' <= 'EMPPRIN':'SALDO' )
+     _descuento := _descuento + 'EMPPRIN':'DESCUENTO'
+   SI_NO
+     _descuento := _descuento + 'EMPPRIN':'SALDO'
+   FIN_SI
+   _nomina := TOTAL( $concepto )  
+   IMP ( COL(12), FECHA( 'EMPPRES':'FECHA' ), COL(30), DER($('EMPPRIN':'MONTO'), 12 ), COL(45), DER($('EMPPRIN':'SALDO'), 12 ), COL(58), DER( $( 'EMPPRIN':'DESCUENTO' ), 10) ) IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'P. CLAVE_CONCEPTO, P. FECHA, P. MONTO, P. DESCUENTO, P. SALDO, P. ESTADO'
+$bases_extras := 'EMPPRES P'
+$condiciones_extras := 'P. CLAVE = E. CLAVE AND P. ESTADO = "S" AND P. SALDO >= 0.01 AND P. CLAVE_CONCEPTO = "' + $concepto + '"'
+base_trabajadores
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

@@ -1,0 +1,16 @@
+#EDICION DE BASE DE DATOS
+#NO EDITAR
+#USUARIO =*
+#DESCRIPCION
+#Permite editar cualquier tabla de la base de datos a modo de Catálogo.
+#El reporte pide la tabla a editar.
+#FIN_DESCRIPCION
+
+$base := ''
+REPITE
+ BORRA_PARAMETROS
+ NUEVO_PARAMETRO ( 'BASE', '', $base )
+ LEE_PARAMETROS
+
+ EDITA_TABLA ( $base )
+HASTA( PREGUNTA( 'Deseas editar otra tabla?' ) = FALSO )

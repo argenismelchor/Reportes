@@ -1,0 +1,188 @@
+#PRUEBA CONSULTA DE EMPLEADOS
+#REPORTE ESTANDAR DE MUESTRA
+#USUARIO =*
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como base en los reportes.
+#CLAVE ENTRADA SALIDA FECHA
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/EXCEL', $salida)
+#NUEVO_PARAMETRO_CHEQ('POR FECHAS','',_pfecha)
+_fechaini:=0 ;; _fechafin:=0
+#SI(_pfecha=1)
+   NUEVO_PARAMETRO_FEC('FECHA INI','',_fechaini)
+   NUEVO_PARAMETRO_FEC('FECHA FIN','',_fechafin)
+   LEE_PARAMETROS
+   BORRA_PARAMETROS
+#FIN_SI   
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'FECHA'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ENTRADA'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+_condensado := 0
+$titulo_reporte := 'EMPLEADOS SIN SALIDAD REGISTRADA'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+FORMATO_HORA:=6 ;; FORMATO_FECHA := 3
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+
+   $valor :='EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+
+   $valor := FECHA ( 'EMPPRIN':'FECHA' )
+   imprime_columna
+
+   DECIMALES:= 12
+   $valor := HORA(FRAC('EMPPRIN':'ENTRADA'))
+   imprime_columna
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+
+INCLUYE UTIL2.DAT
+
+
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+   $campos_extras       := 'E.RFC,E2.FECHA,E2.ENTRADA,E2.SALIDA'
+   $bases_extras        := 'EMPRELO2 E2'
+   $condiciones_extras  := 'E.CLAVE = E2.CLAVE AND E2.FECHA >=:FINI AND E2.FECHA <=:FFIN AND E2.SALIDA =0'
+   
+base_trabajadores
+$clavemp := '' ;; $nombre := ''
+
+PARAMETRO_SQL('EMPPRIN','FINI',_fechaini)     
+PARAMETRO_SQL('EMPPRIN','FFIN',_fechafin)
+  
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )  
+   formato_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+
+
+VAR_T ( &sub_td ) 
+ABRE_BASE ('EMPPRIN')
+ABRE_BASE ('EMPRELO2')
+ABRE_BASE ('DEPTO') 
+PRIMER_REGISTRO ( 'EMPPRIN' )
+USA_ARCHIVO ('EMPPRIN' , 'EMPDEP' , 'CLAVE') 
+
+
+
+
+
+# INSTRUCCION PARA ENVIAR CORREOS DESDE GIRO
+
+
+
+
+
+VAR_T       ( &destinatarios )
+VAR_T       ( &mensaje ) 
+
+$file_backup    := ''
+$nombre_mostrar := 'PERSONAL ACTUALMENTE DENTRO DE LA EMPRESA'               # NOMBRE PARA MOSTRAR EN LA LLEGADA DE CORREO.
+$de_correo      := 'jvilla@consisarh.com.mx'   # CUENTA DE CORREO ELECTRONICO 
+$con_copia      := ''            # CON COPIA PARA
+$asunto         := 'LISTO DE ASISTENCIA DEL PERSONAL VALIDADO AL: ' +  FECHA(FECHA_HOY) + ' ' + HORA(HORA_ACTUAL) # ASUNTO DEL CORREO
+$adjunto        := $file_backup                          # ARCHIVO ADJUNTO DIRECCION COMPLETA
+$origen         :=''
+AGREGA_VALOR_COL ( &destinatarios , 0 , 'sachariel.montes@gmail.com' )      #AGREGA DESTINATARIOS
+AGREGA_VALOR_COL ( &mensaje       , 0 , 'PERDONAL QUE SE ENCUENTRA LABORANDO DENTRO DE PLANTA EN ESTE MOMENTO') # AGREGA MENSAJE
+
+$dato:='
+AGREGA_VALOR_COL($dato,0,CLAVE)
+AGREGA_VALOR_COL($dato,1,NOMBRE)
+AGREGA_VALOR_COL($dato,2,EMPDEP)'
+
+_contador := 0
+$depto    := '' 
+PRIMER_REGISTRO ('EMPPRIN')
+MIENTRAS(FIN_BASE('EMPPRIN')=FALSO)
+   $depto := 'NO VALIDO'
+   SI ( TRAE_REGISTRO ('DEPTO' , TRAE_DSP ( 'D',  FECHA_HOY)))
+    $depto := 'DEPTO':'CLAVE' + ' ' + 'DEPTO':'DESCRIPCION'
+   FIN_SI
+   $dato := 'EMPPRIN':'CLAVE' + ' ' + 'EMPPRIN':'NOMBRE' + ' DEPTO: ' + $depto 
+   AGREGA_VALOR_COL ( &mensaje , 0 ,  $dato ) # AGREGA MENSAJE
+   _contador := _contador + 1
+   INCREMENTA_TABLA( &sub_td ,'TOTAL' , $depto , 1 )
+SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+AGREGA_VALOR_COL ( &mensaje , 0 ,  '   ' ) # AGREGA MENSAJE
+AGREGA_VALOR_COL ( &mensaje , 0 ,  '--------------------------- TOTALES POR DEPARTAMENTO ---------------------------' ) # AGREGA MENSAJE
+AGREGA_VALOR_COL ( &mensaje , 0 ,  '   ' ) # AGREGA MENSAJE
+
+
+_rt := 1 
+
+
+REPITE    
+  DECIMALES := 0 
+  $dato := TRAE_VALOR_TABLA ( &sub_td , 0 , _rt ) + ': ' + .(VALOR(TRAE_VALOR_TABLA ( &sub_td , 1 , _rt )))
+   AGREGA_VALOR_COL ( &mensaje , 0 ,  $dato ) # AGREGA MENSAJE
+_rt := _rt + 1
+HASTA ( TRAE_VALOR_TABLA ( &sub_td , 0 , _rt ) = '' ) 
+AGREGA_VALOR_COL ( &mensaje , 0 ,  '   ' ) # AGREGA MENSAJE
+AGREGA_VALOR_COL ( &mensaje , 0 ,  '--------------------------- TOTALES GENERALES --------------------------- ' ) # AGREGA MENSAJE
+AGREGA_VALOR_COL ( &mensaje , 0 ,  '   ' ) # AGREGA MENSAJE
+DECIMALES := 0 
+$dato := 'NUMERO DE PERSONAL QUE ESTA ACTUALMENTE EN PLANTA: ' + .(_contador ) 
+AGREGA_VALOR_COL ( &mensaje , 0 ,  $dato ) # AGREGA MENSAJE
+_un := 0
+_enviar := 1 
+SI ( _enviar )   
+   ENVIA_CORREO( $nombre_mostrar , $de_correo , &destinatarios , $con_copia , $asunto , &mensaje , '' )
+FIN_SI
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   formato_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+TERMINA_REPORTE
+

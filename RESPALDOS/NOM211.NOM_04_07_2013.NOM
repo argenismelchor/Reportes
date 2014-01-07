@@ -1,0 +1,145 @@
+#LAYOUT TARJETAS SANTANDER NO SIRVE
+#LAYOUT TARJETAS SANTANDER
+#LAYOUT ALTAS EMPLEADO
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Layout de Altas de Empleado.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'EXCEL', $salida)
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR' , '' , _grabar ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+$ruta := 'C:\GIRO\ALTA DE EMPLEADOS.xlsx'
+EXCEL('AGREGA_HOJA_PLANTILLA' , 0 , 0 , $ruta ) 
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'RFC'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INGRESO'
+_longitud  := 12
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+
+_condensado := 0
+$titulo_reporte := 'LAYOUT DE ALTAS DE EMPLEADOS'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+$ecivil := ''
+_filaexcel    := 8
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+
+   EXCEL ( 'PON_VALOR' , 3 , _filaexcel , 'EMPPRIN':'CLAVE' ) 
+
+   ULTIMO_REGISTRO ( 'EMPDEP')
+   EXCEL ( 'PON_VALOR' , 4  , _filaexcel , 'EMPDEP':'CATALOGO'                      ) 
+   EXCEL ( 'PON_VALOR' , 5  , _filaexcel , 'EMPPRIN':'NOMBREP'                      ) 
+   EXCEL ( 'PON_VALOR' , 6  , _filaexcel , 'EMPPRIN':'NOMBREM'                      )  
+   EXCEL ( 'PON_VALOR' , 7  , _filaexcel , 'EMPPRIN':'NOMBREN'                      ) 
+   EXCEL ( 'PON_VALOR' , 8  , _filaexcel , 'EMPPRIN':'RFC'                          ) 
+   EXCEL ( 'PON_VALOR' , 10 , _filaexcel , 'EMPRH':'SEXO'                           )    
+
+   $ecivil := 'EMPRH':'ESTADO_CIVIL' 
+
+   SI ( $ecivil  <> '' ) 
+      SI ( $ecivil = 'SOL' ) 
+           $ecivil := 'SOLTERO'
+      SI_NO
+           $ecivil := 'CASADO'  
+      FIN_SI
+   FIN_SI
+   
+   EXCEL ( 'PON_VALOR' , 12 , _filaexcel , $ecivil                                  )
+
+   EXCEL ( 'PON_VALOR' , 14 , _filaexcel , 'EMPRH':'CALLE' + ' ' + 'EMPRH':'NUMERO' )
+   EXCEL ( 'PON_VALOR' , 15 , _filaexcel , 'EMPRH':'COLONIA'                        )
+   EXCEL ( 'PON_VALOR' , 16 , _filaexcel , 'EMPRH':'MUNICIPIO'                      ) 
+   EXCEL ( 'PON_VALOR' , 17 , _filaexcel , 'EMPRH':'ESTADO'                         )
+
+   DECIMALES:= 0
+   EXCEL ( 'PON_VALOR' , 18 , _filaexcel , .('EMPRH':'CP')                          )
+   EXCEL ( 'PON_VALOR' , 23 , _filaexcel , 'EMPRH':'TELEFONO_1'                     ) 
+  
+   FORMATO_FECHA := 3
+   EXCEL ( 'PON_VALOR' , 24 , _filaexcel , FECHA ( 'EMPPRIN':'INGRESO' )            ) 
+
+   ULTIMO_REGISTRO ( 'EMPSUC')
+   EXCEL ( 'PON_VALOR' , 25 , _filaexcel , 'EMPSUC':'CATALOGO'                      )
+
+   ULTIMO_REGISTRO ( 'EMPSDO')
+
+   DECIMALES:=2
+
+   EXCEL ( 'PON_VALOR' , 36 , _filaexcel , 'EMPSDO':'SDO1' * 30.4  ) 
+
+
+   _filaexcel := ( _filaexcel + 1 ) 
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. RFC,E.INGRESO,E.NOMBREP,E.NOMBREM,E.NOMBREN'
+base_trabajadores
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO' , 'CLAVE' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSUC' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPDEP' , 'CLAVE' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPRH'  , 'CLAVE' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT' , 'CLAVE' )
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+
+#    SI ( ( 'EMPEXT':'BANCO' = '1'  ) AND ( 'EMPEXT':'ALTA_TARJETA' = 0 ) ) 
+    SI ( 'EMPEXT':'ALTA_TARJETA' = 0 ) 
+
+         formato_trabajador
+         SI ( _grabar = 1 ) 
+              'EMPEXT':'ALTA_TARJETA' := 1
+              GRABA_BASE ( 'EMPEXT')
+         FIN_SI
+
+    FIN_SI
+
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+TERMINA_REPORTE

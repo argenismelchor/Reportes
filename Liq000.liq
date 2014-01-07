@@ -1,0 +1,6 @@
+#********* REPORTES ESTANDARES
+#NO EDITAR
+#USUARIO =*
+#DESCRIPCION
+#Reportes estandares del sistema
+#FIN_DESCRIPCION

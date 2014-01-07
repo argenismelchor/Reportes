@@ -1,0 +1,74 @@
+#TIPOS DE EMPLEADOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte despliega el catalogo de tipos de empleado.
+#Este reporte imprime la clave y la descripcion del tipo de empleado.
+#FIN_DESCRIPCION
+NUEVO_PARAMETRO_SAL  ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_SEL  ( 'ORDEN' , 'CLAVE/DESCRIPCION' , $orden )
+NUEVO_PARAMETRO_CHEQ ( 'IMPRIMIR' , 'FACTORES' , _factores )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+SALIDA        := $salida
+INCLUYE ENCPIE.DAT
+
+SI ( $salida = 'DISCO' )
+   SALIDA_REPORTE ( DIRECTORIO_TRABAJO + '\TABTIPOE.TXT' )
+FIN_SI
+
+ENCABEZADO
+   $titulo_reporte := 'Tabla de Tipos de Empleado'
+   encabezado_ini
+   IMP ( COL (1) , 'Clave' , COL (11) , 'DESCRIPCION' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+### DEFINICION DE TABLA
+VAR_T ( &sql )
+AGREGA_VALOR_COL ( &sql, 0, 'SELECT *' )
+AGREGA_VALOR_COL ( &sql, 0, 'FROM TIPOEMP' )
+AGREGA_VALOR_COL ( &sql, 0, 'ORDER BY' )
+SI ( $orden = 'CLAVE' )
+   AGREGA_VALOR_COL ( &sql, 0, 'CLAVE' )
+SI_NO
+   AGREGA_VALOR_COL ( &sql, 0, 'DESCRIPCION' )
+FIN_SI
+CREA_CONSULTA ( 'TIPOEMP', &sql )
+_tot := 0
+
+USA_ARCHIVO ( 'TIPOEMP', 'FACTOR', 'CLAVE' )
+
+### CICLO PRINCIPAL
+MIENTRAS ( FIN_BASE ( 'TIPOEMP' ) = FALSO)
+   IMP ( COL(1), 'TIPOEMP':'CLAVE', COL(11), 'TIPOEMP':'DESCRIPCION' ) ;; IMPRIME
+   SI ( _factores )
+      IMP ( COL ( 6 ), 'ANT INI', COL ( 15 ), 'ANT FIN', COL ( 30 ), 'PRIMA V.', COL ( 40 ), 'DIAS VAC', COL ( 50 ), 'AGUIN', COL ( 58 ), 'FACTOR INT' ) ;; IMPRIME
+      IMP ( COL ( 6 ), '-------', COL ( 15 ), '-------', COL ( 30 ), '--------', COL ( 40 ), '--------', COL ( 50 ), '-----', COL ( 58 ), '----------' ) ;; IMPRIME
+      MIENTRAS ( FIN_BASE ( 'FACTOR' ) = FALSO )
+         DECIMALES := 0
+         IMP ( COL ( 7 ), DER ( 'FACTOR':'ANT INICIAL', 2 ), COL ( 15 ), DER ( 'FACTOR':'ANT FINAL', 2 ))
+         IMP ( COL ( 30 ), DER ( 'FACTOR':'PRIMA VACACIONAL', 4 ), '%', COL ( 40 ), DER ( 'FACTOR':'DIAS DE VACACIONES', 4 ))
+         IMP ( COL ( 50 ), DER ( 'FACTOR':'DIAS DE AGUINALDO', 4 ))
+         DECIMALES := 5
+         IMP ( COL ( 60 ), DER ( 'FACTOR':'FACTOR', 7 ))
+         IMPRIME
+         SIGUIENTE_REGISTRO ( 'FACTOR' )
+      FIN_MIENTRAS
+      IMPRIME IMPRIME
+   FIN_SI
+   _tot := _tot + 1
+   SIGUIENTE_REGISTRO ( 'TIPOEMP' )
+FIN_MIENTRAS
+
+IMPRIME
+DECIMALES := 0
+IMP ( COL(40), '--- Total : ', _tot, ' TIPO(S) DE EMPLEADOS' ) ;; IMPRIME

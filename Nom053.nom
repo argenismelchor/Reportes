@@ -1,0 +1,271 @@
+#DECLARACION ANUAL DE SUELDOS Y SALARIOS
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra la declaracion anual de sueldos y salarios de trabajadores vigentes de la empresa, este reporte permite filtrar la informacion en base al registro patronal, la sucursal, el centro de costo,
+#el departamento, el puesto, el tipo de empleado. Este reporte permite elegir los indices a considerar y si lo desea puede
+#alterar el orden del los mismos.
+#Este reporte imprime la clave, el nombre y tiene la opción de imprimir los sueldos del trabajador.
+#FIN_DESCRIPCION
+
+FORMATO_FECHA := 0
+$ano := SUBSTR( FECHA( FECHA_HOY ), 5, 2 )
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC  ( 'FECHA INICIAL','0101'+$ano,_fi) 
+NUEVO_PARAMETRO_FEC  ( 'FECHA FINAL','3112'+$ano,_ff)
+NUEVO_PARAMETRO_CHEQ ( 'GRAFICA', '', _graf )
+NUEVO_PARAMETRO_CHEQ ( 'INCLUIR EMPLEADOS', '', _empleados )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+NUEVO_PARAMETRO ( 'SUELDOS Y SALARIOS', '01,02,04,12,22,32,05,06,23', $sueldos )
+NUEVO_PARAMETRO ( 'TIEMPO EXTRA', '10,11', $tiempo )
+NUEVO_PARAMETRO ( 'PTU', '31', $ptu )
+NUEVO_PARAMETRO ( 'AGUINALDO', '30', $aginaldo )
+NUEVO_PARAMETRO ( 'P. VACACIONAL', '13', $prima )
+NUEVO_PARAMETRO ( 'FONDO AHORROS', '67', $fondo )
+NUEVO_PARAMETRO ( 'VALES', 'VALE', $vales )
+NUEVO_PARAMETRO ( 'OTRA REMUNERACIONES', '', $otras )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 1 
+FORMATO_PESOS := 2
+SALIDA := $salida
+
+DECIMALES:=2
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'DECLARACION ANUAL DE SUELDOS Y SALARIOS'
+   encabezado_ini
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(60), DER('SUELDO',10) ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+#Variables Globales
+
+$tipo_act := ''
+VAR_T ( &empleados )
+VAR_T ( &kardex    )
+VAR_T ( &subtotal  )
+VAR_T ( &grafica   )
+_sueldo:=0
+_veces :=0
+_minimo:=0
+$aux   := ''
+$saux  := ''
+$valor := ''
+_base  := 0
+_vec   := 0
+_hay   := 0
+_iaux  := 0
+_total := 0
+$titulo:= ''
+_suma  := 0
+_num_emp := 0
+$rango := ''
+$clave := ''
+_indice:= 0
+
+SUB_RUTINA sumatoria
+  _hay := 1
+  MIENTRAS ( _hay = 1 )
+    SI ( POS(',', $saux) > 0 )
+      $valor := SUBSTR( $saux, 1, POS(',', $saux ) - 1 )
+      $saux := ELIMINA ( $saux, 1, POS(',', $saux ) )
+      _hay := 1
+    SI_NO
+      $valor := $saux
+      _hay := 0
+    FIN_SI
+    _suma := ACUM_ANUAL( $valor )
+    DECIMALES := 2
+    INCREMENTA_TABLA( &subtotal, $aux, $titulo, _suma )
+    INCREMENTA_TABLA( &grafica, $aux, $titulo, _suma )
+    SI ( ( $valor <> 'VALE' ) AND ( $valor <> '67') )
+      _total := _total + ACUM_ANUAL( $valor )
+    FIN_SI
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA checa_registro
+      SI ( TRAE_REGISTRO ( 'SUCURSAL', TRAE_DSP ( 'S', _ff ) ) )
+       SI ( TRAE_REGISTRO ( 'PATRONAL', 'SUCURSAL':'REGISTRO PATRONAL' ) )
+         SI ( 'PATRONAL':'ZONA ECONOMICA' = 'A' )
+            _minimo := 'MINIMO':'MINIMO A'
+         FIN_SI
+         SI ( 'PATRONAL':'ZONA ECONOMICA' = 'B' )
+            _minimo := 'MINIMO':'MINIMO B'
+         FIN_SI
+         SI ( 'PATRONAL':'ZONA ECONOMICA' = 'C' )
+            _minimo := 'MINIMO':'MINIMO C'
+         FIN_SI
+       SI_NO
+         IMP ( 'REGISTRO PATRONAL INVÁLIDA DE TRABAJADOR ', 'EMPPRIN':'CLAVE', ' ', 'EMPPRIN':'NOMBRE' ) ;; IMPRIME
+       FIN_SI
+      SI_NO
+         IMP ( 'SUCURSAL INVÁLIDA DE TRABAJADOR ', 'EMPPRIN':'CLAVE', ' ', 'EMPPRIN':'NOMBRE' ) ;; IMPRIME
+      FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   DECIMALES := 2
+   IMP ( 'EMPPRIN':'CLAVE' ) ;; IMPRIME
+   checa_registro
+  _base := SUELDO_ACTUAL ( _fi, _ff )
+  _veces:= _base / _minimo
+  _vec := _veces
+  _total := 0
+  SI ( _vec <= 1 ) 
+     $aux := '00-01'
+  FIN_SI
+  SI (( _vec > 1 ) AND ( _vec <= 3 )) 
+     $aux := '01-03'
+  FIN_SI
+  SI (( _vec > 3 ) AND ( _vec <= 5 ))
+     $aux := '03-05' 
+  FIN_SI
+  SI (( _vec > 5 ) AND ( _vec <= 10 )) 
+     $aux := '05-10'
+  FIN_SI
+  SI ( _vec > 10 ) 
+     $aux := '10-' 
+  FIN_SI
+  DECIMALES := 2
+
+  $saux := $sueldos
+  $titulo := 'SUELDOS'
+  sumatoria
+
+  $saux := $tiempo
+  $titulo := 'TIEMPO EXTRA'
+  sumatoria
+
+  $saux := $ptu
+  $titulo := 'PTU'
+  sumatoria
+
+  $saux := $aginaldo
+  $titulo := 'AGUINALDO'
+  sumatoria
+
+  $saux := $prima
+  $titulo := 'P. VACACIONAL'
+  sumatoria
+
+  $saux := $fondo
+  $titulo := 'FONDO AHORRO'
+  sumatoria
+
+  $saux := $vales
+  $titulo := 'VALES'
+  sumatoria
+
+  $titulo := 'OTRAS REM.'
+  _iaux := ACUM_ANUAL ( 'PERC' ) - _total
+  INCREMENTA_TABLA( &subtotal, $aux, $titulo, _iaux )
+  INCREMENTA_TABLA( &grafica, $aux, $titulo, _iaux )
+
+  $titulo := 'EMPLEADOS'
+  INCREMENTA_TABLA( &subtotal, $aux, $titulo, 1 )
+  INCREMENTA_TABLA( &grafica, $aux, $titulo, 1 )
+
+  SI ( _empleados = 1 )
+    PON_VALOR_TABLA( &empleados, 0, _num_emp, $aux )
+    PON_VALOR_TABLA( &empleados, 1, _num_emp, 'EMPPRIN':'CLAVE' )
+    PON_VALOR_TABLA( &empleados, 2, _num_emp, $(_base) )
+    _num_emp := _num_emp + 1
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA encabezados
+  #
+FIN_SUB_RUTINA
+
+SUB_RUTINA lista_empleados
+  _indice := 0
+  MIENTRAS( TRAE_VALOR_TABLA( &empleados, 0, _indice ) <> '' )
+    SI ( TRAE_VALOR_TABLA( &empleados, 0, _indice ) <> $rango )
+      IMPRIME
+      IMP ( 'RANGO : ', TRAE_VALOR_TABLA( &empleados, 0, _indice ) ) IMPRIME
+      IMPRIME
+    FIN_SI
+    $rango  := TRAE_VALOR_TABLA( &empleados, 0, _indice )
+    $clave  := TRAE_VALOR_TABLA( &empleados, 1, _indice )
+    _sueldo := VALOR( TRAE_VALOR_TABLA( &empleados, 2, _indice ) )
+    SI ( TRAE_REGISTRO( 'EMPPRIN', $clave ) )
+      IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), 'EMPPRIN':'NOMBREP', ' ', 'EMPPRIN':'NOMBREM', ' ', 'EMPPRIN':'NOMBREN' )
+      IMP ( COL(60), DER( $( _sueldo ), 10) )
+      IMPRIME
+    FIN_SI
+    _indice := _indice + 1
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+    DECIMALES := 2
+    FORMATO_PESOS := 2
+#    ORDENA_RENGLON ( &subtotal, 0 )
+    JUSTIFICA_TABLA ( &subtotal, 14 )
+    IMPRIME
+    IMPRIME_TABLA ( &subtotal, 1, 14, 28, 42, 56, 70 )
+    LIMPIA_TABLA ( &subtotal )
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+SI (TRAE_REGISTRO_VIG ( 'MINIMO', _ff ) = FALSO)
+  MENSAJE('No hay salario vigente a la fecha especificada...')  
+FIN_SI
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE ( _fi, _ff ) )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+
+DECIMALES := 2
+ORDENA_RENGLON ( &grafica, 0 )
+JUSTIFICA_TABLA ( &grafica, 14 )
+IMPRIME ;; IMPRIME
+IMP( 'TOTALES GLOBALES' ) ;; IMPRIME
+IMPRIME
+IMPRIME_TABLA ( &grafica, 1, 14, 28, 42, 56, 70 )
+IMPRIME
+
+SI ( _empleados = 1 )
+  CIERRA_BASE( 'EMPPRIN' )
+  ABRE_BASE( 'EMPPRIN' )
+  IMPRIME
+  IMP ( 'LISTA DE EMPLEADOS' ) IMPRIME
+  ORDENA_COLUMNA ( &empleados, 0, 1 )
+  lista_empleados
+  LIMPIA_TABLA ( &subtotal )
+FIN_SI
+
+SI ( _graf = 1 )
+  CREA_GRAFICA( &subtotal )
+FIN_SI

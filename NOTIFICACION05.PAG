@@ -1,0 +1,273 @@
+#DETALLE DE CHECADAS PARA ACCESOS ILIMITADOS CORREO
+#DETALLE DE CHECADAS PARA ACCESOS ILIMITADOS
+#VERSION 2.5
+#USUARIO =*
+#EXCEL
+#DESCRIPCION
+#DETALLE DE ACCESOS EN RELOJ CON CHECADAS ILIMITADAS
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'EXCEL', $salida)
+NUEVO_PARAMETRO_FEC ( 'FECHA DE INICIO' , '' , _fi ) 
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL'  , '' , _ff )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+MENSAJE ('INICIO') 
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'DEPTO'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'PUESTO'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SUCURSAL'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'FECHA'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ENTRADA'
+_longitud  := 12
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SALIDA'
+_longitud  := 12
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'HRS'
+_longitud  := 12
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'STATUS'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+VAR_T ( &falta )
+
+$desc := ''
+
+ABRE_BASE ('FALTA')
+MIENTRAS ( FIN_BASE ('FALTA') = FALSO)
+
+ $valor := 'FALTA':'CLAVE'
+ $desc  := 'FALTA':'DESCRIPCION'
+ AGREGA_VALOR_COL ( &falta , 0 , $valor )
+
+
+ SIGUIENTE_REGISTRO ('FALTA')
+FIN_MIENTRAS
+
+
+
+_condensado := 1
+$titulo_reporte := 'DETALLE DE ACCESOS DE RELOJ'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 6
+FORMATO_PESOS := 2
+FORMATO_HORA  := 2
+
+_finci := 0 $tipo := '' _ren_tab := 0 
+
+# VARIABLES GLOBALES
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+
+FORMATO_FECHA := 4
+
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+
+   $valor := 'INVALIDO'
+   SI ( TRAE_REGISTRO ('DEPTO' , TRAE_DSP('D' , _ff )))
+    $valor := 'DEPTO':'DESCRIPCION'
+   FIN_SI
+   imprime_columna
+
+   $valor := 'INVALIDO'
+   SI ( TRAE_REGISTRO ('PUESTO' , TRAE_DSP('P' , _ff )))
+    $valor := 'PUESTO':'DESCRIPCION'
+   FIN_SI
+   imprime_columna
+
+   $valor := 'INVALIDO'
+   SI ( TRAE_REGISTRO ('SUCURSAL' , TRAE_DSP('S' , _ff )))
+    $valor := 'SUCURSAL':'NOMBRE'
+   FIN_SI
+   imprime_columna
+
+
+   $valor := FECHA('EMPPRIN':'FECHA')
+   imprime_columna
+
+   DECIMALES := 16
+
+   $valor := HORA(FRAC('EMPPRIN':'ENTRADA'))
+   imprime_columna
+
+   $valor := HORA(FRAC('EMPPRIN':'SALIDA'))
+   imprime_columna
+
+   $valor := HORA(FRAC('EMPPRIN':'HRS'))
+   imprime_columna
+
+   _finci := 'EMPPRIN':'FECHA'
+
+   SI ( (FRAC ('EMPPRIN':'ENTRADA') = 0 ) AND (FRAC ('EMPPRIN':'SALIDA') = 0 ))
+      $valor := 'NO CHECADA'
+      SI ( TRAE_VACACIONES ( 'EMPPRIN':'FECHA', 'EMPPRIN':'FECHA' , 0) = 1)
+         $valor := 'VACACIONES'      
+      FIN_SI
+
+      _ren_tab := 0 
+      REPITE
+        $tipo := TRAE_VALOR_TABLA ( &falta , 0 , _ren_tab)
+        SI ( TRAE_FALTAS ( _finci  , _finci , $tipo ) > 0 )
+          $valor := TRAE_VALOR_TABLA ( &falta , 1, _ren_tab )
+        FIN_SI
+        _ren_tab := _ren_tab + 1
+      HASTA ( TRAE_VALOR_TABLA ( &falta , 0, _ren_tab ) = '')
+
+
+     
+      SI ( TRAE_INCAPACIDADES ( 'EMPPRIN':'FECHA', 'EMPPRIN':'FECHA' , '*' ) = 1)
+         $valor := 'INCAPACIDAD'      
+      FIN_SI
+
+    SI_NO
+     SI ( (FRAC ('EMPPRIN':'ENTRADA') = 0 ) OR (FRAC ('EMPPRIN':'SALIDA') = 0 ))
+      $valor := 'CHECADA INCOMPLETA'
+      SI_NO
+       $valor := 'ASITENCIA'     
+     FIN_SI
+   FIN_SI
+   imprime_columna
+
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+INCLUYE LIBELI.DAT
+
+_depurar := 0
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. RFC'
+utiliza_consulta_librel
+base_trabajadores
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+ABRE_BASE ('FALTA') 
+MENSAJE ('ABRE BASE FALTA') 
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+USA_ARCHIVO ('EMPPRIN' , 'EMPDEP'  , 'CLAVE' ) 
+USA_ARCHIVO ('EMPPRIN' , 'EMPPUES' , 'CLAVE' ) 
+USA_ARCHIVO ('EMPPRIN' , 'EMPSUC'  , 'CLAVE' ) 
+USA_ARCHIVO ('EMPPRIN' , 'EMPINC'  , 'CLAVE' ) 
+USA_ARCHIVO ('EMPPRIN' , 'EMPVACA' , 'CLAVE' ) 
+USA_ARCHIVO ('EMPPRIN' , 'EMPAUS'  , 'CLAVE' ) 
+
+MENSAJE ('INICIA CICLO EMPLEADO') 
+
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE( FECHA_HOY ) )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+MENSAJE ('TERMINA CICLO') 
+
+
+# INSTRUCCION PARA ENVIAR CORREOS DESDE GIRO
+
+VAR_T       ( &destinatarios )
+VAR_T       ( &mensaje ) 
+
+$file_backup := ''
+
+EXCEL('NOMBRE_ARCHIVO', 0 , 0 ,$file_backup )
+EXCEL('CERRAR'        , 0 , 0 ,$file_backup )
+
+
+MENSAJE ( $file_backup ) 
+
+$empresa := ''
+
+SI ( TRAE_REGISTRO('EMPRESA', 'EMPRESA':'CLAVE'))
+   $empresa := 'EMPRESA':'NOMBRE'
+FIN_SI
+
+$nombre_mostrar := LEE_INI('NOTIFICACIONES','NOMBRE','') # NOMBRE PARA MOSTRAR EN LA LLEGADA DE CORREO.
+$de_correo      := LEE_INI('NOTIFICACIONES','CORREO','')   # CUENTA DE CORREO ELECTRONICO
+$con_copia      := ''                          # CON COPIA PARA
+$asunto         := 'listado de asistencia de personal correspondiente al: ' + FECHA(FECHA_HOY) + ' ' + $empresa              # ASUNTO DEL CORREO
+$adjunto        := $file_backup                # ARCHIVO ADJUNTO DIRECCION COMPLETA
+
+AGREGA_VALOR_COL ( &destinatarios , 0 , 'jflores@consisarh.com.mx' ) #AGREGA DESTINATARIOS
+#AGREGA_VALOR_COL ( &destinatarios , 0 , 'sdavila@seao.com.mx' ) #AGREGA DESTINATARIOS
+#AGREGA_VALOR_COL ( &destinatarios , 0 , 'rcamacho@seao.com.mx' ) #AGREGA DESTINATARIOS
+AGREGA_VALOR_COL ( &mensaje       , 0 , ''           ) # AGREGA MENSAJE
+
+_un     := 0
+_enviar := 1
+
+SI ( _enviar )   
+   ENVIA_CORREO( $nombre_mostrar , $de_correo , &destinatarios , $con_copia , $asunto , &mensaje , $adjunto  )
+FIN_SI
+
+
+
+termina_reporte
+
+TERMINA_REPORTE

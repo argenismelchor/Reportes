@@ -1,0 +1,931 @@
+#TRANSFERENCIA AL SUA
+#VERSION 2.600
+#DESCRIPCION
+#Este reporte genera el archivo de transferencias del SUA.
+#FIN_DESCRIPCION
+
+FORMATO_FECHA := 6
+$fech_act:=FECHA(FECHA_HOY-30)
+$mes_act:=SUBSTR($fech_act,3,2)
+$ano_act:=SUBSTR($fech_act,5,4)
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'DISCO/IMPRESORA', $salida )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+NUEVO_PARAMETRO ('AÑO',$ano_act,_ano) 
+NUEVO_PARAMETRO ('MES',$mes_act,_mes) 
+NUEVO_PARAMETRO_SEL ('TIPO DE EXPORTACION', 'Trabajadores/Movimientos GNRAL/Movimientos Infonavit/Datos complem.Incapacidad', _tipo )
+NUEVO_PARAMETRO_SEL ('TIPO REPORTE', 'FORMATO/LISTADO', _tsal )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+$clave_ant := ''
+$archivo   := ''
+$clavemp   := ''
+$aplicaporc := 'N'
+_cont    := 0
+_cont2   := 0
+_movs    := 0
+_faltas  := 0
+_incs    := 0
+_homo    := 0
+_curp    := 0
+_altas_mes := 0
+_define_fecha := 0
+_finicial:= 0
+_ffinal  := 0
+_solo_vig:= 0
+_pos     := 0
+_tipomov := 0
+$tipomov := ''
+$desctipomov:= ''
+ 
+SI ( _tipo = 0 )
+  NUEVO_PARAMETRO_CHEQ ('HOMOCLAVE', '', _homo )
+  NUEVO_PARAMETRO_CHEQ ('C.U.R.P', '', _curp )
+  NUEVO_PARAMETRO_CHEQ ('SOLO ALTAS DE MES', '', _altas_mes )
+  NUEVO_PARAMETRO_CHEQ ('DEFINIR FECHAS'   , '', _define_fecha )
+#  NUEVO_PARAMETRO('ARCHIVO DE SALIDA','C:\TRAB.TXT', $archivo)
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+FIN_SI
+
+SI ( _tipo = 1 )
+#  NUEVO_PARAMETRO     ('ARCHIVO DE SALIDA','C:\MOVTOS.TXT',$archivo)
+  NUEVO_PARAMETRO_CHEQ('MOVIMIENTOS', '', _movs )
+  NUEVO_PARAMETRO_CHEQ('FALTAS', '', _faltas )
+  NUEVO_PARAMETRO_CHEQ('INCAPACIDADES', '', _incs )
+  NUEVO_PARAMETRO_CHEQ ('DEFINIR FECHAS'   , '', _define_fecha )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+FIN_SI
+
+
+SI ( _define_fecha = 1 )
+   NUEVO_PARAMETRO_FEC  ( 'FECHA INICIAL' , '' , _finicial ) 
+   NUEVO_PARAMETRO_FEC  ( 'FECHA FINAL'   , '' , _ffinal   )
+   NUEVO_PARAMETRO_CHEQ ( 'SOLO VIGENTES' , '' , _solo_vig )
+   LEE_PARAMETROS
+   BORRA_PARAMETROS
+FIN_SI
+
+#SALIDA_REPORTE ( $archivo )
+
+BORRA_PARAMETROS
+
+MODO_IMPRESION ( 'DIRECTO' )
+SALIDA:='D'
+_fi:=CALCULA_FECHA(_ano,_mes,1)
+_ff:=CALCULA_FECHA(_ano,_mes,31)
+
+SI ( _tsal = 0 )
+  FORMATO_FECHA := 6
+  FORMATO_PESOS := 3
+  RELLENO := '0'
+SI_NO
+  FORMATO_FECHA := 2
+  FORMATO_PESOS := 2
+  RELLENO := ' '
+  ENCABEZADO
+     IMPRIME
+     LETRA ( 'LETRA ENFATISADA' )
+     IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), 'giro Ver ' + VERSION_GIRO ) ;; IMPRIME
+     IMP ( CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+     IMP ( CENTRA ('LISTADO DE EXPORTACION')) ;; IMPRIME
+     IMP ( REPITETXT('=',120)) ;; IMPRIME
+
+     SI ( _tipo = 0 )
+        IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(40), 'INGRESO', COL(50), DER('SUELDO', 10), COL(63), 'RFC', COL(75), 'CREDITO INF.' ) ;; IMPRIME
+     FIN_SI
+
+     SI ( _tipo = 1 )  
+        IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(39), 'TIPO', COL(45), 'FECHA', COL(57), 'DUR', COL(60), DER('SUELDO', 10) ) ;; IMPRIME
+     FIN_SI
+
+     SI ( _tipo = 2 ) 
+           IMP ( COL(1)  , 'CLAVE'    , COL(10)  , 'NOMBRE' , COL(38) , 'INFONAVIT' , COL(55) , 'FECHAMOV' )
+           IMP ( COL(70) , 'TIPODESC' , COL(85) , 'VALORDESC' )   
+           IMPRIME    
+           IMP ( '              <=========>   Tipo de Movimiento:     "'  + $desctipomov  + '"  <========> ') 
+           IMPRIME  
+
+     FIN_SI 
+ 
+     SI ( _tipo = 3 ) 
+        IMP ( REPITETXT('=',120)) ;; IMPRIME
+        IMP ( COL(1) , 'CLAVE', COL(10) , 'NOMBRE' , COL(38) ,'TIPO', COL(48) ,'FINI.INCAPAC.',COL(65) ,'FFIN.INCAPAC.' ) ;; IMPRIME
+        IMP ( COL(10) , 'RAMA INC'  , COL(35) , 'TIPO RIESGO' , COL(65) , 'SECUELA O CONS' , COL(90) , 'CONTROL INCAP.' ) ;; IMPRIME
+     FIN_SI 
+
+     IMP ( REPITETXT('-',120) );; IMPRIME;; IMPRIME 
+     LETRA ( 'LETRA NORMAL' );; IMPRIME
+  FIN_ENCABEZADO
+  
+  PIE
+     IMPRIME
+     DECIMALES := 0
+     LETRA ( 'LETRA ENFATISADA' )
+     IMPRIME
+     IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+     LETRA ( 'LETRA NORMAL' );; IMPRIME
+     DECIMALES := 2
+  FIN_PIE
+FIN_SI
+
+#Variables Globales
+VAR_T ( &subtotales )
+VAR_T ( &grafica )
+VAR_T ( &indices )
+VAR_T ( &empleados ) 
+_num_ind   := 0
+$indice    := ''
+$ant_trab  := ''
+$aux       := ''
+$nombre    := ''
+_aux       := 0
+_salir     := 0
+_fini      := 0
+_ffin      := 0
+_dur       := 0
+_ciclo     := 0
+_aux6      := 0 
+
+$regpatronal := ''
+$numimss     := ''
+$tipoinc     := ''
+$fechainiinc := ''
+$diaini      := ''
+$mesini      := ''
+$anioini     := ''
+$folio       := ''
+$diassubs    := ''
+$porcinc     := ''
+$ramainc     := ''
+$tipriesgo   := ''
+$seccons     := ''
+$cincapac    := ''
+$fechafininc := ''
+$diafin      := ''
+$mesfin      := ''
+$aniofin     := ''
+
+$credinfo    := ''
+$fechamov    := ''
+$fracdesc    := ''
+$valordesc   := ''
+$tipodesc    := ''
+
+_fracdesc    :=  0
+_valordesc   :=  0
+_decimales   :=  0
+
+#Subrutina diversas
+
+SUB_RUTINA imprime_nombre
+   $nombre := 'EMPPRIN':'NOMBRE_SUA'
+   SI ( POS( '.', $nombre ) > 0 )
+    $nombre := REEMPLAZA( '.', ' ', $nombre )
+   FIN_SI
+   SI ( _tsal = 0 )
+     IMP ( COL(1)  , 'PATRONAL':'REGISTRO PATRONAL' )
+     IMP ( COL(12) , 'EMPPRIN':'AFILIACION' )
+     SI ( _homo = 0 )
+       $aux := SUBSTR('EMPPRIN':'RFC',1,10)
+     SI_NO
+       $aux := SUBSTR('EMPPRIN':'RFC',1,13)
+     FIN_SI
+     SI (( LONGITUD($aux) < 10 ) OR ( POS( '-', $aux ) > 0 ))
+       #SI (PREGUNTA('El trabajador '+'EMPPRIN':'CLAVE' + ': ' + $nombre + ' tiene incompleto el RFC. Continuar?') = FALSO)
+       #  TERMINA_REPORTE
+       #FIN_SI
+     FIN_SI
+     IMP ( COL(23) , $aux )
+     SI ( _curp = 0 ) 
+        IMP ( COL(36) , '' )
+     SI_NO
+        IMP ( COL(36) , 'EMPPRIN':'CURP' )
+     FIN_SI 
+     IMP ( COL(54) , $nombre )
+     IMP ( COL(104), '1' )
+     IMP ( COL(105), '0' )
+
+     PRIMER_REGISTRO ('EMPSDO') 
+     SI ( 'EMPSDO':'TIPO' = 'A' ) 
+        _aux6 := 'EMPSDO':'FECHA' 
+     #SI_NO
+     #   _aux6 := 'EMPSDO':'FECHA'                
+     FIN_SI  
+
+     IMP ( COL(106), FECHA ( _aux6 ))
+     _aux  := INT_IMSS_ACTUAL ( 'EMPPRIN':'INGRESO' , _aux6 )
+
+     #IMP ( COL(106), FECHA ( 'EMPPRIN':'INGRESO' ))
+     #_aux  := INT_IMSS_ACTUAL ( 'EMPPRIN':'INGRESO' , 'EMPPRIN':'INGRESO' )
+
+     SI ( _aux = 0 ) 
+        _aux  := INT_IMSS_ACTUAL ( 'EMPPRIN':'INGRESO' + 1 , 'EMPPRIN':'INGRESO' + 1 )
+     FIN_SI      
+     SI ( _aux = 0 ) 
+        SI ( TRAE_REGISTRO ( 'EMPSDO' , 'EMPPRIN':'CLAVE' ,'EMPPRIN':'INGRESO' ) = VERDADERO  ) 
+            SIGUIENTE_REGISTRO ('EMPSDO')
+           _aux  := INT_IMSS_ACTUAL ( 'EMPSDO':'FECHA' , 'EMPSDO':'FECHA' )
+        FIN_SI 
+     FIN_SI
+
+     SI ( _aux = 0 )      
+        _aux  := INT_IMSS_ACTUAL ( _aux6 , _aux6 )
+     FIN_SI 
+     SI ( _aux <= 0 )
+       #SI (PREGUNTA('El trabajador ' + 'EMPPRIN':'CLAVE'+': '+'EMPPRIN':'NOMBRE'+' tiene incorrecto su SDI. Terminar?') = VERDADERO)
+       #  TERMINA_REPORTE
+       #FIN_SI
+     FIN_SI
+     IMP ( COL(114), DER ( $( _aux ), 7 ))
+     IMP ( COL(121), 'EMPPRIN':'CLAVE' )
+     IMP ( COL(138), 'EMPPRIN':'CREDITO_INFONAVIT' )
+     SI ( 'EMPPRIN':'CREDITO_INFONAVIT' <> '' )
+        _aux:= 'EMPPRIN':'INGRESO'
+
+        SI ('EMPPRIN':'INICIO DESCUENTO INF' < _aux )
+          IMP ( COL(148), FECHA ( _aux ) )
+        SI_NO
+          IMP ( COL(148), FECHA ( 'EMPPRIN':'INICIO DESCUENTO INF' ))
+        FIN_SI
+
+        IMP ( COL(156), 'EMPPRIN':'TIPO DESCUENTO' )
+        SI ( 'EMPPRIN':'TIPO DESCUENTO' = '1' )
+           DECIMALES := 4
+        FIN_SI
+        SI ( 'EMPPRIN':'TIPO DESCUENTO' = '2' )
+           DECIMALES := 2
+        FIN_SI
+        SI ( 'EMPPRIN':'TIPO DESCUENTO' = '3' )
+           DECIMALES := 4
+        FIN_SI
+        IMP ( COL(157), DER ( $( 'EMPPRIN':'VALOR DESCUENTO' ), 8 ))
+        DECIMALES := 2
+     SI_NO
+        IMP ( COL(148), DER ( '', 8 ))
+        IMP ( COL(156), DER ( '', 1 ))
+        IMP ( COL(157), DER ( '', 8 ))
+     FIN_SI
+   SI_NO
+     IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 28), COL(40), FECHA('EMPPRIN':'INGRESO'), COL(50), DER( $(INT_IMSS_ACTUAL ( 'EMPPRIN':'INGRESO', 'EMPPRIN':'INGRESO' )), 10) )
+     IMP ( COL(63), SUBSTR('EMPPRIN':'RFC',1,10), COL(75), 'EMPPRIN':'CREDITO_INFONAVIT' )
+   FIN_SI
+   IMPRIME
+   _aux6 := 0
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_movimientos
+   SI ( _ciclo = 1 )
+     SI ( _tsal = 0 )
+       IMP ( COL(1)  , 'PATRONAL':'REGISTRO PATRONAL' )
+       IMP ( COL(12) , 'EMPPRIN':'AFILIACION' )
+       SI ( 'EMPPRIN':'TIPOMOV' = 'B' )
+          IMP ( COL(23), '02' )
+       FIN_SI
+       SI ( 'EMPPRIN':'TIPOMOV' = 'M' )
+          IMP ( COL(23), '07' )
+       FIN_SI
+       SI ( 'EMPPRIN':'TIPOMOV' = 'R' )
+          IMP ( COL(23), '08' )
+       FIN_SI
+       SI ( 'EMPPRIN':'TIPOMOV' = 'B' )
+         #IMP ( COL(25), FECHA ( 'EMPPRIN':'FECHAMOV' ))
+         IMP ( COL(25), FECHA ( 'EMPPRIN':'BAJA IMSS' ))
+       SI_NO
+         IMP ( COL(25), FECHA ( 'EMPPRIN':'FECHAMOV' ))
+       FIN_SI
+       IMP ( COL(41), '00' )
+       SI (( 'EMPPRIN':'TIPOMOV' = 'M' ) O ( 'EMPPRIN':'TIPOMOV' = 'R' ))
+          IMP ( COL (43), DER ( $( 'EMPPRIN':'SDO3' ), 7 ))
+       SI_NO
+          IMP ( COL (43), DER ( '', 7 ))
+       FIN_SI
+     #  IMP ( COL (60), 'EMPPRIN':'CLAVE' )
+     SI_NO
+        IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 28) )
+#        IMP ( COL(40), 'EMPPRIN':'TIPOMOV', COL(45), FECHA('EMPPRIN':'FECHAMOV') )
+        IMP ( COL(40), 'EMPPRIN':'TIPOMOV', COL(45), FECHA('EMPPRIN':'BAJA_IMSS') )
+        SI (( 'EMPPRIN':'TIPOMOV' = 'M' ) O ( 'EMPPRIN':'TIPOMOV' = 'R' ))
+          IMP ( COL(60), DER ( $( 'EMPPRIN':'SDO3' ), 10 ))
+        FIN_SI
+     FIN_SI
+     IMPRIME
+   FIN_SI
+   SI ( _ciclo = 2 )
+      SI ( 'EMPPRIN':'CLAVE' <> $clave_ant)
+        $clave_ant := 'EMPPRIN':'CLAVE' 
+         _cont := 0
+      FIN_SI
+      
+      _fini := 'EMPPRIN':'FECHAI'
+      _ffin := 'EMPPRIN':'FECHAF'
+      SI ( _fini < _fi ) ;; _fini := _fi ;; FIN_SI
+      SI ( _ffin > _ff ) ;; _ffin := _ff ;; FIN_SI
+      _dur := _ffin - _fini + 1
+
+      _cont  := _cont + _dur
+
+      SI ( _cont >= 7 )
+         SI (( _dur >= 1 ) AND ( _dur <= 7 ))
+            _dur := 7 - ( _cont - _dur )
+         FIN_SI
+      FIN_SI
+
+      SI (( _cont <= 7 ) OR ( _dur > 0 ))
+         SI ( _tsal = 0 )
+           DECIMALES := 0
+           IMP ( COL(1)  , 'PATRONAL':'REGISTRO PATRONAL' )
+           IMP ( COL(12) , 'EMPPRIN':'AFILIACION' )
+           IMP ( COL(23), '11' )
+           IMP ( COL(25), FECHA ( _fini ))
+           IMP ( COL(41), DER ( _dur , 2 ))
+           IMP ( COL (43), DER ( '', 7 ))
+           DECIMALES := 4
+          #IMP ( COL (60), 'EMPPRIN':'CLAVE' )
+         SI_NO
+           IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 28) )
+           IMP ( COL(40), 'F', COL(45), FECHA(_fini) )
+           DECIMALES := 0
+           IMP ( COL(58), DER( .(_dur), 2) )
+         FIN_SI
+         IMPRIME
+      FIN_SI
+  FIN_SI
+  SI ( _ciclo = 3 )
+     _fini := 'EMPPRIN':'FECHA'
+     _ffin := 'EMPPRIN':'FECHA' + 'EMPPRIN':'DURACION' - 1
+
+     SI ( _fini < _fi ) ;; _fini := _fi ;; FIN_SI
+     #### SE DOCUMENTA ESTA LINBEA PARAQUE NO TRUNQUE LA FECHA DE TERMINO DE LA
+     #### INCAPACIDAD DENTRO DEL MES, Y PONGA LA FECHA REAL DE SU TERMINO.
+     ##SI ( _ffin > _ff ) ##;; ##_ffin := _ff ##;; ##FIN_SI
+
+     _dur := _ffin - _fini + 1
+     SI ( _tsal = 0 )
+       DECIMALES := 0
+       IMP ( COL(1)  , 'PATRONAL':'REGISTRO PATRONAL' )
+       IMP ( COL(12) , 'EMPPRIN':'AFILIACION' )
+       IMP ( COL(23), '12' )
+       IMP ( COL(25), FECHA ( _fini ))
+       IMP ( COL(33), 'EMPPRIN':'NUMERO' )
+       IMP ( COL(41), DER ( _dur , 2 ))
+       IMP ( COL (43), DER ( '', 7 ))
+       IMPRIME      
+     SI_NO
+        IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 28) )
+        IMP ( COL(40), 'I', COL(45), FECHA('EMPPRIN':'FECHA') )
+        DECIMALES := 0
+        IMP ( COL(58), DER( .(_dur), 2) )
+        IMPRIME
+     FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA imprime_incapacidades
+
+  $regpatronal := 'SUCURSAL':'REGISTRO PATRONAL'
+
+  SI ( TRAE_REGISTRO ( 'PATRONAL' , $regpatronal ) ) 
+       $regpatronal  := 'PATRONAL':'REGISTRO PATRONAL'
+  FIN_SI 
+
+  $numimss     := 'EMPPRIN':'AFILIACION'
+  $tipoinc     := '0'
+
+  FORMATO_FECHA := 6
+  $fechainiinc  := FECHA( 'EMPPRIN':'FECHA') 
+  $diaini    := SUBSTR ( $fechainiinc , 1 , 2 )    
+  $mesini    := SUBSTR ( $fechainiinc , 3 , 2 ) 
+  $anioini   := SUBSTR ( $fechainiinc , 5 , 4 ) 
+
+  $folio     := 'EMPPRIN':'NUMERO'
+   
+  DECIMALES:= 0
+  $diassubs  := 'EMPPRIN':'DURACION'
+  $porcinc   := '0'
+
+  $ramainc   := 'EMPPRIN':'TIPO'
+  $tipriesgo := '0'
+
+  SI ( ( $ramainc = 'RT' )  OR ( $ramainc = 'AY' )    OR ( $ramainc = 'AT' )  OR ( $ramainc = 'EP' )   ) 
+
+       SI ( $ramainc  = 'AT' ) 
+          $tipriesgo := '1'
+       FIN_SI
+
+       SI ( $ramainc  = 'AY' ) 
+          $tipriesgo := '2'
+       FIN_SI
+
+       SI ( $ramainc  = 'EP' ) 
+          $tipriesgo := '3'
+       FIN_SI
+
+       $ramainc   := '1'
+
+  FIN_SI
+
+  SI ( $ramainc = 'EG' )  
+       $ramainc   := '2'
+  FIN_SI
+
+  SI ( $ramainc = 'ME' )  
+       $ramainc   := '3'
+  FIN_SI
+
+  $seccons   := 'EMPPRIN':'CONSECUENCIA'
+  SI ( $seccons = '' ) ;; $seccons := '0' ;; FIN_SI
+
+  $cincapac  := 'EMPPRIN':'CASO'
+   
+  SI ( $cincapac = 'U' ) 
+       $cincapac := '1'
+  FIN_SI
+
+  SI ( $cincapac = 'I' ) 
+       $cincapac := '2'
+  FIN_SI
+
+  SI ( $cincapac = 'S' ) 
+       $cincapac := '3'
+  FIN_SI
+
+  SI ( $cincapac = 'A' ) 
+       $cincapac := '4'
+  FIN_SI
+
+  SI ( $cincapac = 'V' ) 
+       $cincapac := '5'
+  FIN_SI
+
+  SI ( $cincapac = 'D' ) 
+       $cincapac := '6'
+  FIN_SI
+
+  SI ( $cincapac = 'P' ) 
+       $cincapac := '7'
+  FIN_SI
+
+  SI ( $cincapac = 'E' ) 
+       $cincapac := '8'
+  FIN_SI
+
+  SI ( $cincapac = 'O' ) 
+       $cincapac := '9'
+  FIN_SI
+
+  $fechafininc  := FECHA ( 'EMPPRIN':'FECHAFIN' )
+  $diafin    := SUBSTR ( $fechafininc , 1 , 2 ) 
+  $mesfin    := SUBSTR ( $fechafininc , 3 , 2 )
+  $aniofin   := SUBSTR ( $fechafininc , 5 , 4 )     
+
+  MIENTRAS ( LONGITUD ( $folio ) < 7 ) 
+             $folio := '0' + $folio
+  FIN_MIENTRAS
+
+  MIENTRAS ( LONGITUD ( $diassubs ) < 3 ) 
+             $diassubs := '0' + $diassubs
+  FIN_MIENTRAS
+
+  MIENTRAS ( LONGITUD ( $porcinc ) < 3 ) 
+             $porcinc := '0' + $porcinc
+  FIN_MIENTRAS
+
+
+  SI ( _tsal = 0 ) 
+       IMP ( COL(1) , $regpatronal, $numimss, $tipoinc, $fechainiinc , $folio , $diassubs, $porcinc )
+       IMP ( $ramainc , $tipriesgo, $seccons , $cincapac, $fechafininc ) 
+       IMPRIME  
+  SI_NO
+
+       IMP ( COL(1) , 'EMPPRIN':'CLAVE' , COL(10) , SUBSTR('EMPPRIN':'NOMBRE', 1 , 25) , COL(38) ,$tipoinc  ) 
+       IMP ( COL(48) ,$fechainiinc,COL(65) ,$fechafininc ) ;; IMPRIME
+       IMP ( COL(10) , $ramainc  , COL(35) , $tipriesgo , COL(65) , $seccons , COL(90) , $cincapac ) 
+       IMPRIME
+
+  FIN_SI
+
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA imprime_infonavit 
+
+  $regpatronal := 'SUCURSAL':'REGISTRO PATRONAL'
+
+  SI ( TRAE_REGISTRO ( 'PATRONAL' , $regpatronal ) ) 
+       $regpatronal  := 'PATRONAL':'REGISTRO PATRONAL'
+  FIN_SI 
+
+  $numimss     := 'EMPPRIN':'AFILIACION'
+  $credinfo    := 'EMPPRIN':'CREDITO_INFONAVIT'
+
+  FORMATO_FECHA:=6
+  $fechamov :=  FECHA ( 'EMPPRIN':'INICIO DESCUENTO INF' ) 
+
+        DECIMALES:= 4
+        _valordesc :=  'EMPPRIN':'VALOR DESCUENTO'
+
+   SI ( 'EMPPRIN':'TIPO DESCUENTO' = '1' ) 
+        $tipodesc :=  '1'
+        $aplicaporc := 'S'
+        _decimales := 2 
+        _fracdesc :=  FRAC( _valordesc ) 
+   FIN_SI 
+
+   SI ( 'EMPPRIN':'TIPO DESCUENTO' = '2' ) 
+        $tipodesc :=  '2'
+        $aplicaporc := 'N'
+        _decimales := 2
+        _fracdesc :=  FRAC ( _valordesc ) 
+   FIN_SI 
+
+   SI ( 'EMPPRIN':'TIPO DESCUENTO' = '3' ) 
+        $tipodesc := '3'
+        $aplicaporc := 'N'
+        _decimales := 4
+        _fracdesc :=  FRAC ( _valordesc ) 
+   FIN_SI 
+
+        DECIMALES  := _decimales 
+        _valordesc := _valordesc - FRAC ( _valordesc )  
+        $fracdesc  := .(_fracdesc)
+        $fracdesc  := SUBSTR ( $fracdesc , 3 , LONGITUD ( $fracdesc ) - 3 + 1 ) 
+        DECIMALES  := 0
+        $valordesc := .(_valordesc)
+
+   SI ( 'EMPPRIN':'TIPO DESCUENTO' = '1' ) ;; $valordesc := '00' + $valordesc + '.' + $fracdesc + '00'  ;; FIN_SI 
+
+   SI ( 'EMPPRIN':'TIPO DESCUENTO' = '2' ) 
+        MIENTRAS ( LONGITUD ( $valordesc ) < 4 ) 
+                   $valordesc := '0' + $valordesc 
+        FIN_MIENTRAS 
+             
+        $valordesc:= $valordesc + $fracdesc + '00' 
+   FIN_SI 
+   
+   SI ( 'EMPPRIN':'TIPO DESCUENTO' = '3' ) 
+        MIENTRAS ( LONGITUD ( $valordesc ) < 4 ) 
+                   $valordesc :=  '0' + $valordesc 
+        FIN_MIENTRAS
+         
+        $valordesc := $valordesc + $fracdesc
+
+   FIN_SI
+
+   SI ( _tsal = 0 ) 
+           IMP ( COL(1) , $regpatronal , $numimss , $credinfo , $tipomov , $fechamov , $tipodesc , $valordesc , $aplicaporc)  
+           IMPRIME
+   SI_NO 
+           IMP ( COL(1)  , 'EMPPRIN':'CLAVE' , COL(10) , SUBSTR('EMPPRIN':'NOMBRE',1,25) , COL(38) , $credinfo , COL(55) , $fechamov)
+           IMP ( COL(70) , $tipodesc , COL(85) , $valordesc)    
+           IMPRIME  
+   FIN_SI
+ 
+
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA formato_trabajador
+
+  SI ( _tipo = 0 )
+    imprime_nombre
+  FIN_SI
+
+  SI ( _tipo = 1 ) 
+    imprime_movimientos
+  FIN_SI
+
+  SI ( _tipo = 2 ) 
+    imprime_infonavit
+  FIN_SI  
+
+  SI ( _tipo = 3 ) 
+    imprime_incapacidades
+  FIN_SI
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+INCLUYE VALPAT.DAT
+
+
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+SI ( _tsal = 0 )
+  _omitir_encabezados   := 1
+  _omitir_sub_totales   := 1
+  _omitir_total_general := 1
+FIN_SI
+
+VAR_T ( &tabla1 )
+VAR_T ( &sqlbaja )
+$clave := ''
+SI ( _define_fecha = 1 )
+   _fi := _finicial  
+   _ff := _ffinal   
+FIN_SI
+
+AGREGA_VALOR_COL ( &sqlbaja, 0, 'SELECT * FROM EMPSDO S WHERE S."BAJA IMSS" >= :FINI AND S."BAJA IMSS" <= :FFIN' )
+CREA_CONSULTA ( 'BAJAS', &sqlbaja )
+PARAMETRO_SQL( 'BAJAS', 'FINI', _fi )
+PARAMETRO_SQL( 'BAJAS', 'FFIN', _ff )
+
+LIMPIA_TABLA ( &sqlbaja )
+PRIMER_REGISTRO ( 'BAJAS' )
+MIENTRAS ( FIN_BASE ( 'BAJAS' ) = FALSO )
+   $clave := 'BAJAS':'CLAVE'
+   AGREGA_VALOR_COL ( &sqlbaja, 0, $clave )
+   SIGUIENTE_REGISTRO ( 'BAJAS' )
+FIN_MIENTRAS
+
+
+REPITE
+SI ( _tipo = 1 )
+  SI ( _movs = 1 )
+    _ciclo := 1
+    _movs  := 0
+  SI_NO
+    SI ( _faltas = 1 )
+      _ciclo  := 2
+      _faltas := 0
+    SI_NO
+      SI ( _incs = 1 )
+        _ciclo  := 3
+        _incs   := 0
+      SI_NO
+        _salir := 1
+      FIN_SI
+    FIN_SI
+  FIN_SI
+FIN_SI
+
+SI ( _define_fecha = 1 )
+   _fi := _finicial  
+   _ff := _ffinal   
+FIN_SI
+
+
+SI ( _salir = 0 )
+
+  SI ( _tipo = 0 )
+    SI ( SQL_SERVER )
+      $campos_extras := 'E. RFC, E. AFILIACION, E. CURP, E."TIPO DESCUENTO", E. "INICIO DESCUENTO INF", E. CREDITO_INFONAVIT, E. "VALOR DESCUENTO", RTRIM( E. NOMBREP ) || "$" || RTRIM( E. NOMBREM ) || "$" || RTRIM( E. NOMBREN ) AS NOMBRE_SUA'
+    SI_NO
+      $campos_extras := 'E. RFC, E. AFILIACION, E. CURP, E."TIPO DESCUENTO", E. "INICIO DESCUENTO INF", E. CREDITO_INFONAVIT, E. "VALOR DESCUENTO", E. NOMBREP || "$" || E. NOMBREM || "$" || E. NOMBREN AS NOMBRE_SUA'
+    FIN_SI
+
+    SI ( _altas_mes = 1 )
+      $campos_extras := $campos_extras + ', E. AFILIACION, S. CLAVE, S. FECHA AS FECHAMOV, S. TIPO AS TIPOMOV, S. SDO3, S. "BAJA IMSS"'
+      $bases_extras  := 'EMPSDO S'
+      $condiciones_extras := 'S. CLAVE = E. CLAVE AND ( S. TIPO = "A" OR S. TIPO = "R" ) AND  S. FECHA >= :FINI AND S. FECHA <= :FFIN'
+    FIN_SI
+
+    #SI ( _define_fecha = 1 )
+    #  $campos_extras := $campos_extras + ', E. AFILIACION, S. CLAVE, S. FECHA AS FECHAMOV, S. TIPO AS TIPOMOV, S. SDO3, S. "BAJA IMSS"'
+    #  $bases_extras  := 'EMPSDO S'
+    #  $condiciones_extras := 'S. CLAVE = E. CLAVE AND (( S. FECHA >= :FINI AND S. FECHA <= :FFIN ) OR ( S."BAJA IMSS" >= :FINI AND S."BAJA IMSS" <= :FFIN ))'
+    #  #$condiciones_extras := 'S. CLAVE = E. CLAVE AND ( ( ( S. TIPO = "A" OR S. TIPO = "R" ) AND ( S. FECHA >= :FINI AND S. FECHA <= :FFIN ) ) OR ( ( TIPO = "B" ) AND ( S."BAJA IMSS" >= :FINI AND S."BAJA IMSS" <= :FFIN ) ) )'
+    #FIN_SI
+
+  FIN_SI
+
+
+  SI ( _tipo = 1 ) 
+ 
+    SI ( _ciclo = 1 )
+      SI ( SQL_SERVER )
+        $campos_extras := 'E. AFILIACION, S. CLAVE, S. FECHA AS FECHAMOV, S. TIPO AS TIPOMOV, S. SDO3, S. BAJA_IMSS '
+        $bases_extras  := 'EMPSDO S'
+        $condiciones_extras := 'S. CLAVE = E. CLAVE AND S. TIPO <> "A" AND (( S. FECHA >= :FINI AND S. FECHA <= :FFIN ) OR ( S. BAJA_IMSS >= :FINI AND S. BAJA_IMSS <= :FFIN )) AND S.FECHA >= ES.FECHA_ENTRADA'
+      SI_NO
+        $campos_extras := 'E. AFILIACION, S. CLAVE, S. FECHA AS FECHAMOV, S. TIPO AS TIPOMOV, S. SDO3, S."BAJA IMSS" '
+        $bases_extras  := 'EMPSDO S'
+        $condiciones_extras := 'S. CLAVE = E. CLAVE AND S. TIPO <> "A" AND (( S. FECHA >= :FINI AND S. FECHA <= :FFIN ) OR ( S."BAJA IMSS" >= :FINI AND S."BAJA IMSS" <= :FFIN ))'     
+      FIN_SI
+    FIN_SI
+
+    SI ( _ciclo = 2 )
+      $campos_extras := 'E. AFILIACION, F. CLAVE, F. FECHAI, F. FECHAF, F. TIPO, FAL. CLAVE, FAL. GOCE'
+      $bases_extras  := 'EMPAUS F, FALTA FAL'
+      $condiciones_extras := 'F. CLAVE = E. CLAVE AND F. FECHAI <= :FFIN AND F. FECHAF >= :FINI AND F. TIPO <> "V" AND FAL. CLAVE = F. TIPO AND FAL.GOCE = 0'
+    FIN_SI
+
+    SI ( _ciclo = 3 )      
+      $bases_extras  := 'EMPINC I'
+      $campos_extras := 'E. AFILIACION, I. CLAVE, I. FECHA, I. DURACION, I. NUMERO, ( I.FECHA + I.DURACION ) - 1  AS FECHAF'
+      $condiciones_extras := 'I. CLAVE = E. CLAVE AND I. FECHA >=:FINI AND I.FECHA <=:FFIN'
+    FIN_SI
+  FIN_SI
+
+
+  SI ( _tipo = 3 ) 
+      $campos_extras      := 'E.AFILIACION, I.FECHA,( I.FECHA + I.DURACION ) - 1 AS FECHAFIN,I.NUMERO,I.TIPO,I.CASO,I.CONSECUENCIA,I.DURACION'
+      $bases_extras       := 'EMPINC I' 
+      $condiciones_extras :=   'E.CLAVE = I.CLAVE AND I.FECHA >=:FINI AND I.FECHA <=:FFIN'
+  FIN_SI
+
+  SI ( _tipo = 2 ) 
+      $campos_extras      := 'E.AFILIACION,E.CREDITO_INFONAVIT,E."INICIO DESCUENTO INF",E."TIPO DESCUENTO",E."VALOR DESCUENTO"'
+      $condiciones_extras := 'E.CREDITO_INFONAVIT <> "" AND E."VALOR DESCUENTO" <> 0'
+  FIN_SI 
+  
+  
+  base_trabajadores
+
+  SI ( _define_fecha = 1 )
+     _fi := _finicial  
+     _ff := _ffinal   
+  FIN_SI
+
+# carlos garcia 
+  SI (( _tipo = 1 ) AND ( _ciclo = 3 ))
+    PARAMETRO_SQL( 'EMPPRIN', 'FINI', _fi )
+    PARAMETRO_SQL( 'EMPPRIN', 'FFIN', _ff )
+  FIN_SI
+
+
+  SI (( _tipo = 1 ) AND ( _ciclo <> 3 )) 
+    PARAMETRO_SQL( 'EMPPRIN', 'FINI', _fi )
+    PARAMETRO_SQL( 'EMPPRIN', 'FFIN', _ff )
+  FIN_SI
+
+  SI (( _tipo = 0 ) AND ( _altas_mes = 1 ))
+    PARAMETRO_SQL( 'EMPPRIN', 'FINI', _fi )
+    PARAMETRO_SQL( 'EMPPRIN', 'FFIN', _ff )
+  FIN_SI
+
+  SI ( _tipo = 3 ) 
+    PARAMETRO_SQL ( 'EMPPRIN' , 'FINI' , _fi ) 
+    PARAMETRO_SQL ( 'EMPPRIN' , 'FFIN' , _ff )
+  FIN_SI
+ 
+  LIMPIA_TABLA( &subtotales )
+  USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+  MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+  
+  
+  ABRE_BASE ( 'SUCURSAL')
+  ABRE_BASE ( 'PATRONAL')
+  ABRE_BASE ( '_FILTROEMP')
+
+  USA_ARCHIVO ( 'EMPPRIN', 'EMPSUC' , 'CLAVE' ) 
+
+
+  SI  (  _tipo = 2 )
+ 
+         LIMPIA_TABLA ( &empleados ) 
+
+         SI ( SQL_SERVER )  
+             PON_VALOR_TABLA  ( &empleados , 0 , 0 ,'DELETE FROM Supervisor_giro."_FILTROEMP"'  )    
+         SI_NO
+             PON_VALOR_TABLA  ( &empleados , 0 , 0 ,'DELETE FROM "_FILTROEMP"'  ) 
+         FIN_SI 
+
+         EJECUTA_CONSULTA ( &empleados ) 
+   
+
+         PRIMER_REGISTRO ( 'EMPPRIN') 
+         MIENTRAS  ( FIN_BASE ( 'EMPPRIN' ) = FALSO ) 
+                     AGREGA_REGISTRO ( '_FILTROEMP') 
+                     '_FILTROEMP':'CLAVE'     :=  'EMPPRIN':'CLAVE'
+                     '_FILTROEMP':'NOMBRE'    :=  'EMPPRIN':'NOMBRE'
+                     '_FILTROEMP':'INFONAVIT' :=  'EMPPRIN':'CREDITO_INFONAVIT' 
+                     GRABA_BASE ( '_FILTROEMP')                       
+         SIGUIENTE_REGISTRO ( 'EMPPRIN') 
+         FIN_MIENTRAS
+
+         LIMPIA_TABLA ( &empleados ) 
+
+
+         NUEVO_PARAMETRO_SEL ( 'T Mov.', '1.Inicio credito vivienda ICV/2.Fecha suspension descuento FS/3.Reinicio de descuento RD/4.Mod.tipo descuento MTD/5.Mod.valor descuento MVD/6.Mod.numero descuento MND',_tipomov) 
+         LEE_PARAMETROS
+         BORRA_PARAMETROS
+
+         SI ( _tipomov = 0 ) 
+            $tipomov := '15'
+            $desctipomov := 'Inicio Credito Vivienda'
+         FIN_SI 
+       
+         SI ( _tipomov = 1 ) 
+            $tipomov := '16'
+            $desctipomov := 'Fecha suspension descuento'
+         FIN_SI 
+       
+         SI ( _tipomov = 2 ) 
+            $tipomov := '17'
+            $desctipomov := 'Reinicio de descuento'
+         FIN_SI 
+       
+         SI ( _tipomov = 3 ) 
+            $tipomov := '18' 
+            $desctipomov := 'Modificacion de tipo de descuento'
+         FIN_SI 
+       
+         SI ( _tipomov = 4 ) 
+            $tipomov := '19' 
+            $desctipomov := 'Modificacion de valor de descuento'
+         FIN_SI 
+       
+         SI ( _tipomov = 5 ) 
+            $tipomov := '20' 
+            $desctipomov := 'Modificacion numero de credito'
+         FIN_SI 
+
+         NUEVO_PARAMETRO_TAB ( 'EMPLEADOS' , '_FILTROEMP/CLAVE/SELECCIONE LOS EMPLEADOS A IMPORTAR' , &empleados ) 
+         LEE_PARAMETROS  
+         BORRA_PARAMETROS
+
+  FIN_SI  
+
+
+  PRIMER_REGISTRO( 'EMPPRIN' )
+  MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+
+    ULTIMO_REGISTRO ( 'EMPSUC') 
+  
+    SI ( TRAE_REGISTRO ( 'SUCURSAL' , 'EMPSUC':'CATALOGO' )  ) ;; FIN_SI
+
+    SI ( 'SUCURSAL':'REGISTRO PATRONAL' = $registros )
+
+      SI ( _tipo = 0 )
+
+        SI ( FUE_VIGENTE( _fi, _ff ) )
+          datos_trabajador
+        SI_NO
+
+          $clave := 'EMPPRIN':'CLAVE'
+          SI ( TRAE_INDICE_COL ( &sqlbaja, 0, $clave ) >= 0 )
+             datos_trabajador
+          FIN_SI
+
+        FIN_SI
+
+      FIN_SI
+
+
+      SI ( _tipo = 1 ) 
+
+        SI ( _ciclo = 3 )
+          SI (( 'EMPPRIN':'FECHA' <= _ff ) AND ( 'EMPPRIN':'FECHA' + 'EMPPRIN':'DURACION' - 1 >= _fi ))
+            datos_trabajador
+          FIN_SI
+        SI_NO
+
+           SI ( _solo_vig = 1 )
+              SI ( ES_VIGENTE ( FECHA_HOY ) )
+                 datos_trabajador
+              FIN_SI
+           SI_NO         
+              datos_trabajador
+           FIN_SI
+
+        FIN_SI
+
+      FIN_SI
+
+
+      SI ( _tipo = 3 ) 
+           datos_trabajador
+      FIN_SI
+
+      SI ( _tipo = 2 ) 
+
+           $clavemp := 'EMPPRIN':'CLAVE' 
+           _pos := TRAE_INDICE_COL ( &empleados , 0 , $clavemp)
+          
+           SI ( _pos <> -1 )  
+              datos_trabajador
+           FIN_SI
+
+      FIN_SI
+
+    FIN_SI
+    SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+  FIN_MIENTRAS
+FIN_SI
+
+HASTA (  (( _tipo = 0 ) OR ( _tipo = 2 ) OR ( _tipo = 3 ) ) OR ( _salir = 1 ))
+_cont := 0
+termina_reporte
+TERMINA_REPORTE

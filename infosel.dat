@@ -1,0 +1,414 @@
+#TRASFERENCIA INFOSEL
+#VERSION 2.615
+#USUARIO =*
+#DESCRIPCION
+#Este reporte genera los avisos afiliatorios de modificacion, puede generar la salida por pantalla, impresora o disco magnetico con el formato necesario para el envio al IMSS.
+#Por impresora imprime con el formato de las formas del IMSS y por pantalla un formato propio.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+$ruta_archivo := DIRECTORIO_TRABAJO + '\MOVTOS.TXT'
+NUEVO_PARAMETRO_FEC  ('FECHA INICIAL','',_fi) 
+NUEVO_PARAMETRO_FEC  ('FECHA FINAL','',_ff)
+NUEVO_PARAMETRO_CHEQ ('TIPO MOVIMIENTO', 'MODIFICACIONES', _modificaciones )
+NUEVO_PARAMETRO_CHEQ ('TIPO MOVIMIENTO', 'ALTAS', _altas )
+NUEVO_PARAMETRO_CHEQ ('TIPO MOVIMIENTO', 'BAJAS', _bajas )
+NUEVO_PARAMETRO_CHEQ ('TIPO MOVIMIENTO', 'REINGRESOS', _reingresos )
+NUEVO_PARAMETRO_SEL  ('TIPO SALIDA', 'FORMATO/LISTADO', _info )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_fijo     := 0
+_variable := 0
+_mixto    := 0
+$salida   := 'P'
+SALIDA    := $salida
+SI ( _modificaciones = 1 )
+  NUEVO_PARAMETRO_CHEQ ('TIPO', 'FIJO', _fijo)
+  NUEVO_PARAMETRO_CHEQ ('', 'VARIABLE', _variable)
+  NUEVO_PARAMETRO_CHEQ ('', 'MIXTO', _mixto)
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+FIN_SI
+
+SI ( _info = 0 )
+  BORRA_PARAMETROS
+  NUEVO_PARAMETRO ('ARCHIVO SALIDA',$ruta_archivo,$ruta_archivo)
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+  COLUMNAS := 166
+  MODO_IMPRESION('DIRECTO')
+  SALIDA := 'D'
+  SALIDA_REPORTE( $ruta_archivo )
+SI_NO
+  COLUMNAS := 80
+  FORMATO_FECHA := 3
+FIN_SI
+
+#VARIABLES GLOBALES
+$ant_trab      := ''
+$paterno       := ''
+$materno       := ''
+$nombre        := ''
+
+#TOTALES DE MOVIMIENTOS CUANDO EL REPORTE ES INFORMATIVO
+_tot_altas     := 0
+_tot_bajas     := 0
+_tot_modif     := 0
+_tot_reing     := 0
+
+#VARIABLES PARA EL TOTAL DEL REGISTRO DE CONTROL
+_total_registros := 0
+$tipo_movimiento := 'XX'
+
+#TABLA DE ORGANIZACION
+VAR_T( &detalle )
+VAR_T( &encabezado )
+
+#VARIABLES DE CONTROL
+$mov_anterior := ''
+$mov_actual   := ''
+$reg_anterior := ''
+$reg_actual   := ''
+_contador_mov := 0
+_renglon      := 0
+_detalle      := 0
+
+#VARIABLES DE DETALLE
+$tipo_baja := ''
+$fecha     := ''
+$clinica   := ''
+
+#VARIABLES DEL CICLO DE IMPRESION
+_indice     := 0
+$celda      := ''
+$rp         := ''
+$mov        := ''
+_busca      := 0
+
+SI ( _info = 1 )
+  FORMATO_FECHA := 3
+  ENCABEZADO   
+     IMPRIME 
+     LETRA ( 'LETRA ENFATISADA' )
+     IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+     IMP ( CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+     IMP ( CENTRA ('TRANSFERENCIA INFOSEL'));; IMPRIME
+     IMP ( REPITETXT('=',80));; IMPRIME
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(60), 'AFILIACION' ) ;; IMPRIME
+     IMP ( COL(9), 'MOV', COL(14), 'FECHA', COL(27), DER('SUELDO',10), COL(37), DER('VAR IMSS',10), COL (47), DER('INT IMSS',10), COL(60), 'CAUSA BAJA' ) ;; IMPRIME
+     IMP ( REPITETXT('-',80) );; IMPRIME
+     LETRA ( 'LETRA NORMAL' )
+     IMPRIME 
+  FIN_ENCABEZADO
+  PIE
+     IMPRIME
+     DECIMALES := 0
+     LETRA ( 'LETRA ENFATISADA' )
+     IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+     LETRA ( 'LETRA NORMAL' );; IMPRIME
+     DECIMALES := 0
+  FIN_PIE 
+FIN_SI
+
+#SUBRUTINAS DIVERSAS
+
+SUB_RUTINA checa_punto
+  $nombre  := REEMPLAZA('.', ' ', 'EMPPRIN':'NOMBREN')
+  $paterno := REEMPLAZA('.', ' ', 'EMPPRIN':'NOMBREP')
+  $materno := REEMPLAZA('.', ' ', 'EMPPRIN':'NOMBREM')
+  $nombre  := REEMPLAZA('Ñ', '&', $nombre)
+  $paterno := REEMPLAZA('Ñ', '&', $paterno)
+  $materno := REEMPLAZA('Ñ', '&', $materno)
+FIN_SUB_RUTINA
+
+SUB_RUTINA registro_header
+  IMP ( 'HDR'       ) #Etiqueta del encabezado
+  IMP ( 'IMSS     ' ) #Partner-id
+  IMP ( 'X'         ) #Standard
+  IMP ( '003040'    ) #Version
+  IMP ( '834   '    ) #Set de transaccion
+  IMP ( 'P'         ) #Bandera de Test/Prod
+  IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA registro_control
+  IMP ( 'CNTL'                         ) #Etiqueta de Control
+  IMP ( 'PATRONAL':'REGISTRO PATRONAL' ) #Registro Patronal
+  RELLENO := '0'
+  DECIMALES := 0
+  IMP ( DER( .(_total_registros), 5 )  ) #Total de Registros
+  IMP ( $tipo_movimiento               ) #Tipo de Movimiento
+  IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA registro_detalle1
+  IMP ( 'PAT'                          ) #Encabezado del Registro Detalle1
+  IMP ( 'PATRONAL':'REGISTRO PATRONAL' ) #Registro Patronal
+  IMP ( '0'                            ) #Filler
+  IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA registro_detalle
+  SI ( TRAE_REGISTRO( 'EMPPRIN', $celda ) )
+    #QUITA EXCEPCIONES DEL NOMBRE
+    checa_punto
+    IMP ( COL(1), 'DET' )
+    IMP ( COL(4), 'EMPPRIN':'AFILIACION' )
+    SI ( 'EMPPRIN':'PE' = 'P' )
+      IMP ( COL(15), '1' )
+    SI_NO
+      IMP ( COL(15), '2' )
+    FIN_SI 
+    IMP ( COL(16), $paterno, COL(43), $materno, COL(70), $nombre )
+    SI ( 'EMPPRIN':'CURP' <> '' )
+      IMP ( COL(97), 'EMPPRIN':'CURP' )
+    SI_NO
+      IMP ( COL(97), 'EMPPRIN':'RFC' )
+    FIN_SI
+    RELLENO := '0'
+    IMP ( COL(115), DER( 'EMPPRIN':'CLAVE', 10 ) )
+    $clinica := 'EMPEXT':'CLINICA'
+    MIENTRAS ( LONGITUD( $clinica ) < 3 )
+      $clinica := '0' + $clinica
+    FIN_MIENTRAS
+    IMP ( COL(125), $clinica ) #NUMERO DE CLINICA
+    DECIMALES := 0
+    SI ( TRAE_VALOR_TABLA( &detalle, 2, _indice ) <> 'B' )
+      IMP ( COL(128), .('EMPPRIN':'JORNADA REDUCIDA') )
+    FIN_SI
+    IMP ( COL(129), TRAE_VALOR_TABLA( &detalle, 5, _indice ) )
+    IMP ( COL(130), TRAE_VALOR_TABLA( &detalle, 3, _indice ) )
+    SI ( TRAE_VALOR_TABLA( &detalle, 2, _indice ) <> 'B' )
+      IMP ( COL(138), TRAE_VALOR_TABLA ( &detalle, 4, _indice ) )
+    SI_NO
+      IMP ( COL(144), TRAE_VALOR_TABLA ( &detalle, 4, _indice ) )
+    FIN_SI
+    IMPRIME
+  FIN_SI
+FIN_SUB_RUTINA
+
+#ESTA RUTINA CREA 1 REGISTRO POR CADA UNO DE LOS REGISTROS PATRONALES Y EL TOTAL DE CADA UNOS DE LOS MOVIMIENTOS.
+#ESTO SIRVE PARA QUE AL FINAL, DESPUES DE LLENAR LA TABLA DE DETALLE SABER CUANTOS MOVIMIENTOS HAY Y GENERAR EL ARCHIVO
+SUB_RUTINA crea_registro
+  SI ( $reg_anterior = '' )
+    $reg_anterior := $reg_actual
+  FIN_SI
+  DECIMALES := 0
+  PON_VALOR_TABLA( &encabezado, 0, _renglon, $reg_anterior )
+  PON_VALOR_TABLA( &encabezado, 1, _renglon, $mov_anterior )
+  PON_VALOR_TABLA( &encabezado, 2, _renglon, .( _contador_mov ) )
+FIN_SUB_RUTINA
+
+#GENERA EL REGISTRO POR CADA UNO DE LOS MOVIMIENTOS CON LA CLAVE DEL EMPLEADO, LA CLAVE DEL REGISTRO PATRONAL, TIPO DE MOVIMIENTO, FECHA Y SUELDO O TIPO DE BAJA
+SUB_RUTINA crea_detalle
+  PON_VALOR_TABLA( &detalle, 0, _detalle, 'EMPPRIN':'CLAVE' )
+  PON_VALOR_TABLA( &detalle, 1, _detalle, $reg_actual )
+  PON_VALOR_TABLA( &detalle, 2, _detalle, 'EMPPRIN':'TIPO'  )
+  FORMATO_FECHA := 6
+  $fecha := SUBSTR( FECHA('EMPPRIN':'FECHA'), 5, 4 ) + SUBSTR( FECHA('EMPPRIN':'FECHA'), 3, 2 ) + SUBSTR( FECHA('EMPPRIN':'FECHA'), 1, 2 )
+  PON_VALOR_TABLA( &detalle, 3, _detalle, $fecha )
+  SI ( 'EMPPRIN':'TIPO' = 'B' )
+    SI ( TRAE_REGISTRO( 'BAJA', 'EMPPRIN':'CAUSA BAJA' ) )
+      $tipo_baja := 'BAJA':'INFOSEL'
+    SI_NO
+      $tipo_baja := '1'
+    FIN_SI
+    PON_VALOR_TABLA( &detalle, 4, _detalle, $tipo_baja )
+  SI_NO
+    FORMATO_PESOS := 3
+    DECIMALES := 2
+    RELLENO := '0'
+    PON_VALOR_TABLA( &detalle, 4, _detalle, DER( $('EMPPRIN':'SDO3'), 6)  )
+    SI (( 'EMPPRIN':'SDO1' <> 0 ) AND ( 'EMPPRIN':'SDO2' <> 0 ))
+       PON_VALOR_TABLA( &detalle, 5, _detalle, '2' )
+    SI_NO
+      SI (( 'EMPPRIN':'SDO1' = 0 ) AND ( 'EMPPRIN':'SDO2' <> 0 ))
+       PON_VALOR_TABLA( &detalle, 5, _detalle, '1' )
+      SI_NO
+       PON_VALOR_TABLA( &detalle, 5, _detalle, '0' )
+      FIN_SI
+    FIN_SI
+  FIN_SI
+  _detalle := _detalle + 1
+FIN_SUB_RUTINA
+
+#ESTA RUTINA GENERA LOS REGISTROS DE CONTROL CADA QUE ENCUENTRA **** EN EL REGISTRO DE DETALLE
+SUB_RUTINA imprime_registro
+  $rp  := TRAE_VALOR_TABLA( &detalle, 1, _indice )
+  $mov := TRAE_VALOR_TABLA( &detalle, 2, _indice )
+  SI ( TRAE_REGISTRO( 'PATRONAL', $rp ) = FALSO )
+    MENSAJE( 'ERROR AL BUSCAR EL REGISTRO PATRONAL ' + $rp )
+    TERMINA_REPORTE
+  FIN_SI
+  _busca := 0
+  _total_registros := 0
+  MIENTRAS(( TRAE_VALOR_TABLA( &encabezado, 0, _busca ) <> '' ) AND ( _total_registros = 0 ) )
+    SI (( TRAE_VALOR_TABLA( &encabezado, 0, _busca ) = $rp ) AND ( TRAE_VALOR_TABLA( &encabezado, 1, _busca ) = $mov ))
+      _total_registros := VALOR( TRAE_VALOR_TABLA( &encabezado, 2, _busca ) )
+    FIN_SI
+    _busca := _busca + 1
+  FIN_MIENTRAS
+  SI ( _total_registros = 0 )
+    MENSAJE( 'ERROR AL BUSCAR EN EL ENCABEZADO LOS TOTALES DE REGISTRO PATRONAL ' + $rp )
+    TERMINA_REPORTE
+  FIN_SI
+  SI (( $mov = 'A' ) OR ( $mov = 'R' ))
+    $tipo_movimiento := '08'
+  FIN_SI
+  SI ( $mov = 'B' )
+    $tipo_movimiento := '02'
+  FIN_SI
+  SI ( $mov = 'M' )
+    $tipo_movimiento := '07'
+  FIN_SI
+  registro_header
+  registro_control
+  registro_detalle1
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+    #SUMA TOTALES
+    SI ( 'EMPPRIN':'TIPO' = 'A' ) ;; _tot_altas     := _tot_altas + 1 ;; FIN_SI
+    SI ( 'EMPPRIN':'TIPO' = 'B' ) ;; _tot_bajas     := _tot_bajas + 1 ;; FIN_SI
+    SI ( 'EMPPRIN':'TIPO' = 'M' ) ;; _tot_modif     := _tot_modif + 1 ;; FIN_SI
+    SI ( 'EMPPRIN':'TIPO' = 'R' ) ;; _tot_reing     := _tot_reing + 1 ;; FIN_SI
+    $mov_actual := 'EMPPRIN':'TIPO'
+    
+    SI ( _info = 1 )
+      #################################################### AVISOS POR PANTALLA SOLO INFORMACION ################################################
+      SI ( $ant_trab <> 'EMPPRIN':'CLAVE' )
+        IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), 'EMPPRIN':'NOMBRE' )
+        IMP ( COL(60), FORMATO( 'EMPPRIN':'AFILIACION', 'XX-XXXX-XXXX-X' ) )
+        IMPRIME
+      FIN_SI
+      DECIMALES := 2
+      IMP( COL(10), 'EMPPRIN':'TIPO', COL(14), FECHA('EMPPRIN':'FECHA') )
+      SI ( 'EMPPRIN':'TIPO' <> 'B' )
+        IMP( COL(27), DER($('EMPPRIN':'SDO1'),10), COL(37), DER($('EMPPRIN':'SDO2'),10), COL(47), DER($('EMPPRIN':'SDO3'),10) )
+      SI_NO
+        SI ( TRAE_REGISTRO( 'BAJA', 'EMPPRIN':'CAUSA BAJA' ) )
+          IMP( COL(60), 'BAJA':'DESCRIPCION' )
+        FIN_SI
+      FIN_SI
+      IMPRIME
+    SI_NO
+      #################################################### AVISOS POR DISCO FORMATO ################################################
+      SI ( (( $reg_actual <> $reg_anterior ) AND ( $reg_anterior <> '' )) OR (( $mov_actual <> $mov_anterior ) AND ( $mov_anterior <> '' )) )
+        crea_registro
+        _contador_mov := 0
+        $reg_anterior := $reg_actual
+        $mov_anterior := $mov_actual
+        _renglon      := _renglon + 1
+        PON_VALOR_TABLA( &detalle, 0, _detalle, '*****' )
+        _detalle := _detalle + 1
+      FIN_SI
+      crea_detalle
+      _contador_mov := _contador_mov + 1
+    FIN_SI
+    $mov_anterior := $mov_actual
+FIN_SUB_RUTINA
+
+$indice       := ''
+$indice_valor := ''
+
+SUB_RUTINA encabezados
+  SI ( $indice = 'REGISTRO PATRONAL' )
+    SI ( TRAE_REGISTRO( 'PATRONAL', $indice_valor ) = FALSO )
+      MENSAJE( 'REGISTRO PATRONAL INEXISTENTE' )
+    SI_NO
+      $reg_anterior := $reg_actual
+      $reg_actual := $indice_valor     
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_ssocial := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+INCLUYE VALPAT.DAT
+
+SI ( _info = 0 )
+  _omitir_encabezados   := 1
+  _omitir_sub_totales   := 1
+  _omitir_total_general := 1
+SI_NO
+  _incluir_suc := 1
+  _incluir_dep := 1
+  _incluir_pue := 1
+FIN_SI
+
+#Definicion de variables en base a los parametros
+$tipo_mov := ''
+$mov_seleccionados := ''
+
+SI ( _altas = 1 ) $mov_seleccionados := 'A' FIN_SI
+SI ( _bajas = 1 ) $mov_seleccionados := $mov_seleccionados + 'B' FIN_SI
+SI ( _reingresos = 1 ) $mov_seleccionados := $mov_seleccionados + 'R' FIN_SI
+SI ( _modificaciones = 1 ) $mov_seleccionados := $mov_seleccionados + 'M' FIN_SI
+SI ( $mov_seleccionados = '' )
+  MENSAJE('DEBE SELECCIONAR CUANDO MENOS 1 TIPO DE MOVIMIENTO' )
+  TERMINA_REPORTE
+FIN_SI
+
+MIENTRAS( $mov_seleccionados <> '' )
+  $tipo_mov := SUBSTR( $mov_seleccionados, 1, 1 )
+  $mov_seleccionados := ELIMINA( $mov_seleccionados, 1, 1 )
+  $campos_extras := 'E. NOMBREP AS PATERNO, E.NOMBREM AS MATERNO, E. NOMBREN AS PRIMER, E. AFILIACION, E. PE, E. "JORNADA REDUCIDA", E. CURP, E. RFC, S. TIPO, S. SDO1, S. SDO2, S. SDO3, S. SDO4, S. SDO5, S. FECHA, S. "CAUSA BAJA"'
+  $bases_extras := 'EMPSDO S'
+  $condiciones_extras := 'S.CLAVE = E.CLAVE AND S.TIPO = "' + $tipo_mov + '" AND S. FECHA>= :FINI AND S. FECHA<= :FFIN'
+  $ordenes_extras := 'S. TIPO'
+   
+  base_trabajadores
+  PARAMETRO_SQL( 'EMPPRIN', 'FINI', _fi )
+  PARAMETRO_SQL( 'EMPPRIN', 'FFIN', _ff )
+  USA_ARCHIVO( 'EMPPRIN', 'EMPEXT', 'CLAVE' )
+  
+  PRIMER_REGISTRO( 'EMPPRIN' )
+  MUESTRA_AVANCE( 'EMPPRIN', 'PROCESANDO ' + $tipo_mov )
+  MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+     datos_trabajador
+     $ant_trab := 'EMPPRIN':'CLAVE'
+     SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+  FIN_MIENTRAS
+FIN_MIENTRAS
+termina_reporte
+
+SI ( _tot_altas + _tot_modif + _tot_bajas + _tot_reing = 0 )
+  MENSAJE( 'NO HAY MOVIMIENTOS A LAS FECHAS INDICADAS.' )
+  TERMINA_REPORTE
+FIN_SI
+
+CIERRA_BASE( 'EMPPRIN' )
+SI ( _info = 1 )
+  IMPRIME ;; IMPRIME
+  DECIMALES := 0
+  IMP ( 'TOTAL DE ALTAS          : ', DER( .( _tot_altas ), 8 ) ) ;; IMPRIME
+  IMP ( 'TOTAL DE MODIFICACIONES : ', DER( .( _tot_modif ), 8 ) ) ;; IMPRIME
+  IMP ( 'TOTAL DE BAJAS          : ', DER( .( _tot_bajas ), 8 ) ) ;; IMPRIME
+  IMP ( 'TOTAL DE REINGRESOS     : ', DER( .( _tot_reing ), 8 ) ) ;; IMPRIME
+SI_NO
+  ABRE_BASE( 'EMPPRIN' )
+  FORMATO_FECHA := 6
+  FORMATO_PESOS := 3
+  crea_registro
+  DECIMALES := 2
+  _indice := 0
+  $celda := TRAE_VALOR_TABLA( &detalle, 0, _indice )
+  imprime_registro
+  MIENTRAS( $celda <> '' )
+    SI ( $celda = '*****' )
+      _indice := _indice + 1
+      $celda := TRAE_VALOR_TABLA( &detalle, 0, _indice )      
+      imprime_registro
+    FIN_SI
+    registro_detalle
+    _indice := _indice + 1
+    $celda := TRAE_VALOR_TABLA( &detalle, 0, _indice )
+  FIN_MIENTRAS
+FIN_SI
+TERMINA_REPORTE

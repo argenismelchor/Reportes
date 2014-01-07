@@ -1,0 +1,122 @@
+#REPORTE PARA IMPORTAR INCAPACIDADES
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte para importar incapacidades.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'EXCEL', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+NUEVO_PARAMETRO_RUTA ( 'RUTA' , '' , $ruta ) 
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR' , '' , _grabar ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_filaexcel := 2
+$clave := '' ;; $fecha := '' ;; $dur := '' ;; $num := '' ;;  $tipo := '' ;; $caso := '' ;; $consec := '' ;; $status := ''
+_fecha := 0 ;; _vacs := 0 ;; _faltas := 0 ;; _fechafin := 0
+
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , $ruta  ) 
+EXCEL ( 'TRAE_VALOR' , 1 , _filaexcel  , $clave  ) 
+
+ABRE_BASE ( 'EMPPRIN' ) 
+USA_ARCHIVO ( 'EMPPRIN', 'EMPINC' , 'CLAVE' ) 
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO' , 'CLAVE' ) 
+$nombre := '' ;; $importa := ''
+
+IMP ( COL(1) , 'CLAVE' , COL(15) , 'NOMBRE' , COL(45) , 'FECHA' , COL(65) , 'NUMERO' , COL(75) , 'TIPO' , COL(90) , 'CASO' , COL(125) , 'ESTATUS' , COL(165) , 'IMPORTA'  )                   
+IMPRIME  
+
+MIENTRAS ( $clave  <> '' ) 
+
+EXCEL ( 'TRAE_VALOR' , 2 , _filaexcel  , $fecha  ) 
+EXCEL ( 'TRAE_VALOR' , 3 , _filaexcel  , $dur    ) 
+EXCEL ( 'TRAE_VALOR' , 4 , _filaexcel  , $num    ) 
+EXCEL ( 'TRAE_VALOR' , 5 , _filaexcel  , $tipo   ) 
+EXCEL ( 'TRAE_VALOR' , 6 , _filaexcel  , $caso   ) 
+EXCEL ( 'TRAE_VALOR' , 7 , _filaexcel  , $consec ) 
+
+_fecha := CALCULA_FECHA ( VALOR (SUBSTR ( $fecha , 7 , 4 )) , VALOR ( SUBSTR ( $fecha , 4 , 2 ) )  , VALOR ( SUBSTR ( $fecha , 1 , 2 ) )  ) 
+$status := ''
+SI ( TRAE_REGISTRO ( 'EMPPRIN' , $clave ) ) 
+
+      ULTIMO_REGISTRO ( 'EMPSDO')
+      SI ( 'EMPSDO':'TIPO'  <>'B' ) 
+
+      $nombre := 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN'     
+
+      _fechafin := _fecha + VALOR ( $dur ) 
+      _vacs   := TRAE_VACACIONES ( _fecha , _fechafin , VERDADERO )
+      _faltas := TRAE_FALTAS     ( _fecha , _fechafin , '*' ) 
+
+
+      SI ( _faltas = 0 ) 
+      SI ( _vacs = 0 )  
+
+      SI ( TRAE_REGISTRO ( 'EMPINC' , $clave , _fecha ) ) 
+           $status := 'Ya se importo esta incapacidad.'
+      SI_NO
+
+           SI  (  ( $tipo = 'EG'  )  OR ( $tipo = 'RT' ) OR ( $tipo = 'AT' ) OR ( $tipo = 'OM'  ) OR
+                  ( $tipo = 'ME'  )  OR ( $tipo = 'PM' ) )  
+ 
+               SI ( ( $caso = 'I'  ) OR ( $caso = 'S'  ) OR ( $caso = 'R' ) ) 
+
+                   SI ( _grabar = 1 ) 
+
+                       ULTIMO_REGISTRO ( 'EMPINC' ) 
+                       AGREGA_REGISTRO ( 'EMPINC' ) 
+                       'EMPINC':'CLAVE'         := $clave
+                       'EMPINC':'FECHA'         := _fecha
+                       'EMPINC':'DURACION'      := VALOR ( $dur ) 
+                       'EMPINC':'NUMERO'        := $num 
+                       'EMPINC':'TIPO'          := $tipo
+                       'EMPINC':'CASO'          := $caso
+                       'EMPINC':'FECHA_CAPTURA' := FECHA_HOY               
+                        GRABA_BASE ( 'EMPINC' )   
+                        $importa := 'GRABAR'               
+                   SI_NO
+                        $importa := 'CONSULTA'
+                   FIN_SI
+                                     
+               SI_NO
+                   $status := 'error, caso no definido ( I,S,R )'
+               FIN_SI 
+         
+            SI_NO
+                  $status :=  'error, incapac mal ( EG,RT,AT,OM,ME,PM)' 
+            FIN_SI
+
+      FIN_SI
+
+      SI_NO
+
+                 $status := 'El empleado tiene vacaciones dentro del periodo de vacs'
+      FIN_SI
+
+
+      SI_NO
+                 $status := 'El empleado tiene faltas dentro del periodo de incapac'
+
+      FIN_SI
+
+   SI_NO
+         $status := 'Empleado no vigente'
+   FIN_SI
+
+SI_NO
+      $status := 'No existe el Empleado.'
+FIN_SI
+
+IMP ( COL(1) , $clave , COL(15) , $nombre , COL(45) , $fecha , COL(65) , $num , COL(75) , $tipo , COL(90) , $caso , COL(125) , $status , COL(165) , $importa )                   
+IMPRIME  
+
+_filaexcel := ( _filaexcel + 1 ) 
+EXCEL ( 'TRAE_VALOR' , 1 , _filaexcel  , $clave  ) 
+
+FIN_MIENTRAS
+
+TERMINA_REPORTE

@@ -1,0 +1,200 @@
+#VALIDACION DE LUGARES DE NACIMIENTO
+#VERSION 1.0
+#USUARIO =*
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_CHEQ( 'GRABAR', '', _grabar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'VALIDACION DE LUGARES DE NACIMIENTO' )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), 'LUGAR NACIMIENTO' ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+#variables
+$lugar := ''
+$edo   := ''
+$saux  := ''
+_encontrado := 0
+$estado := ''
+$siglas := ''
+
+SUB_RUTINA convierte
+     $lugar := SUBSTR( $saux, 1, POS( ',', $saux ) - 1 )
+     $saux := ELIMINA( $saux, 1, POS( ',', $saux ) )
+     MIENTRAS(( LONGITUD( $saux ) > 0 ) AND ( SUBSTR( $saux, 1, 1 ) < 'A' ))
+       $saux := ELIMINA( $saux, 1, 1 )
+     FIN_MIENTRAS
+     $edo := $saux
+     $lugar := $lugar + ',' + SUBSTR( $edo, 1, 3 )
+FIN_SUB_RUTINA
+
+SUB_RUTINA busca_estado
+   SI ( POS( $estado, $lugar ) > 1 )
+     _encontrado := 1
+     $saux := SUBSTR( $lugar, 1, POS( $estado, $lugar ) - 1 )
+     MIENTRAS(( LONGITUD( $saux ) > 0 ) AND ( SUBSTR( $saux, LONGITUD( $saux ), 1 ) < 'A' ))
+       $saux := ELIMINA( $saux, LONGITUD( $saux ), 1 )
+     FIN_MIENTRAS
+     $lugar := $saux + ',' + $siglas
+   FIN_SI
+   SI ( POS( $estado, $lugar ) = 1 )
+     SI ( POS( ' ', $lugar ) > 0 )
+       $saux := SUBSTR( $lugar, 1, POS( ' ', $lugar ) - 1 )
+       $lugar := $saux + ',' + $siglas
+     SI_NO
+       $lugar := $lugar + ',' + $siglas
+     FIN_SI
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA checa_estados
+   $estado := 'COAH'
+   $siglas := 'COA'
+   busca_estado
+
+   $estado := 'DURA'
+   $siglas := 'DUR'
+   busca_estado
+
+   $estado := 'DGO'
+   $siglas := 'DUR'
+   busca_estado
+
+   $estado := 'VERA'
+   $siglas := 'VER'
+   busca_estado
+
+   $estado := 'OAXA'
+   $siglas := 'OAX'
+   busca_estado
+
+   $estado := 'CHIH'
+   $siglas := 'CHI'
+   busca_estado
+
+   $estado := 'CHIA'
+   $siglas := 'CHIS'
+   busca_estado
+
+   $estado := 'N.L.'
+   $siglas := 'NL'
+   busca_estado
+
+   $estado := 'N.L'
+   $siglas := 'NL'
+   busca_estado
+
+   $estado := 'NUEVO'
+   $siglas := 'NL'
+   busca_estado
+
+   $estado := 'D.F.'
+   $siglas := 'DF'
+   busca_estado
+
+   $estado := 'D.F'
+   $siglas := 'DF'
+   busca_estado
+
+   $estado := 'S.L.'
+   $siglas := 'SLP'
+   busca_estado
+
+   $estado := 'S.L'
+   $siglas := 'SLP'
+   busca_estado
+
+   $estado := 'HIDA'
+   $siglas := 'HGO'
+   busca_estado
+
+   $estado := 'TABA'
+   $siglas := 'TAB'
+   busca_estado
+
+   $estado := 'MORE'
+   $siglas := 'MICH'
+   busca_estado
+
+   $estado := 'GUADA'
+   $siglas := 'JAL'
+   busca_estado
+
+   $estado := 'GUER'
+   $siglas := 'GUE'
+   busca_estado
+
+   $estado := 'ZACA'
+   $siglas := 'ZAC'
+   busca_estado
+
+   $estado := 'TEPI'
+   $siglas := 'NAY'
+   busca_estado
+
+   $estado := 'TAMA'
+   $siglas := 'TAM'
+   busca_estado
+
+   $estado := 'SONO'
+   $siglas := 'SON'
+   busca_estado
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   $saux := 'EMPRH':'LUGAR_NACIMIENTO'
+   SI ( POS( ',', $saux ) > 0 )
+     convierte
+   SI_NO
+     $lugar := $saux
+     checa_estados
+   FIN_SI
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE', COL(50), $lugar )
+   IMPRIME
+   SI ( _grabar = 1 )
+     'EMPRH':'LUGAR_NACIMIENTO' := $lugar
+     GRABA_BASE( 'EMPRH' )
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+#lee_parametros_seleccion
+#lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPRH', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

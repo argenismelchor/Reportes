@@ -1,0 +1,70 @@
+#VERIFICAR NOMBRE EMPLEADOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 1.0
+#DESCRIPCION
+#Reemplaza un caracter por otro, dentro del nombre del empleado.
+#FIN_DESCRIPCION
+
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO     ( 'CARAC. A REEMPLAZAR', '-', $car )
+NUEVO_PARAMETRO     ( 'REEMPLAZAR POR', ' ', $car1 )
+NUEVO_PARAMETRO_CHEQ( 'GRABAR', '', _grabar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'VALIDACION DE NOMBRES DE EMPLEADOS' )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE' ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+$nombrep := ''
+$nombrem := ''
+$nombren := ''
+SI ( $car1 = '' )
+  $car1 := ' '
+FIN_SI
+
+SUB_RUTINA formato_trabajador
+   $nombrep := REEMPLAZA( $car, $car1, 'EMPPRIN':'NOMBREP' )
+   $nombrem := REEMPLAZA( $car, $car1, 'EMPPRIN':'NOMBREM' )
+   $nombren := REEMPLAZA( $car, $car1, 'EMPPRIN':'NOMBREN' )
+
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), $nombrep + ' ' + $nombrem + ' ' + $nombren )
+   IMPRIME
+   SI ( _grabar = 1 )
+     'EMPPRIN':'NOMBREP' := $nombrep
+     'EMPPRIN':'NOMBREM' := $nombrem
+     'EMPPRIN':'NOMBREN' := $nombren
+     GRABA_BASE( 'EMPPRIN' )
+   FIN_SI
+FIN_SUB_RUTINA
+
+ABRE_BASE( 'EMPPRIN' )
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   formato_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+

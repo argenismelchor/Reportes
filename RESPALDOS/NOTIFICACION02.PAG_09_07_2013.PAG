@@ -1,0 +1,229 @@
+#VALIDACION DE CADENAS DE AUTORIZACION KIOSCO
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.24
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como base en los reportes.
+#CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'EXCEL', $salida)
+NUEVO_PARAMETRO_SEL ( 'TIPO'  , 'AUTOMATICO/MANUAL' , _tipo ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SUC'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'PUESTO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TIPONOM'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TIPO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'AUTORIZACION1'
+_longitud  := 30
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'AUTORIZACION2'
+_longitud  := 30
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+
+_condensado := 1
+$titulo_reporte := 'REPORTE DE CADENAS DE AUTORIZACION KIOSCO'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+
+$sucursal := ''
+$depto    := ''
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+
+   $valor := TRAE_DSP ('S' , FECHA_HOY)
+   imprime_columna
+
+   $valor := TRAE_DSP('P',FECHA_HOY  ) #D= Depto, S= Sucursal P=puesto  
+   SI(TRAE_REGISTRO('PUESTO', $valor))
+     $valor := 'PUESTO':'DESCRIPCION'  
+   FIN_SI
+   imprime_columna
+
+   $valor   := 'EMPPRIN':'TIPO_NOM'
+   imprime_columna
+
+
+   SI ( TRAE_REGISTRO ('EMP_CADENAS' , 'EMPPRIN':'CLAVE'))
+
+    SI (( LONGITUD('EMP_CADENAS':'AUTORIZACION1') > 0 ) OR ( LONGITUD('EMP_CADENAS':'AUTORIZACION2') > 0 ))
+
+       $valor := 'EXCEPCION'
+       imprime_columna
+
+       $valor := 'EMP_CADENAS':'AUTORIZACION1'
+       imprime_columna
+   
+       $valor := 'EMP_CADENAS':'AUTORIZACION2'
+       imprime_columna
+   
+       SI_NO
+
+       $valor := 'NO ASIGNADO'
+       imprime_columna
+
+
+       FIN_SI
+    SI_NO
+
+     $sucursal := TRAE_DSP ('S' , FECHA_HOY)
+     $depto    := TRAE_DSP ('D' , FECHA_HOY)
+
+
+     SI ( TRAE_REGISTRO ('_CADENAS' , $sucursal, $depto))
+
+       SI (( LONGITUD('_CADENAS':'AUTORIZACION_1') > 0 ) OR ( LONGITUD('_CADENAS':'AUTORIZACION_2') > 0 ))
+
+       $valor := 'GLOBAL'
+       imprime_columna
+      
+       $valor := '_CADENAS':'AUTORIZACION_1'
+       imprime_columna
+   
+       $valor := '_CADENAS':'AUTORIZACION_2'
+       imprime_columna
+
+       SI_NO
+
+       $valor := 'NO ASIGNADO'
+       imprime_columna
+
+      
+       FIN_SI
+
+       SI_NO
+
+       $valor := 'NO ASIGNADO'
+       imprime_columna
+
+
+     FIN_SI
+          
+   FIN_SI
+
+
+
+
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. RFC, E.*'
+base_trabajadores
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+USA_ARCHIVO ('EMPPRIN' , 'EMP_CADENAS' , 'CLAVE') 
+USA_ARCHIVO ('EMPPRIN' , 'EMPSUC'      , 'CLAVE') 
+USA_ARCHIVO ('EMPPRIN' , 'EMPDEP'      , 'CLAVE') 
+USA_ARCHIVO ('EMPPRIN' , 'EMPPUES'     , 'CLAVE')  
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE( FECHA_HOY ) )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+SI ( _tipo = 1)
+ TERMINA_REPORTE 
+FIN_SI
+
+# INSTRUCCION PARA ENVIAR CORREOS DESDE GIRO
+
+VAR_T       ( &destinatarios )
+VAR_T       ( &mensaje ) 
+
+$file_backup := ''
+
+EXCEL('NOMBRE_ARCHIVO', 0 , 0 ,$file_backup )
+EXCEL('CERRAR'        , 0 , 0 ,$file_backup )
+
+
+MENSAJE ( $file_backup ) 
+
+$nombre_mostrar := 'INDICADORES SEAO'               # NOMBRE PARA MOSTRAR EN LA LLEGADA DE CORREO.
+$de_correo      := 'notificaciones@seao.com.mx'    # CUENTA DE CORREO ELECTRONICO
+$con_copia      := ''                          # CON COPIA PARA
+$asunto         := 'Cadenas de autorizacion KIOSCO al: ' + FECHA(FECHA_HOY)               # ASUNTO DEL CORREO
+$adjunto        := $file_backup                # ARCHIVO ADJUNTO DIRECCION COMPLETA
+
+AGREGA_VALOR_COL ( &destinatarios , 0 , 'jflores@consisarh.com.mx' ) #AGREGA DESTINATARIOS
+AGREGA_VALOR_COL ( &destinatarios , 0 , 'sdavila@seao.com.mx'      ) #AGREGA DESTINATARIOS
+AGREGA_VALOR_COL ( &destinatarios , 0 , 'rcamacho@seao.com.mx'     ) #AGREGA DESTINATARIOS
+AGREGA_VALOR_COL ( &destinatarios , 0 , 'acruz@seao.com.mx'        ) #AGREGA DESTINATARIOS 
+AGREGA_VALOR_COL ( &mensaje       , 0 , ''                         ) # AGREGA MENSAJE
+
+_un     := 0
+_enviar := 1
+
+SI ( _enviar )   
+   ENVIA_CORREO( $nombre_mostrar , $de_correo , &destinatarios , $con_copia , $asunto , &mensaje , $adjunto  )
+FIN_SI
+
+
+termina_reporte
+
+TERMINA_REPORTE

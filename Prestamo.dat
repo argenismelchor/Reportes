@@ -1,0 +1,72 @@
+#VARIABLES PARA EL DESGLOCE DE PRESTAMOS.
+VAR_T( &prestamos )
+VAR_T( &deduc )
+$tclave       := ''
+$tdescripcion := ''
+$ttotal       := ''
+_ind          := 0
+$cc           := ''
+
+SUB_RUTINA agrega_concepto
+  AGREGA_VALOR_COL( &prestamos, 0, $tclave )
+  AGREGA_VALOR_COL( &prestamos, 1, $tdescripcion )
+  AGREGA_VALOR_COL( &prestamos, 2, DER( $ttotal, 12 ) )
+FIN_SUB_RUTINA
+
+SUB_RUTINA checa_prestamos
+  LIMPIA_TABLA( &deduc )
+  LIMPIA_TABLA( &prestamos )
+  _ind := 0
+  $cc := TRAE_VALOR_TABLA( &kardex, 6, _ind )
+  MIENTRAS( $cc <> '' )
+    AGREGA_VALOR_COL( &deduc, 0, $cc )
+    AGREGA_VALOR_COL( &deduc, 1, TRAE_VALOR_TABLA( &kardex, 7, _ind ) )
+    AGREGA_VALOR_COL( &deduc, 2, TRAE_VALOR_TABLA( &kardex, 11, _ind ) )
+    PON_VALOR_TABLA( &kardex, 6, _ind, '' )
+    PON_VALOR_TABLA( &kardex, 7, _ind, '' )
+    PON_VALOR_TABLA( &kardex, 11, _ind, '' )
+    _ind := _ind + 1
+    $cc := TRAE_VALOR_TABLA( &kardex, 6, _ind )
+  FIN_MIENTRAS
+
+  _ind := 0
+  $cc := TRAE_VALOR_TABLA( &deduc, 0, _ind )
+  MIENTRAS( $cc <> '' )
+    SI ( TRAE_REGISTRO( 'CONCEPTO', $cc ) )
+      SI ( 'CONCEPTO':'FRECUENCIA' = 4 )
+        $tclave       := $cc
+        $tdescripcion := TRAE_VALOR_TABLA( &kardex, 7, _ind )
+        PRIMER_REGISTRO( 'EMPPRES' )
+        MIENTRAS ( FIN_BASE( 'EMPPRES' ) = FALSO )
+          SI (( 'EMPPRES':'CLAVE_CONCEPTO' = $cc ) AND ( 'EMPPRES':'ESTADO' = 'S' ) AND ( 'EMPPRES':'SALDO' > 0 ) )
+            DECIMALES := 2
+            SI ( 'EMPPRES':'DESCUENTO' < 'EMPPRES':'SALDO' )
+              $ttotal       := $( 'EMPPRES':'DESCUENTO' )
+            SI_NO
+              $ttotal       := $( 'EMPPRES':'SALDO' )
+            FIN_SI
+            $tdescripcion := 'CONCEPTO':'DESCRIPCION'
+            agrega_concepto
+          FIN_SI
+          SIGUIENTE_REGISTRO ( 'EMPPRES' )
+        FIN_MIENTRAS        
+      SI_NO
+        $tclave       := $cc
+        $tdescripcion := TRAE_VALOR_TABLA( &deduc, 1, _ind )
+        $ttotal       := TRAE_VALOR_TABLA( &deduc, 2, _ind )
+        agrega_concepto
+      FIN_SI
+    FIN_SI
+    _ind := _ind + 1
+    $cc := TRAE_VALOR_TABLA( &deduc, 0, _ind )
+  FIN_MIENTRAS
+  _ind := 0
+  $cc := TRAE_VALOR_TABLA( &prestamos, 0, _ind )
+  MIENTRAS( $cc <> '' )
+    PON_VALOR_TABLA( &kardex, 6, _ind, $cc )
+    PON_VALOR_TABLA( &kardex, 7, _ind, TRAE_VALOR_TABLA( &prestamos, 1, _ind ) )
+    PON_VALOR_TABLA( &kardex, 11, _ind, TRAE_VALOR_TABLA( &prestamos, 2, _ind ) )
+    _ind := _ind + 1
+    $cc := TRAE_VALOR_TABLA( &prestamos, 0, _ind )
+  FIN_MIENTRAS
+FIN_SUB_RUTINA

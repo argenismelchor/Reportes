@@ -1,0 +1,122 @@
+#IMPORTACION DINAMICA DE ARCHIVOS DE EXCEL
+#REPORTE ESTANDAR DE MUESTRA
+#NO EDITAR
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como base en los reportes.
+#CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+$archivo := LEE_INI ( CLAVE_REPORTE , 'ARCHIVO' , '')
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA'  , 'PANTALLA/IMPRESORA/EXCEL/DISCO', $salida)
+NUEVO_PARAMETRO_RUTA ( 'ARCHIVO' , $archivo , $archivo )
+NUEVO_PARAMETRO      ( 'TABLA'   , '' , $tabla )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+ESCRIBE_INI ( CLAVE_REPORTE , 'ARCHIVO' , $archivo )
+
+EXCEL   ( 'AGREGA_HOJA_PLANTILLA' , 0,0, $archivo )
+$campo   := ''
+_renglon_excel := 1
+_columna_excel := 1
+VAR_T ( &campos )
+
+
+REPITE
+  EXCEL ( 'TRAE_VALOR' , _columna_excel , _renglon_excel  , $campo )
+  SI ( $campo <> '')
+     AGREGA_VALOR_COL ( &campos , 0 , $campo )   
+  FIN_SI
+  _columna_excel := _columna_excel + 1
+HASTA ( $campo = '' )
+
+# DEFINICION DE COLUMNAS
+
+_columna_excel := 0
+_renglon_excel := 0
+
+
+MIENTRAS ( TRAE_VALOR_TABLA ( &campos , _columna_excel , _renglon_excel ) <> '')
+
+   $columna   := TRAE_VALOR_TABLA ( &campos , _columna_excel , _renglon_excel )
+   _longitud  := 10
+   $justifica := 'IZQ'
+   $totales   := 'NO'
+   agrega_columna
+
+   _renglon_excel := _renglon_excel + 1
+
+FIN_MIENTRAS
+
+_condensado := 0
+$titulo_reporte := 'REPORTE ESTANDAR DE TRABAJADORES'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+
+_columna_excel := 1 
+_renglon_excel := 2
+
+_valor   := 0
+$valor   := ''
+_col     := 0
+_ren     := 0
+
+ABRE_BASE ( $tabla )
+
+REPITE
+
+
+        AGREGA_REGISTRO ($tabla)
+
+     _col     := 0
+     _ren     := 0
+
+
+     MIENTRAS ( TRAE_VALOR_TABLA ( &campos , _col , _ren ) <> '')  
+
+        $valor := ''
+        $campo := ''     
+
+        EXCEL ( 'TRAE_VALOR' , _columna_excel , _renglon_excel  , $valor )
+        $campo :=  TRAE_VALOR_TABLA ( &campos , _col , _ren ) 
+
+        #SI ( $campo <> 'CLAVE' )
+           SI ( $valor <> '' )
+   
+                $tabla:$campo  := $valor
+                  
+                $valor := $valor
+                imprime_columna
+                     
+           FIN_SI    
+        #FIN_SI
+
+
+     _ren := _ren + 1
+     _columna_excel := _columna_excel + 1
+     FIN_MIENTRAS  
+     #_nuevo := 0
+     GRABA_BASE ( $tabla )
+
+     _renglon_excel := _renglon_excel + 1
+     _columna_excel := 1
+
+     imprime_renglon
+   
+     EXCEL ( 'TRAE_VALOR' , _columna_excel , _renglon_excel  , $valor )
+
+HASTA ( $valor = '')
+
+TERMINA_REPORTE

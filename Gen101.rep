@@ -1,0 +1,74 @@
+#SUCURSALES
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte despliega el catalogo de sucursales.
+#Este reporte imprime la clave, nombre, registro patronal, direccion, numero, colonia, codigo, municipio, estado, telefono, fax.
+#FIN_DESCRIPCION
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_SEL ( 'ORDEN' , 'CLAVE/NOMBRE' , $orden )
+NUEVO_PARAMETRO_SEL ( 'POR REGISTRO' , 'SI/NO' , $ordenc )
+NUEVO_PARAMETRO_TAB ( 'REGISTRO' , 'PATRONAL/CLAVE/REGISTROS PATRONALES' , &registro )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+SALIDA        := $salida
+
+INCLUYE ENCPIE.DAT
+
+SI ( $salida = 'DISCO' )
+   SALIDA_REPORTE ( DIRECTORIO_TRABAJO + '\TABSUCUR.TXT' )
+FIN_SI
+
+ENCABEZADO
+   $titulo_reporte := 'Tabla de Sucursales'
+   encabezado_ini
+   IMP ( COL (1)  , 'Clave' , COL (11) , 'NOMBRE' , COL (41) , 'Registro' ) ;; IMPRIME
+   IMP ( COL (11) , 'Direccion' , COL (41) , 'Numero' , COL (50) , 'Colonia' , COL (72) , 'C.P.' ) ;; IMPRIME
+   IMP ( COL (11) , 'Municipio' , COL (31) , 'Estado' , COL (50) , 'Telefono' , COL (64) , 'FAX' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+### DEFINICION DE TABLA
+VAR_T ( &sql )
+AGREGA_VALOR_COL ( &sql, 0, 'SELECT *' )
+AGREGA_VALOR_COL ( &sql, 0, 'FROM SUCURSAL, PATRONAL' )
+AGREGA_VALOR_COL ( &sql, 0, 'WHERE PATRONAL.CLAVE = SUCURSAL."REGISTRO PATRONAL"' )
+SI ( TRAE_VALOR_TABLA ( &registro, 0, 0 ) <> '*' )
+  AGREGA_VALOR_COL ( &sql, 0, '      AND SUCURSAL."REGISTRO PATRONAL" IN' )
+  CREA_SELECCION_SQL ( &sql, &registro )
+FIN_SI
+SI ( $ordenc = 'SI' )
+   AGREGA_VALOR_COL ( &sql, 0, 'ORDER BY PATRONAL.CLAVE,' )
+SI_NO
+   AGREGA_VALOR_COL ( &sql, 0, 'ORDER BY' )
+FIN_SI
+SI ( $orden = 'CLAVE' )
+   AGREGA_VALOR_COL ( &sql, 0, 'SUCURSAL.CLAVE' )
+SI_NO
+   AGREGA_VALOR_COL ( &sql, 0, 'SUCURSAL.NOMBRE' )
+FIN_SI
+CREA_CONSULTA ( 'SUCURSAL', &sql )
+PRIMER_REGISTRO ( 'SUCURSAL' )
+
+### CICLO PRINCIPAL
+_tot := 0
+REPITE
+   IMP ( COL(1), 'SUCURSAL':'CLAVE', COL(11), 'SUCURSAL':'NOMBRE', COL(41), 'SUCURSAL':'NOMBRE_1' ) ;; IMPRIME
+   IMP ( COL(11), 'SUCURSAL':'CALLE', COL(41), 'SUCURSAL':'NUMERO', COL(50), 'SUCURSAL':'COLONIA', COL(72), 'SUCURSAL':'C P' );; IMPRIME
+   IMP ( COL(11), 'SUCURSAL':'MUNICIPIO', COL(31), 'SUCURSAL':'ESTADO', COL(50), 'SUCURSAL':'TELEFONO', COL(64), 'SUCURSAL':'FAX' );; IMPRIME
+   IMPRIME
+   _tot := _tot + 1
+   SIGUIENTE_REGISTRO ( 'SUCURSAL' )
+HASTA ( FIN_BASE ( 'SUCURSAL' ))
+IMPRIME
+IMPRIME
+DECIMALES := 0
+IMP ( COL(40), '--- Total : ', _tot, ' SUCURSALES' ) ;; IMPRIME

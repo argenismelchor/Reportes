@@ -1,0 +1,1003 @@
+#PRENOMINA PARA JUAREZ
+#PRENOMINA PARA JUAREZ
+#PRENOMINA QRO
+#PRENOMINA JUAREZ
+#IMPORTACION DE PRENOMINA DESDE UN ARCHIVO DE EXCEL
+#IMPORTACION DE PRENOMINA DESDE UN ARCHIVO DE EXCEL
+#REPOR
+#VERSION 2.6
+#EXCEL
+#DESCRIPCION
+#Este reporte permitira importar la prenomina desde un archivo de excel.
+#FIN_DESCRIPCION
+
+$path_archivo := LEE_INI ( CLAVE_REPORTE , 'ARCHIVO' , '' )
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA'                     , 'PANTALLA', $salida)
+NUEVO_PARAMETRO_TAB  ( 'TIPO NOM'                   , 'TIPONOM/CLAVE/SELECCIONE EL TIPO DE NOMINA', $tiponom)
+NUEVO_PARAMETRO_RUTA ( 'ARCHIVO A IMPORTAR'         , $path_archivo      , $path_archivo    )
+NUEVO_PARAMETRO_CHEQ ( 'INICIALIZAR NOMINA'         , ''                 , _in              )
+NUEVO_PARAMETRO_CHEQ ( 'ENTRAR A CONFIGURACIONES'   , ''                 , _configuraciones )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+NUEVO_PARAMETRO      ('' , 'QUE DESEA IMPORTAR' , $a )
+NUEVO_PARAMETRO_CHEQ ( 'CONCEPTOS'                  , '' , _conceptos  ) 
+NUEVO_PARAMETRO_CHEQ ( 'INCIDENCIAS'                , '' , _incidencias  ) 
+NUEVO_PARAMETRO_CHEQ ( 'H. EXTRAS'                  , '' , _horas_extras ) 
+NUEVO_PARAMETRO_CHEQ ( 'RETARDOS'                   , '' , _retardos     ) 
+#NUEVO_PARAMETRO_SEL  ( 'ACCION'                     , 'VALIDAR/GRABAR'   , _grabar )
+
+_grabar := 1
+
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_detalle_log := 0
+
+$in := 'NO'
+
+SI ( _in ) 
+   MENSAJE ('HA SELECCIONADO INICIALIZAR NOMINA, ESTE PROCESO PONDRA EN 0 CAPTURAS Y TOTALES DE LA NOMINA SOLO DE LOS EMPLEADOS QUE ESTEN EN ESTE ARCHIVO DE LECTURA')
+   MENSAJE ('CUALQUIER EMPLEADO QUE NO VENGA EN ESTE DOCUMENTO DE EXCEL, NO SERA INICIALIZADO, DEBERA INICIALIZARLO DE MANERA MANUAL')
+   SI ( PREGUNTA ('DESEA CONTINUAR?')= 0)
+      TERMINA_REPORTE
+   FIN_SI
+   $in := 'SI'
+FIN_SI
+
+
+SI ((( _conceptos + _incidencias + _horas_extras + _retardos ) = 0 ) AND (_in = 0 ) AND (_configuraciones = 0))
+   MENSAJE ( 'DEBE SELECCIONAR AL MENOS UN TIPO DE DATOS A IMPORTAR, EL REPORTE SE ABORTARA!!!!')
+   TERMINA_REPORTE
+FIN_SI
+
+_fi           := 0
+_ff           := 0
+_cambia_dsp   := 0
+_pedir_fechas := 1
+_linea        := 1
+
+SI ( _pedir_fechas )
+
+  FORMATO_FECHA := 0
+
+  _fi := VALOR(LEE_INI(CLAVE_REPORTE,'FI', '' ))
+  _ff := VALOR(LEE_INI(CLAVE_REPORTE,'FF', '' ))
+
+  NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , FECHA(_fi) , _fi )
+  NUEVO_PARAMETRO_FEC ( 'FECHA FINAL'   , FECHA(_ff) , _ff ) 
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+
+  ESCRIBE_INI ( CLAVE_REPORTE, 'FI' , .(_fi))
+  ESCRIBE_INI ( CLAVE_REPORTE, 'FF' , .(_ff))
+
+FIN_SI
+
+_confi := 0
+_conff := 0
+
+SI ( _configuraciones )
+  NUEVO_PARAMETRO_SEL ( 'CONF.COL Y CONCEPTOS'   , 'NO/SI' , _confi )
+  NUEVO_PARAMETRO_SEL ( 'CONF. FALTAS'           , 'NO/SI' , _conff )
+FIN_SI
+
+SI ( _cambia_dsp = 0)
+ LEE_PARAMETROS
+ BORRA_PARAMETROS
+FIN_SI
+
+_sucursal := 0
+_depto    := 0
+_puesto   := 0
+_turno    := 0
+
+SI ( _cambia_dsp )
+   NUEVO_PARAMETRO_CHEQ ( 'ACTUALIZAR SUCURSAL'   , '' , _sucursal )
+   NUEVO_PARAMETRO_CHEQ ( 'ACTUALIZAR DEPTO'      , '' , _depto )
+   NUEVO_PARAMETRO_CHEQ ( 'ACTUALIZAR PUESTO'     , '' , _puesto )
+   NUEVO_PARAMETRO_CHEQ ( 'ACTUALIZAR TURNO'      , '' , _turno )
+   LEE_PARAMETROS
+   BORRA_PARAMETROS
+FIN_SI
+
+ESCRIBE_INI ( CLAVE_REPORTE , 'ARCHIVO' , $path_archivo  )
+
+SI ( TRAE_REGISTRO ( 'TIPONOM', $tiponom ) )
+  SI ( TRAE_REGISTRO ( 'PERIODO', $tiponom, 'TIPONOM':'ACTUAL' ) = FALSO )
+    MENSAJE ( 'ERROR AL CONSULTAR EL PERIODO ' + $tiponom + '-' + .( 'TIPONOM':'ACTUAL' ) )
+    TERMINA_REPORTE
+   SI_NO
+    SI( CAMBIA_PERIODO ('TIPONOM':'CLAVE' , 'TIPONOM':'ACTUAL' , 0 ) = FALSO ) 
+    MENSAJE ( 'ERROR AL CONSULTAR EL PERIODO ' + $tiponom + '-' + .( 'TIPONOM':'ACTUAL' ) )
+    TERMINA_REPORTE
+    FIN_SI
+  FIN_SI
+FIN_SI
+
+_ft := 0
+
+SI ( _pedir_fechas = 0)
+   _ft := 'PERIODO':'FECHA INICIAL'
+   _fi := 'PERIODO':'FECHA INICIAL'
+   _ff := 'PERIODO':'FECHA FINAL'
+   SI_NO
+   _ft := _fi
+   _fi := _fi
+   _ff := _ff
+FIN_SI
+
+MODO_IMPRESION ('DIRECTO')
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+
+VAR_T ( &grupo_columnas )
+
+MIENTRAS ( _ft <= _ff )
+
+$columna   := 'D' + .(DIA(_ft))
+_longitud  := 10
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+AGREGA_VALOR_COL(&grupo_columnas , 0 , $columna )
+
+_ft := _ft + 1
+
+FIN_MIENTRAS
+
+_condensado := 0
+$titulo_reporte := 'REPORTE ESTANDAR DE TRABAJADORES'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+
+# TABLAS 
+VAR_T ( &conceptos ) 
+VAR_T ( &falta ) 
+VAR_T ( &grupo_columnas2 ) 
+
+ASIGNA_TABLA(&grupo_columnas,&grupo_columnas2)
+
+# NUMERICAS
+_dvig          := 0
+_valor         := 0
+_rc            := 0
+_cc            := 0
+_cih           := 0
+_cif           := 0
+_cir           := 0
+_cic           := 0
+_cis           := 0
+_cip           := 0
+_cid           := 0
+_cit           := 0
+_coma          := 0
+_rgc           := 0
+_renglon_excel := 0
+_columna_excel := 2
+_fi_nomina     := _fi
+_fh            := _fi
+_fa            := _fi
+_existe        := 0
+_anio          := 0
+_mes           := 0
+_dia           := 0
+_ii            := 0
+
+
+# ALFANUMERICAS
+$clave         := ''
+$day           := ''
+$CONCEPTO      := ''
+$CDC           := ''
+$CAP           := ''
+$sucursal      := ''
+$puesto        := ''
+$depto         := ''
+$turno         := ''
+VAR_A          (HD)
+VAR_A          (PD)
+VAR_A          (DT)
+VAR_A          (DF)
+$renglon       := LEE_INI ( CLAVE_REPORTE  , 'RENGLON' , '' )
+$quicih        := LEE_INI ( CLAVE_REPORTE  , 'QUICIH' , '' )
+$quicif        := LEE_INI ( CLAVE_REPORTE  , 'QUICIF' , '' )
+$quicir        := LEE_INI ( CLAVE_REPORTE  , 'QUICIR' , '' )
+$quicic        := LEE_INI ( CLAVE_REPORTE  , 'QUICIC' , '' )
+$semcih        := LEE_INI ( CLAVE_REPORTE  , 'SEMCIH' , '' )
+$semcif        := LEE_INI ( CLAVE_REPORTE  , 'SEMCIF' , '' )
+$semcir        := LEE_INI ( CLAVE_REPORTE  , 'SEMCIR' , '' )
+$semcic        := LEE_INI ( CLAVE_REPORTE  , 'SEMCIC' , '' )
+HD             := LEE_INI ( CLAVE_REPORTE  , 'HD'     , '' )
+PD             := LEE_INI ( CLAVE_REPORTE  , 'PD'     , '' )
+DT             := LEE_INI ( CLAVE_REPORTE  , 'DT'     , '' )
+DF             := LEE_INI ( CLAVE_REPORTE  , 'DF'     , '' )
+$csucursal     := LEE_INI ( CLAVE_REPORTE  , 'SUC'    , '' ) 
+$cdepto        := LEE_INI ( CLAVE_REPORTE  , 'DEPTO'  , '' ) 
+$cpuesto       := LEE_INI ( CLAVE_REPORTE  , 'PUESTO' , '' ) 
+$cturno        := LEE_INI ( CLAVE_REPORTE  , 'TURNO'  , '' ) 
+
+SI ( _confi )
+  NUEVO_PARAMETRO ( 'RENGLON' , $renglon , $renglon )
+  NUEVO_PARAMETRO ( 'QUI COL INI HORAS' , $quicih , $quicih )
+  NUEVO_PARAMETRO ( 'QUI COL INI FALTAS' , $quicif , $quicif )
+  NUEVO_PARAMETRO ( 'QUI COL INI RETARDOS' , $quicir , $quicir )
+  NUEVO_PARAMETRO ( 'QUI COL INI CONCEPTOS' , $quicic , $quicic )
+  NUEVO_PARAMETRO ( 'SEM COL INI HORAS' , $semcih , $semcih )
+  NUEVO_PARAMETRO ( 'SEM COL INI FALTAS' , $semcif , $semcif )
+  NUEVO_PARAMETRO ( 'SEM COL INI RETARDOS' , $semcir , $semcir )
+  NUEVO_PARAMETRO ( 'SEM COL INI CONCEPTOS' , $semcic , $semcic )
+
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+
+  NUEVO_PARAMETRO ( 'CONCEPTO HORAS'  , HD , HD )
+  NUEVO_PARAMETRO ( 'CONCEPTO P.DOM'  , PD , PD )
+  NUEVO_PARAMETRO ( 'CONCEPTO D.TRAB' , DT , DT )
+  NUEVO_PARAMETRO ( 'CONCEPTO D.FEST' , DF , DF )
+  NUEVO_PARAMETRO ( 'COL SUCURSAL' , $csucursal , $csucursal )
+  NUEVO_PARAMETRO ( 'COL DEPTO   ' , $cdepto    , $cdepto    )
+  NUEVO_PARAMETRO ( 'COL PUESTO  ' , $cpuesto   , $cpuesto   )
+  NUEVO_PARAMETRO ( 'COL TURNO   ' , $cturno    , $cturno    )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+  ESCRIBE_INI ( CLAVE_REPORTE , 'RENGLON' , $renglon )
+  ESCRIBE_INI ( CLAVE_REPORTE , 'QUICIH' , $quicih )
+  ESCRIBE_INI ( CLAVE_REPORTE , 'QUICIF' , $quicif )
+  ESCRIBE_INI ( CLAVE_REPORTE , 'QUICIR' , $quicir )
+  ESCRIBE_INI ( CLAVE_REPORTE , 'QUICIC' , $quicic )
+  ESCRIBE_INI ( CLAVE_REPORTE , 'SEMCIH' , $semcih )
+  ESCRIBE_INI ( CLAVE_REPORTE , 'SEMCIF' , $semcif )
+  ESCRIBE_INI ( CLAVE_REPORTE , 'SEMCIR' , $semcir )
+  ESCRIBE_INI ( CLAVE_REPORTE , 'SEMCIC' , $semcic ) 
+  ESCRIBE_INI ( CLAVE_REPORTE , 'HD'     , HD ) 
+  ESCRIBE_INI ( CLAVE_REPORTE , 'PD'     , PD ) 
+  ESCRIBE_INI ( CLAVE_REPORTE , 'DT'     , DT ) 
+  ESCRIBE_INI ( CLAVE_REPORTE , 'DF'     , DF ) 
+  ESCRIBE_INI ( CLAVE_REPORTE , 'SUC'    , $csucursal ) 
+  ESCRIBE_INI ( CLAVE_REPORTE , 'DEPTO'  , $cdepto    ) 
+  ESCRIBE_INI ( CLAVE_REPORTE , 'PUESTO' , $cpuesto   ) 
+  ESCRIBE_INI ( CLAVE_REPORTE , 'TURNO'  , $cturno    ) 
+FIN_SI
+
+$tipo := ''
+ABRE_BASE ('FALTA')
+SI ( _conff )
+ PRIMER_REGISTRO ('FALTA')
+ MIENTRAS ( FIN_BASE ( 'FALTA' ) = FALSO )
+    NUEVO_PARAMETRO ( 'TIPO FALTA ' + 'FALTA':'CLAVE' + ' ' + 'Falta':'DESCRIPCION' , LEE_INI ( CLAVE_REPORTE , 'FALTA':'CLAVE' , '' ) , $tipo ) 
+    LEE_PARAMETROS
+    BORRA_PARAMETROS
+    ESCRIBE_INI ( CLAVE_REPORTE , 'FALTA':'CLAVE' , $tipo )
+ SIGUIENTE_REGISTRO ('FALTA')
+ FIN_MIENTRAS
+FIN_SI
+
+$directorio := DIRECTORIO_PROGRAMAS + '\PRENO.LOG'
+$cadena     := .(_linea) + 'EL USUARIO ' + USUARIO_ACTUAL + ' INGRESO A LA CONFIGURACION DEL REPORTE' 
+SI ( _confi )
+   ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena , 'MODIFICACION'  )
+   TERMINA_REPORTE
+FIN_SI
+SI ( _conff )
+   ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena , 'MODIFICACION'  )
+   TERMINA_REPORTE
+FIN_SI
+$cadena := ''
+
+
+DECIMALES := 2
+SI ( 'PERIODO':'DIAS DE PAGO' > 7 )
+      _renglon_excel := VALOR ( $renglon )
+      _cih     := VALOR ( $quicih )
+      _cif     := VALOR ( $quicif )
+      _cir     := VALOR ( $quicir )
+      _cic     := VALOR ( $quicic )
+      _cis     := VALOR ( $csucursal )
+      _cid     := VALOR ( $cdepto )
+      _cip     := VALOR ( $cpuesto )
+      _cit     := VALOR ( $cturno )
+   SI_NO
+      _renglon_excel := VALOR ( $renglon )
+      _cih     := VALOR ( $semcih )
+      _cif     := VALOR ( $semcif )
+      _cir     := VALOR ( $semcir )
+      _cic     := VALOR ( $semcic )
+      _cis     := VALOR ( $csucursal )
+      _cid     := VALOR ( $cdepto )
+      _cip     := VALOR ( $cpuesto )
+      _cit     := VALOR ( $cturno )
+FIN_SI
+
+SI (( _cic = 0 ) or ( _cif = 0 ))
+   MENSAJE ('LA PRENOMINA NO ESTA CONFIGURADA CORRECTAMETE, VALIDE LAS OPCIONES DE COLUMNAS!!')
+   TERMINA_REPORTE
+FIN_SI
+
+
+DECIMALES := 0
+
+$cadena     := .(_linea) + 'EMPRESA':'CLAVE' + '/' + USUARIO_ACTUAL + '/' + $tiponom + '/' + $path_archivo + '/' + HORA (HORA_ACTUAL)
+$cadena     := $cadena + '/' + .(_conceptos) + '/' + .(_incidencias) + '/' + .(_horas_extras) + '/' + .(_retardos)
+$cadena     := $cadena + 'C=' + .(_cic) + 'I=' + .(_cif) + 'HE=' + .(_cih) + 'R=' + .(_cir)
+$cadena     := $cadena + ' NOMINA INICIALIZADA=' + $in
+
+$grabar     := ''
+SI ( _grabar )
+ $grabar := 'GRABAR' 
+ SI_NO
+ $grabar := 'VALIDAR' 
+FIN_SI
+
+ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena , $grabar  )
+
+DECIMALES := 2
+
+
+# SUBRUTINAS GLOBALES
+
+SUB_RUTINA agrega_valor
+  SI ( $valor = '') ;; $valor := '' ;; FIN_SI 
+  SI ( TRAE_INDICE_COL( &grupo_columnas , 0 , $day ) >= 0 ) 
+      _ii    := TRAE_INDICE_COL  ( &grupo_columnas , 0 , $day )
+      $valor := TRAE_VALOR_TABLA ( &grupo_columnas , 1 , _ii ) + '/' + $valor
+      PON_VALOR_TABLA ( &grupo_columnas , 1 , TRAE_INDICE_COL( &grupo_columnas , 0 , $day ) , $valor )
+  FIN_SI   
+FIN_SUB_RUTINA
+
+SUB_RUTINA cambia_dsp
+
+      SI ( _sucursal )
+         EXCEL ( 'TRAE_VALOR' , _cis , _renglon_excel  , $sucursal ) 
+      FIN_SI
+
+      SI ( _depto )
+         EXCEL ( 'TRAE_VALOR' , _cid , _renglon_excel  , $depto  ) 
+      FIN_SI
+
+      SI ( _puesto )
+         EXCEL ( 'TRAE_VALOR' , _cip , _renglon_excel  , $puesto ) 
+      FIN_SI
+
+      SI ( _turno )
+         EXCEL ( 'TRAE_VALOR' , _cit , _renglon_excel  , $turno ) 
+      FIN_SI
+  
+      FORMATO_FECHA:=6
+      _anio:= 2099
+      _mes:=  12
+      _dia:=  30
+
+      SI ( (  TRAE_DSP ( 'S' , FECHA_HOY )   <>  $sucursal )  Y ( $sucursal <> '' )  )
+
+              PRIMER_REGISTRO ('SUCURSAL')
+              SI ( TRAE_REGISTRO ( 'SUCURSAL' , $sucursal ) ) 
+   
+                    AGREGA_REGISTRO ( 'EMPSUC') 
+                    'EmpDep':'CLAVE':= 'EMPPRIN':'CLAVE'
+                    'EmpDep':'FECHA ENTRADA':= FECHA_HOY
+                    'EmpDep':'FECHA SALIDA':=  CALCULA_FECHA ( _anio , _mes , _dia )
+                    'EmpDep':'CATALOGO':= $sucursal
+                    'EMPDEP':'FECHA_CAPTURA':= FECHA_HOY
+                    GRABA_BASE ( 'EMPDEP' )  
+
+              FIN_SI
+
+      FIN_SI
+
+      SI ( (  TRAE_DSP ( 'D' , FECHA_HOY )   <>  $depto )  Y ( $depto <> '' )  )
+
+              PRIMER_REGISTRO ('DEPTO')
+              SI ( TRAE_REGISTRO ( 'DEPTO' , $depto ) ) 
+   
+                    AGREGA_REGISTRO ( 'EMPDEP') 
+                    'EmpDep':'CLAVE':= 'EMPPRIN':'CLAVE'
+                    'EmpDep':'FECHA ENTRADA':= FECHA_HOY
+                    'EmpDep':'FECHA SALIDA':=  CALCULA_FECHA ( _anio , _mes , _dia )
+                    'EmpDep':'CATALOGO':= $depto
+                    'EMPDEP':'FECHA_CAPTURA':= FECHA_HOY
+                    GRABA_BASE ( 'EMPDEP' )  
+
+              FIN_SI
+
+      FIN_SI
+
+      SI ( (  TRAE_DSP ( 'P' , FECHA_HOY )   <>  $puesto )  Y ( $puesto  <> '' )  )
+
+              PRIMER_REGISTRO ('PUESTO')
+              SI ( TRAE_REGISTRO ( 'PUESTO' , $puesto ) ) 
+   
+                    AGREGA_REGISTRO ( 'EMPPUES') 
+                    'EMPPUES':'CLAVE':= 'EMPPRIN':'CLAVE'
+                    'EMPPUES':'FECHA ENTRADA':= FECHA_HOY
+                    'EMPPUES':'FECHA SALIDA':=  CALCULA_FECHA ( _anio , _mes , _dia )
+                    'EMPPUES':'CATALOGO':= $puesto
+                    'EMPPUES':'FECHA_CAPTURA':= FECHA_HOY
+                    GRABA_BASE ( 'EMPPUES' )  
+
+              FIN_SI
+
+      FIN_SI
+                
+     ULTIMO_REGISTRO ('EMPTURNO')  
+
+      SI ( (  'EMPTURNO':'CATALOGO'  <>  $turno)  Y ( $turno <> '' )  )
+              PRIMER_REGISTRO ('TURNO')
+              SI ( TRAE_REGISTRO ( 'TURNO' , $turno ) ) 
+   
+                    AGREGA_REGISTRO ( 'EMPTURNO') 
+                    'EMPTURNO':'CLAVE':= 'EMPPRIN':'CLAVE'
+                    'EMPTURNO':'FECHA ENTRADA':= FECHA_HOY
+                    'EMPTURNO':'CATALOGO':= $turno
+                    'EMPTURNO':'FECHA SALIDA':=  CALCULA_FECHA ( _anio , _mes , _dia )
+                    GRABA_BASE ( 'EMPTURNO' )  
+
+              FIN_SI
+      FIN_SI
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA importa_horas_extras
+
+  _fh            := _fi_nomina
+
+  DECIMALES := 0
+  $day := 'D' + .(DIA(_fh))
+  DECIMALES := 2
+
+  MIENTRAS ( _fh <= _ff )
+
+  DECIMALES := 0
+  $day := 'D' + .(DIA(_fh))
+  DECIMALES := 2
+   
+  $valor := ''
+
+  EXCEL ( 'TRAE_VALOR' , _columna_excel , _renglon_excel , $valor )
+
+  _valor := VALOR ($valor)
+
+  PRIMER_REGISTRO ('NOMINA')
+  SI ( TRAE_REGISTRO ('NOMINA', HD)= VERDADERO ) ;; FIN_SI
+
+  MIENTRAS (('NOMINA':'CLAVE' = HD) and (_existe = 0))
+     SI ( ('NOMINA':'CLAVE' = HD) and (CAP1 (HD) = _fh ))
+        _existe := 1
+     FIN_SI
+     SIGUIENTE_REGISTRO ('NOMINA')
+  FIN_MIENTRAS
+
+  SI (( _existe = 0 ) AND (_valor > 0) AND ( _grabar = 1 ) )
+     CAPTURA_CONCEPTO (HD)
+     CAP1 (HD) := _fh 
+     CAP2 (HD) := _valor     
+  FIN_SI
+
+  SI ( _grabar )
+      GRABA_BASE ('EMPNOM')
+
+      $cadena     := .(_linea) + 'EMPRESA':'CLAVE' + '/' + USUARIO_ACTUAL + '/' + $tiponom + '/' + $path_archivo + '/' + HORA (HORA_ACTUAL)
+      SI ( _detalle_log )
+         ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena + 'empprin':'clave' , 'HE/' + .(_fh) + '/' + .(_valor ) )
+      FIN_SI
+
+      _linea := _linea + 1
+  FIN_SI   
+
+  $valor := $valor 
+  agrega_valor
+
+  _columna_excel := _columna_excel + 1
+  _fh := _fh + 1
+  _existe := 0
+
+  FIN_MIENTRAS
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_incidencias
+
+   _columna_excel := _cif
+   _fa := _fi
+
+   CAP1 ( PD ) := 0 ;; GRABA_BASE ('EMPNOM')
+   CAP1 ( DT ) := 0 ;; GRABA_BASE ('EMPNOM')
+   CAP1 ( DF ) := 0 ;; GRABA_BASE ('EMPNOM')
+
+   MIENTRAS ( _fa <= _ff )
+
+   $valor := ''
+
+   EXCEL ('TRAE_VALOR' , _columna_excel , _renglon_excel , $valor )
+
+   $valor := MAYUSCULAS( $valor )
+   $valor:= QUITA_CARACTER ( ' ' ,  $valor )
+
+# SIEMPRE DEFINIR EQUIVALENCIAS DE LAS CLAVES DEL REPORTE CON RELACION A LAS CLAVES DE LA IMPORTACION DE EXCEL.
+
+   SI ( $valor <> '')
+
+   PRIMER_REGISTRO ('FALTA')
+   MIENTRAS ( FIN_BASE ('FALTA') = FALSO ) 
+   SI ( LEE_INI ( CLAVE_REPORTE , 'FALTA':'CLAVE' , '' ) = $valor )  
+         $valor :=  'Falta':'CLAVE'
+   FIN_SI
+   SIGUIENTE_REGISTRO ('FALTA')
+   FIN_MIENTRAS
+
+   FIN_SI
+
+   SI ( $valor <> '' ) 
+     INCREMENTA_TABLA ( &falta , $valor , FECHA ( _fa ) , 1 )
+    SI_NO
+     INCREMENTA_TABLA ( &falta , 'ASISTENCIA' , FECHA ( _fa ) , 1 )
+   FIN_SI
+
+   DECIMALES := 0
+   $day := 'D' + .(DIA(_fa))
+   DECIMALES := 2
+
+   SI ( _grabar = 1 ) 
+
+   SI ( ( $valor <> '') AND ( $valor <> 'DA' ) AND ($valor <> 'DT') AND ($valor <> 'DF') AND ($valor <> 'INC'))
+     SI ( $valor <> 'V' ) 
+        SI (( TRAE_VACACIONES ( _fa , _fa  , 0 ) = 0) AND ( TRAE_FALTAS ( _fa , _fa , '*' ) = 0 )  AND ( TRAE_INCAPACIDADES ( _fa , _fa , '*' ) = 0 ))
+
+        SI ( TRAE_REGISTRO ( 'FALTA' , $valor ) = FALSO )
+            MENSAJE ( 'EL EMPLEADO ' + 'EMPPRIN':'CLAVE' + ' TIENE UN TIPO DE INCIDENCIA NO VALIDO EN EL KARDEX, FAVOR DE VERIFICARLO')
+            TERMINA_REPORTE
+        FIN_SI
+   
+           SI ( _grabar ) 
+              AGREGA_REGISTRO ('EMPAUS') 
+             'EMPAUS':'CLAVE'          := 'EMPPRIN':'CLAVE'
+             'EMPAUS':'FECHAI'         := _fa
+             'EMPAUS':'FECHAF'         := _fa
+             'EMPAUS':'TIPO'           := $valor
+             'EMPAUS':'FECHA_CAPTURA'  := FECHA_HOY         
+             GRABA_BASE ('EMPAUS')
+
+
+             $cadena     := .(_linea) + 'EMPRESA':'CLAVE' + '/' + USUARIO_ACTUAL + '/' + $tiponom + '/' + $path_archivo + '/' + HORA (HORA_ACTUAL)
+             SI ( _detalle_log )
+                ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena + 'empprin':'clave' , 'FALTA TIPO:' + $valor  )
+             FIN_SI
+             _linea := _linea + 1
+
+            FIN_SI
+
+        FIN_SI
+     SI_NO
+        SI (( TRAE_VACACIONES ( _fa , _fa  , 0 ) = 0) AND ( TRAE_FALTAS ( _fa , _fa , '*' ) = 0 )  AND ( TRAE_INCAPACIDADES ( _fa , _fa , '*' ) = 0 ))
+            SI ( _grabar ) 
+             AGREGA_REGISTRO ('EMPVACA')
+             'EMPVACA':'CLAVE'               := 'EMPPRIN':'CLAVE'
+             'EMPVACA':'FECHA'               := _fa   
+             'EMPVACA':'DURACION'            := 1
+             'EMPVACA':'FECHA FINAL'         := _fa
+             'EMPVACA':'PRIMA VACACIONAL'    := 0.25
+             'EMPVACA':'PAGADAS'             := 1
+             'EMPVACA':'DISFRUTADAS'         := 1
+             'EMPVACA':'FECHA_CAPTURA'       := FECHA_HOY         
+
+              GRABA_BASE ('EMPVACA')
+
+
+              $cadena     := .(_linea) + 'EMPRESA':'CLAVE' + '/' + USUARIO_ACTUAL + '/' + $tiponom + '/' + $path_archivo + '/' + HORA (HORA_ACTUAL)
+              SI ( _detalle_log )
+                 ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena + 'empprin':'clave' , 'V'  )
+              FIN_SI
+             _linea := _linea + 1
+
+            FIN_SI
+        FIN_SI
+     FIN_SI
+   FIN_SI
+
+   FIN_SI
+   
+   SI ( $valor = 'DA' ) 
+         SI ( CONCEPTO_CAPTURADO ( PD ) = FALSO )
+              CAPTURA_CONCEPTO ( PD )
+        FIN_SI
+         CAP1 ( PD ) :=  CAP1 ( PD ) + 1
+         SI ( _grabar ) 
+              GRABA_BASE ('EMPNOM')
+
+
+              $cadena     := .(_linea) + 'EMPRESA':'CLAVE' + '/' + USUARIO_ACTUAL + '/' + $tiponom + '/' + $path_archivo + '/' + HORA (HORA_ACTUAL)
+              SI ( _detalle_log )
+                 ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena + 'empprin':'clave' , 'DA'  )
+              FIN_SI
+             _linea := _linea + 1
+
+         FIN_SI
+   FIN_SI
+   SI ( $valor = 'DT' ) 
+         SI ( CONCEPTO_CAPTURADO ( DT ) = FALSO )
+              CAPTURA_CONCEPTO ( DT )
+         FIN_SI
+         CAP1 ( DT ) :=  CAP1 ( DT ) + 1
+         SI ( _grabar ) 
+              GRABA_BASE ('EMPNOM')
+
+
+              $cadena     := .(_linea) + 'EMPRESA':'CLAVE' + '/' + USUARIO_ACTUAL + '/' + $tiponom + '/' + $path_archivo + '/' + HORA (HORA_ACTUAL)
+              SI ( _detalle_log )
+                 ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena + 'empprin':'clave' , 'DT'  )   
+              FIN_SI
+              _linea := _linea + 1
+
+         FIN_SI
+   FIN_SI
+   SI ( $valor = 'DF' ) 
+         SI ( CONCEPTO_CAPTURADO ( DF ) = FALSO )
+              CAPTURA_CONCEPTO ( DF )
+         FIN_SI
+         CAP1 ( DF ) :=  CAP1 ( DF ) + 1
+         SI ( _grabar ) 
+              GRABA_BASE ('EMPNOM')
+
+
+              $cadena     := .(_linea) + 'EMPRESA':'CLAVE' + '/' + USUARIO_ACTUAL + '/' + $tiponom + '/' + $path_archivo + '/' + HORA (HORA_ACTUAL)
+              SI ( _detalle_log )
+                 ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena + 'empprin':'clave' , 'DF'  )
+              FIN_SI  
+              _linea := _linea + 1
+
+         FIN_SI
+   FIN_SI
+
+   $valor := $valor 
+   agrega_valor
+
+   _columna_excel := _columna_excel + 1
+   _fa := _fa + 1
+ 
+   FIN_MIENTRAS
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_retardos 
+
+   _columna_excel := _cir
+   _fa            := _fi_nomina
+
+   MIENTRAS ( _fa <= _ff )
+
+   DECIMALES := 0
+   $day := 'D' + .(DIA(_fa))
+   DECIMALES := 2
+
+   EXCEL ('TRAE_VALOR' , _columna_excel , _renglon_excel , $valor )
+
+   $valor := MAYUSCULAS( $valor )
+
+# SIEMPRE DEFINIR EQUIVALENCIAS DE LAS CLAVES DEL REPORTE CON RELACION A LAS CLAVES DE LA IMPORTACION DE EXCEL.
+
+   SI ( _grabar = 1 ) 
+     SI ( $valor <> '')   
+         SI ( VALOR ( $valor ) > 0 ) 
+
+            SI ( TRAE_RETARDOS ( _fa , _fa ) = 0)         
+             SI ( _grabar ) 
+              AGREGA_REGISTRO ( 'EMPRET')             
+              'EMPRET':'CLAVE'         := 'EMPPRIN':'CLAVE'
+              'EMPRET':'FECHA'         := _fa
+              'EMPRET':'RETARDO'       := VALOR ( $valor )
+              'EMPRET':'DESCONTAR'     := 'N'
+              'EMPRET':'FECHA_CAPTURA' := FECHA_HOY
+               GRABA_BASE ('EMPRET')      
+  
+
+               $cadena     := .(_linea) + 'EMPRESA':'CLAVE' + '/' + USUARIO_ACTUAL + '/' + $tiponom + '/' + $path_archivo + '/' + HORA (HORA_ACTUAL)
+               SI ( _detalle_log )
+                  ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena + 'empprin':'clave' , 'RET:' + $valor   )
+               FIN_SI
+              _linea := _linea + 1
+
+              FIN_SI
+            FIN_SI
+           
+            SI_NO
+
+            SI ( TRAE_RETARDOS ( _fa , _fa ) = 0)         
+             SI ( _grabar ) 
+              AGREGA_REGISTRO ( 'EMPRET')                   
+              'EMPRET':'CLAVE'         := 'EMPPRIN':'CLAVE'
+              'EMPRET':'FECHA'         := _fa
+              'EMPRET':'RETARDO'       := VALOR ( $valor ) * -1
+              'EMPRET':'DESCONTAR'     := 'S'
+              'EMPRET':'FECHA_CAPTURA' := FECHA_HOY
+               GRABA_BASE ('EMPRET')
+
+               $cadena     := .(_linea) + 'EMPRESA':'CLAVE' + '/' + USUARIO_ACTUAL + '/' + $tiponom + '/' + $path_archivo + '/' + HORA (HORA_ACTUAL)
+               SI ( _detalle_log )
+                  ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena + 'empprin':'clave' , 'RET:' + $valor   )
+               FIN_SI
+               _linea := _linea + 1
+               FIN_SI      
+             FIN_SI 
+         FIN_SI
+     FIN_SI                 
+   FIN_SI
+     
+   $valor := $valor 
+   agrega_valor
+
+   _columna_excel := _columna_excel + 1
+   _fa := _fa + 1
+ 
+   FIN_MIENTRAS
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA importa_valor
+
+_rc := 0
+
+MIENTRAS ( TRAE_VALOR_TABLA ( &conceptos , 0 , _rc ) <> '')
+
+   _valor    := 0
+   $CONCEPTO := ''
+   $CAP      := ''
+
+   $CONCEPTO := TRAE_VALOR_TABLA ( &conceptos , 0 , _rc )
+   $CAP      := TRAE_VALOR_TABLA ( &conceptos , 1 , _rc )
+
+   EXCEL ( 'TRAE_VALOR' , _columna_excel , _renglon_excel , $valor )
+
+   _valor := VALOR ($valor)
+
+   SI ($CONCEPTO = 'VALE')
+      DECIMALES:=0
+   FIN_SI
+
+   SI ( TRAE_REGISTRO ( 'CONCEPTO' , $CONCEPTO ))
+   
+   SI (( CONCEPTO_CAPTURADO( $CONCEPTO )= FALSO ) AND (_valor <> 0))
+        CAPTURA_CONCEPTO ($CONCEPTO)
+   FIN_SI
+
+   SI ( $CONCEPTO = '45' )
+         DECIMALES := 2
+   FIN_SI
+
+   SI (( $CONCEPTO <> '' ) and (_valor <> 0 ) )
+      
+       CAP1 ( $CONCEPTO ) := 0
+       CAP2 ( $CONCEPTO ) := 0
+       CAP3 ( $CONCEPTO ) := 0
+
+       SI ( $CAP = '1' )
+            CAP1 ( $CONCEPTO ) :=  _valor 
+       FIN_SI
+       SI ( $CAP = '2' )
+            CAP2 ( $CONCEPTO ) := _valor 
+       FIN_SI   
+       SI ( $CAP = '3' )
+            CAP3 ( $CONCEPTO ) := _valor 
+       FIN_SI   
+       SI ( $CAP = 'T' )
+            TOTAL ( $CONCEPTO ) := _valor 
+       FIN_SI   
+
+   FIN_SI
+
+   SI ( _grabar )
+
+      GRABA_BASE ('EMPNOM')
+      GRABA_BASE ('NOMINA')
+
+
+      $cadena     := .(_linea) + 'EMPRESA':'CLAVE' + '/' + USUARIO_ACTUAL + '/' + $tiponom + '/' + $path_archivo + '/' + HORA (HORA_ACTUAL)
+      SI ( _detalle_log )
+         ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena + 'empprin':'clave' , $CONCEPTO + '=' + $CAP + '=' + .(_valor) )
+      FIN_SI
+      _linea := _linea + 1
+
+   FIN_SI
+
+   FIN_SI
+
+_rc := _rc + 1
+_columna_excel := _columna_excel + 1
+
+FIN_MIENTRAS
+
+FIN_SUB_RUTINA
+
+
+ABRE_BASE ('EMPPRIN')
+USA_ARCHIVO ('EMPPRIN','EMPNOM','CLAVE')
+USA_ARCHIVO ('EMPPRIN','EMPAUS','CLAVE')
+USA_ARCHIVO ('EMPPRIN','EMPVACA','CLAVE')
+USA_ARCHIVO ('EMPPRIN','EMPRET','CLAVE')
+
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 1 , 1  , $path_archivo )
+
+EXCEL( 'TRAE_VALOR' , 2 , _renglon_excel , $clave)
+
+_rc := _renglon_excel - 1
+_cc := _cic
+
+REPITE
+
+# En esta sub rutina se leen los conceptos para ser importados a la nomina, de manera que la integracion del concepto
+# en la dato leido desde excel en el rango renglon = _rc y la columna _cc debe estar el num de concepto y captura (CAP1, CAP2, CAP3 )
+# el concepto queda integrado de la siguiente manera, Ejemplo : 01,1 Que significa Concepto 01, CAP1
+
+# AQUI LEE EL CONCEPTO
+
+
+   EXCEL ( 'TRAE_VALOR' , _cc , _rc , $CDC )   
+
+   SI ( $CDC = 'VALE,1')
+      DECIMALES := 2
+   FIN_SI
+
+   _coma := POS (',' , $CDC )
+   $CONCEPTO := SUBSTR ( $CDC , 1 , _coma - 1 )
+   $CAP      := SUBSTR ( $CDC , LONGITUD ($CONCEPTO) + 2 , 100)
+
+
+   SI (( $CONCEPTO <> '' ) OR ( $CDC <> ''))
+      SI ( $CONCEPTO = ''  ) ;; $CONCEPTO := 'X' ;; $CAP := 'X' ;; FIN_SI
+   FIN_SI
+
+   SI (( $CONCEPTO <> '') AND ( $CAP <> '' ))   
+      AGREGA_VALOR_COL ( &conceptos , 0 , $CONCEPTO )
+      AGREGA_VALOR_COL ( &conceptos , 1 , $CAP )
+   FIN_SI
+
+   _cc := _cc + 1
+
+HASTA ( $CDC = '' )
+
+
+
+MIENTRAS ( $clave <> '')
+
+   DECIMALES := 2  
+
+   SI ( TRAE_REGISTRO ( 'EMPPRIN' , $clave ) = VERDADERO )
+
+      SI ( $clave = '0335') 
+         DECIMALES := 2
+      FIN_SI
+   
+      SI (( _in ) AND ( CAP1 ('FINI') <> 1))
+         PON_CAPTURAS_0
+         PON_TOTAL_0
+         SI ( _grabar )
+            GRABA_BASE ('EMPNOM')
+            GRABA_BASE ('NOMINA')
+         FIN_SI
+      FIN_SI
+
+      SI ( $tiponom <> 'EMPPRIN':'TIPO_NOM' )
+         MENSAJE ('EL EMPLEADO NO PERTENCE AL TIPO NO NOMINA SELECCIONADO, EL REPORTE SE ABORTARA' )
+         TERMINA_REPORTE
+      FIN_SI
+
+      $valor := $clave
+      imprime_columna
+   
+      $valor := 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN'
+      imprime_columna   
+
+      SI ( _cambia_dsp ) ;; cambia_dsp ;;  FIN_SI
+
+      # VALIDACION PARA IMPORTAR HORAS EXTRAS
+      _columna_excel := _cih       
+      SI (( _cih > 0  ) AND ( _horas_extras)) ;; importa_horas_extras ;; FIN_SI
+
+      # VALIDACION PARA IMPORTAR INCIDENCIAS    
+      SI( _incidencias ) ;; carga_incidencias ;; FIN_SI
+
+      #VALIDACION PARA IMPORTAR RETARDOS
+      SI (( _cir > 0 ) AND ( _retardos )) ;; carga_retardos ;; FIN_SI
+
+      # VALIDACION PARA IMPORTAR CONCEPTOS
+      SI ( _conceptos ) 
+         _columna_excel := _cic ;;  _cc := _columna_excel ;; DECIMALES := 2
+         importa_valor 
+      FIN_SI     
+
+      _renglon_excel := _renglon_excel + 1
+      _rgc           := 0
+
+      REPITE
+       $valor := TRAE_VALOR_TABLA ( &grupo_columnas, 1 , _rgc )
+       imprime_columna         
+       _rgc := _rgc + 1
+      HASTA ( TRAE_VALOR_TABLA ( &grupo_columnas, 0 , _rgc ) = '')
+
+      imprime_renglon
+   
+      LIMPIA_TABLA ( &grupo_columnas ) 
+      ASIGNA_TABLA ( &grupo_columnas2 , &grupo_columnas )  
+
+      EXCEL( 'TRAE_VALOR' , 2 , _renglon_excel , $clave)
+
+   SI_NO
+      MENSAJE ( 'EMPLEADO ' + $clave + ' NO LOCALIZADO EN LA BASE DE DATOS' )
+      _renglon_excel := _renglon_excel + 1
+      EXCEL( 'TRAE_VALOR' , 2 , _renglon_excel , $clave)
+   FIN_SI
+
+FIN_MIENTRAS
+
+IMPRIME
+IMPRIME
+IMP ( COL ( 1 ) , 'DETALLE DE IMPORTACION DE FALTAS' );; IMPRIME
+IMPRIME
+
+_rf := 0 
+_cf := 0
+
+LIMPIA_TABLA(&columnas)
+
+_cf      := 0 
+_num_col := 0
+REPITE 
+  $columna   := 'ENC'
+  _longitud  := 12
+  $justifica := 'DER'
+  $totales   := 'NO'
+  agrega_columna
+ _cf := _cf + 1    
+HASTA ( TRAE_VALOR_TABLA( &falta , _cf , 0 ) = '' )
+
+PON_VALOR_TABLA ( &falta , 0 , 0 , 'FECHA' )
+
+FORMATO_FECHA := 1
+
+_cf := 0 
+REPITE 
+  _cf := 0 
+  REPITE 
+      $valor := TRAE_VALOR_TABLA( &falta , _cf , _rf )
+      SI ( $valor = '' );; $valor := '0' ;;  FIN_SI
+      imprime_columna
+   _cf := _cf + 1    
+  HASTA ( TRAE_VALOR_TABLA( &falta , _cf , 0 ) = '' )
+      imprime_renglon   
+ _rf := _rf + 1
+HASTA ( TRAE_VALOR_TABLA( &falta , 0 , _rf ) = '' )
+
+DECIMALES := 0
+FORMATO_FECHA := 3
+
+$cadena     := .(_linea) +  'EMPRESA':'CLAVE' + '/' + USUARIO_ACTUAL + '/' + $tiponom + '/' + $path_archivo + '/' + HORA (HORA_ACTUAL)
+$cadena     := $cadena + '/' + .(_conceptos) + '/' + .(_incidencias) + '/' + .(_horas_extras) + '/' + .(_retardos)
+$cadena     := $cadena + 'C=' + .(_cic) + 'I=' + .(_cif) + 'HE=' + .(_cih) + 'R=' + .(_cir)
+$cadena     := $cadena + ' NOMINA INICIALIZADA=' + $in
+
+ESCRIBE_ARCHIVO_INI($directorio , FECHA(FECHA_HOY) , $cadena , 'TERMINO'  )
+
+TERMINA_REPORTE

@@ -1,0 +1,348 @@
+#ALTAS GENERICAS CORA
+#ALTAS GENERICAS LIMACH
+#USUARIO =*
+#ALTA DE TARJETAS BANORTE GENERICAS
+#ALTA DE TARJETAS BANORTE NOMINALES
+#ALTA DE TARJETAS BANORTE
+#DISPERSION DE NOMINA BANORTE
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.10
+#EXCEL
+#DESCRIPCION
+#Reporte de dispersion de "NOMINA BANORTE".
+#FIN_DESCRIPCION
+#COMENTARIO:FECHA=20/11/13;AUTOR=ARGENIS;SOLICITANTE=DANIEL DOMINGUEZ
+#CAMBIO DE EMISORA PARA CORA
+#COMENTARIO:FECHA=21/08/2013;AUTOR=ARGENIS;SOLICITANTE=ABRAHAM
+#se cambio la emisora
+
+# VARIABLES GLOBALES
+$tiporeg  := 'H'
+$clavserv := 'NE'
+$promotor := '00000000'
+$nie      := '84224'
+$rsocial  := 'EMPRESA':'NOMBRE'
+$rsocial  := QUITA_CARACTER ( '.' , $rsocial ) 
+$rsocial  := QUITA_CARACTER ( ':' , $rsocial ) 
+$rsocial  := QUITA_CARACTER ( ';' , $rsocial ) 
+$rsocial  := QUITA_CARACTER ( ',' , $rsocial ) 
+$rsocial  := QUITA_CARACTER ( '-' , $rsocial )
+$rsocial  := QUITA_CARACTER ( 'Ñ' , $rsocial )
+$rsocial  := QUITA_CARACTER ( '¨' , $rsocial )
+
+ 
+$numreg   := ''
+_numreg   := 0
+
+
+_sueldomen := 0 
+
+#$numemp    := ''  
+$numemp    :=  ''
+$nombre    := ''
+$apellidop := ''
+$apellidom := ''
+$dep       := ''
+$codnac    := '08'
+$nombrec   := ''
+$calle     := ''
+$numero    := ''
+$entrada   := ''
+$piso      := ''
+$dep       := ''
+$colonia   := ''
+$codpos    := ''
+$telpart   := '000000000000'#'016566489049'
+$sexo      := ''
+$fechanac  := ''
+$tipoemp   := ''
+$rfc       := ''
+$curp      := ''
+$tipoalta  := ''
+$tipotar   := ''
+$numtar    := ''
+$claveprod := ''
+$codban    := ''
+$tipcuenta := ''
+$numcuenta := ''
+$crcheque  := ''
+$impcont   := 'S'
+$sueldomen := ''
+$numtarbaj := ''
+$filler    := ''
+$ce        := ''
+$col133    := '        '
+
+$tipviv    := 'CA'     #ANEXO
+$tipovia   := 'XX'     #ANEXO
+$municip   := '037'    #ANEXO
+$clavest   := '11'     #ANEXO
+$nac       := '001'    #ANEXO
+$ecivil    := 'S'      #ANEXO
+$regmat    := ' '      #ANEXO
+$escolar   := '009'    #ANEXO
+$titprof   := '000'    #ANEXO
+$tipviv2    := '01'     #ANEXO
+$tipoemp   := '10'     # NO ESTA TABLA DE PRESTACIONES
+
+$consecu := LEE_INI ( 'ALTAS BANORTE' , 'CONSECU' , '' ) 
+$emisora := LEE_INI ( 'ALTAS BANORTE' , 'EMISORA' , '' ) 
+$provee  := LEE_INI ( 'ALTAS BANORTE' , 'PROVEEDOR' , '' ) 
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+$ruta    := 'C:\NI' + $nie + $consecu + '.ALT'
+NUEVO_PARAMETRO_RUTA ( 'RUTA' , $ruta  , $ruta ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( EXISTE_ARCHIVO ( $ruta ) ) 
+     BORRA_ARCHIVO ( $ruta ) 
+FIN_SI
+
+SALIDA_REPORTE ( $ruta ) 
+
+MODO_IMPRESION ( 'DIRECTO')
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+$dato := ''
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA quita_caracteres
+$dato := $dato
+$dato  := QUITA_CARACTER ( '.' , $dato  ) 
+$dato  := QUITA_CARACTER ( ':' , $dato  ) 
+$dato  := QUITA_CARACTER ( ';' , $dato  ) 
+$dato  := QUITA_CARACTER ( ',' , $dato  ) 
+$dato  := QUITA_CARACTER ( '-' , $dato  ) 
+$dato  := QUITA_CARACTER ( '"' , $dato  ) 
+$dato  := QUITA_CARACTER ( '@' , $dato  ) 
+$dato  := QUITA_CARACTER ( '=' , $dato  ) 
+$dato  := QUITA_CARACTER ( '!' , $dato  ) 
+$dato  := QUITA_CARACTER ( '#' , $dato  ) 
+$dato  := QUITA_CARACTER ( '$' , $dato  )
+$dato  := QUITA_CARACTER ( '%' , $dato  )
+$dato  := QUITA_CARACTER ( ')' , $dato  )
+$dato  := QUITA_CARACTER ( '(' , $dato  )
+$dato  := QUITA_CARACTER ( '<' , $dato  )
+$dato  := QUITA_CARACTER ( '>' , $dato  )
+$dato  := QUITA_CARACTER ( '¨' , $dato  )    
+$dato  := REEMPLAZA ( 'Ñ' , 'N' , $dato ) 
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_encabezado
+   ABRE_BASE ( 'PUESTO')
+   USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT'  , 'CLAVE' ) 
+   USA_ARCHIVO ( 'EMPPRIN' , 'EMPPUES' , 'CLAVE' )  
+   USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO'  , 'CLAVE' ) 
+   USA_ARCHIVO ( 'EMPPRIN' , 'EMPRH'   , 'CLAVE' ) 
+
+   PRIMER_REGISTRO ( 'EMPPRIN' )
+   MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+     #SI ( ( 'EMPPRIN':'CTA_TARJETA' <> ''  )  AND  ( TOTAL('TOTA') <> 0 ) ) 
+     SI ( ( ('EMPPRIN':'CTA_TARJETA' <> ''  ) AND  ( 'EMPEXT':'ALTA_TARJETA' <> 1 ) AND ( 'EMPEXT':'BANCO' = '4' ))) 
+      
+  _numreg := _numreg + 1
+      FIN_SI
+      SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+   FIN_MIENTRAS
+   
+   DECIMALES:= 0 
+   
+   $numreg := .(_numreg ) 
+   MIENTRAS ( LONGITUD ( $numreg ) < 6 ) 
+              $numreg := '0' + $numreg  
+   FIN_MIENTRAS
+
+   IMP ( COL(1)  , $tiporeg , COL(2)  , $clavserv , COL(4) , $promotor , COL(12) , $nie , COL(17) , $rsocial , COL(57) , $consecu  ) 
+   IMP ( COL(59) , $numreg  , COL(65) , REPITETXT ( ' ' , 150 ) , REPITETXT ( ' ' , 100 ) , REPITETXT ( ' ' , 33 )  )
+   IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_detalle
+
+   PRIMER_REGISTRO ( 'EMPPRIN' )
+   MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+      SI ( ( ('EMPPRIN':'CTA_TARJETA' <> ''  ) AND  ( 'EMPEXT':'ALTA_TARJETA' <> 1 ) AND ( 'EMPEXT':'BANCO' = '4' ))) 
+
+              $tiporeg  := 'D'
+              
+              $numemp   := SUBSTR ( 'EMPPRIN':'CLAVE'  , 3 , ( LONGITUD ( 'EMPPRIN':'CLAVE'  )  - 3  )  +  1  ) 
+              MIENTRAS ( LONGITUD ( $numemp ) < 10 ) 
+                         $numemp := '0' + $numemp
+              FIN_MIENTRAS
+              
+              $nombre    := 'EMPPRIN':'NOMBREN'
+              $apellidop := 'EMPPRIN':'NOMBREP'
+              $apellidom := 'EMPPRIN':'NOMBREM'
+
+              #$apellidom  := QUITA_CARACTER ( ' ' , '' )   
+              #$apellidop  := QUITA_CARACTER ( ' ' , '' ) 
+                   
+              #SI ( $apellidop = '0' ) ;;# $apellidop := 'X'  ;;# FIN_SI
+              #SI ( $apellidom = '0' ) ;;# $apellidom := 'X'  ;;# FIN_SI
+                            
+              MIENTRAS ( LONGITUD ( $nombre ) < 20 ) 
+                         $nombre := $nombre + ' ' 
+              FIN_MIENTRAS
+              
+              MIENTRAS ( LONGITUD ( $apellidop ) < 20 ) 
+                         $apellidop := $apellidop + ' ' 
+              FIN_MIENTRAS
+              
+              MIENTRAS ( LONGITUD ( $apellidom ) < 20 ) 
+                         $apellidom := $apellidom + ' ' 
+              FIN_MIENTRAS
+
+
+              $dato := $nombre
+              quita_caracteres
+              $nombre := $dato
+
+              $dato := $apellidop
+              quita_caracteres
+              $apellidop := $dato
+
+              $dato := $apellidom
+              quita_caracteres
+              $apellidom := $dato
+              
+              $dep    := '00000'
+              $ce     := '08'              
+
+              $nombrec  := 'EMPPRIN':'NOMBREN'
+              MIENTRAS ( LONGITUD ( $nombrec ) < 19 ) 
+                         $nombrec := $nombrec + ' '
+              FIN_MIENTRAS
+
+              $dato := $nombrec
+              quita_caracteres
+              $nombrec := $dato
+
+              $calle   := 'EMPRH':'CALLE'  
+
+              MIENTRAS ( LONGITUD ( $calle ) < 24 ) 
+                         $calle := $calle + ' '
+              FIN_MIENTRAS
+
+              $dato := $calle
+              quita_caracteres
+              $calle := $dato
+
+              $numero  := 'EMPRH':'NUMERO'
+              #$numero  := QUITA_CARACTER  ( ' ' , '' ) 
+     
+              #SI  ( ( MAYUSCULAS ( $numero  ) = 'S/N'  )) #OR  (  $numero = ''  ) ) 
+                #     $numero := 'SN' 
+             # FIN_SI
+ 
+              MIENTRAS ( LONGITUD ( $numero ) < 7  ) 
+                         $numero := $numero + ' '
+              FIN_MIENTRAS   
+ 
+              $entrada := '  ' ;; $piso := '  ' ;; $dep := '    '
+
+              $colonia := 'EMPRH':'COLONIA'
+
+              MIENTRAS ( LONGITUD ( $colonia  ) < 40 ) 
+                         $colonia := $colonia + ' '
+              FIN_MIENTRAS
+
+              $dato := $colonia
+              quita_caracteres
+              $colonia := $dato
+
+              DECIMALES:= 0 
+              $codpos := .( 'EMPRH':'CP' ) 
+              MIENTRAS ( LONGITUD ( $codpos ) < 5  ) 
+                         $codpos := '0' + $codpos 
+              FIN_MIENTRAS  
+
+              $telpart  :=  'D000000000000'# + 'EMPRH':'TELEFONO_1'    
+              $sexo     := 'EMPRH':'SEXO'        
+
+              FORMATO_FECHA := 6  
+              $fechanac := FECHA ( 'EMPRH':'FECHA_NACIMIENTO' )  
+              $fechanac := SUBSTR ( $fechanac , 5 , 4 ) + SUBSTR ( $fechanac , 3 , 2 ) + SUBSTR ( $fechanac , 1 ,2  ) 
+
+              $tipoemp := '10'
+              $rfc     := 'EMPPRIN':'RFC'
+              $curp    := 'EMPPRIN':'CURP'
+
+              $dato := $rfc
+              quita_caracteres
+              $rfc := $dato
+
+              $dato := $curp
+              quita_caracteres
+              $curp := $dato
+
+
+              MIENTRAS ( LONGITUD ( $rfc ) < 13 ) 
+                         $rfc := $rfc + ' ' 
+              FIN_MIENTRAS  
+
+              MIENTRAS ( LONGITUD ( $curp ) < 18 ) 
+                         $curp := $curp + ' ' 
+              FIN_MIENTRAS
+
+              $tipoalta := '01'                
+              $tipotar  := '3'
+
+              $numtar   := 'EMPPRIN':'CTA_TARJETA'#'0000000000000000'
+              MIENTRAS ( LONGITUD ( $numtar ) < 16 ) 
+                         $numtar := '0' + $numtar
+              FIN_MIENTRAS 
+
+              $claveprod := '0367'
+              $codban    := '072'
+              $tipcuenta := '01'
+
+              $numcuenta := '000000000000000000'
+              $crcheque  := '7205'
+              $impcont   := 'S'
+
+              ULTIMO_REGISTRO ( 'EMPSDO')
+              DECIMALES:= 2
+              _sueldomen := 'EMPSDO':'SDO1'  * 30
+              $sueldomen := '00001'
+              $sueldomen := REEMPLAZA ( '.' , '' , $sueldomen ) 
+
+              MIENTRAS ( LONGITUD ( $sueldomen ) < 15 ) 
+                         $sueldomen := '0' + $sueldomen 
+              FIN_MIENTRAS  
+
+              $numtarbaj := '0000000000000000'
+              $filler    := '          '
+
+              IMP ( COL (1 ) , $tiporeg , COL(2) , $numemp , COL(12) , $nombre , COL(32) , $apellidop , COL(52) , $apellidom  ) 
+              IMP ( COL( 72) , $dep , COL(77) , $codnac  ,  COL(79 ) , $nombrec , COL(98) , $tipviv , COL(100) , $calle , COL(124) , $numero )
+              IMP ( COL(131) , $tipviv2 ,  COL(133) , $col133, COL(141) , $colonia , COL(181) , $municip)  
+              IMP ( COL(184) , $clavest , COL(186) , $codpos , COL(191) ,  $telpart , COL(203 ) , $sexo , COL(204) , $fechanac , COL(212) , $nac ) 
+              IMP ( COL(215) , $ecivil , COL(216) , $regmat , COL(217) , $escolar , COL(220), $titprof , COL(223) , $tipoemp , COL(225) , $rfc  ) 
+              IMP ( COL(238) , $curp  , COL(256 ) , $tipoalta , COL(258 ) , $tipotar , COL(259) , $numtar , COL(275) , $claveprod , COL(279) , $codban) 
+              IMP ( COL(282) , $tipcuenta , COL(284) , $numcuenta , COL(302) , $crcheque , COL(306) , $impcont , COL(307) , $sueldomen )
+              IMP ( COL(322) , $numtarbaj , COL(338 ) , $filler ) 
+              IMPRIME
+      FIN_SI
+
+   SIGUIENTE_REGISTRO ( 'EMPPRIN')
+   FIN_MIENTRAS
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. RFC,E.NOMBREP,E.NOMBREM,E.NOMBREN,E.CTA_TARJETA,E.CURP'
+base_trabajadores
+
+imprime_encabezado
+imprime_detalle
+
+TERMINA_REPORTE

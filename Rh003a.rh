@@ -1,0 +1,87 @@
+#REPORTE DE FOTOGRAFIAS
+#VERSION 1.0
+#USUARIO =*
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+_ancho := 250
+_largo := 300
+
+DECIMALES := 0
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO     ( 'LARGO', .( _largo ), _largo )
+NUEVO_PARAMETRO     ( 'ANCHO', .( _ancho ), _ancho )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+MODO_IMPRESION( 'GRAFICO' )
+COLUMNAS := 90
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'FOTOGRAFIAS DE EMPLEADOS VIGENTES AL ' + FECHA( FECHA_HOY ) )) IMPRIME
+   IMP ( REPITETXT ('-', COLUMNAS )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+# VARIABLES
+
+_inicio := 300
+_ind_x := 0
+_ind_y := _inicio
+
+SUB_RUTINA formato_trabajador
+   SI ( 'EMPPRIN':'FOTO' <> '' )
+     SI ( EXISTE_ARCHIVO( 'EMPRESA':'PATH FOTOS' + '\' + 'EMPPRIN':'FOTO' ) )
+        IMPRIME_IMAGEN ( 'EMPPRIN':'FOTO' , _ind_x , _ind_y , _ancho , _largo )
+        IMP_XY( _ind_x + 60, _ind_y - 40, 'EMPPRIN':'CLAVE' )
+        _ind_x := _ind_x + _ancho + 30
+     FIN_SI
+   FIN_SI      
+   SI ( _ind_x > 1500 )
+     _ind_x := 0
+     _ind_y := _ind_y + _largo + 80
+   FIN_SI
+   SI ( _ind_y > 2500 )
+     _ind_x := 0
+     _ind_y := _inicio
+     AVANZA_HOJA
+     IMPRIME
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E.FOTO'
+base_trabajadores
+
+IMPRIME IMPRIME
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE( FECHA_HOY ) )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

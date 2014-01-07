@@ -1,0 +1,173 @@
+#MATRIZ DE ENTRENAMIENTO
+#NO EDITAR
+#USUARIO =*
+#EXCEL
+#VERSION 1.0
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL', $salida)
+NUEVO_PARAMETRO_FEC ( 'INICIO VIGENCIA', '', _fi )
+NUEVO_PARAMETRO_FEC ( 'FIN VIGENCIA', '', _ff )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+LETRA( 'LETRA CONDENSADA' )
+COLUMNAS := 120
+
+#VARIABLES GLOBALES
+$centro_costo := ''
+$indice       := ''
+$indice_valor := ''
+$ent          := ''
+_ind          := 0
+$cap          := ''
+VAR_T ( &relacion )
+_col          := 0
+_ren          := 0
+$base         := ''
+$ind          := ''
+SI ( CD_DC = 0 )
+  $base := 'DEPTO'
+  $ind  := 'DEPARTAMENTO'
+SI_NO
+  $base := 'CENTROC'
+  $ind  := 'CENTRO DE COSTO'
+FIN_SI
+$saux := ''
+
+ENCABEZADO   
+   LETRA( 'LETRA CONDENSADA' )
+   IMPRIME
+   IMP ( COL(10), 'EMPRESA':'NOMBRE', COL(70), $centro_costo )
+   IMPRIME
+   IMP ( 'MATRIZ DE OPERACIONES CALIFICADAS' ) ;; IMPRIME
+   IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(8), 'NOMBRE', COL(43), 'TURNO', COL(50), 'INGRESO' )
+   _ind := 0
+   IMP ( COL(64), '|' )
+   MIENTRAS( TRAE_VALOR_TABLA( &relacion, 0, _ind ) <> '' )
+     IMP ( COL(65 + (_ind*5)), TRAE_VALOR_TABLA( &relacion, 0, _ind ), COL(69 + (_ind*5)), '|' )
+     _ind := _ind + 1
+   FIN_MIENTRAS
+   IMPRIME
+   IMP ( REPITETXT( '_', COLUMNAS ) )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 8 ), SUBSTR('EMPPRIN':'NOMBRE',1,32), COL(43), 'EMPPRIN':'TURNO', COL(50), FECHA('EMPPRIN':'INGRESO') )
+   IMP ( COL(64), '|' )
+   SI ( $salida = 'EXCEL' )
+     EXCEL( 'PON_VALOR', 1, _ren, 'EMPPRIN':'CLAVE' )
+     EXCEL( 'PON_VALOR', 2, _ren, 'EMPPRIN':'NOMBRE' )
+     EXCEL( 'PON_VALOR', 3, _ren, 'EMPPRIN':'TURNO' )
+     EXCEL( 'PON_VALOR', 4, _ren, FECHA( 'EMPPRIN':'INGRESO' ) )
+   FIN_SI
+   _ind := 0
+   MIENTRAS( TRAE_VALOR_TABLA( &relacion, 0, _ind ) <> '' )
+     SI ( TRAE_REGISTRO( 'EMPENT', 'EMPPRIN':'CLAVE', $base:'CLAVE', TRAE_VALOR_TABLA( &relacion, 0, _ind ) ) )
+       $saux := TRAE_VALOR_TABLA( &relacion, 0, _ind )
+       $cap := ' O'
+       SI ( $salida = 'EXCEL' )
+         EXCEL( 'PON_VALOR', _ind + 5, _ren, 'O' )
+       FIN_SI
+     SI_NO
+       $cap := ' '
+     FIN_SI
+     IMP ( COL(65 + (_ind*5)), $cap, COL(69 + (_ind*5)), '|' )
+     _ind := _ind + 1
+   FIN_MIENTRAS
+   IMPRIME
+   _ren := _ren + 1
+FIN_SUB_RUTINA
+
+SUB_RUTINA encabezados
+  SI ( $indice = $ind )
+    SI ( TRAE_REGISTRO( $base, $indice_valor ) )
+      $centro_costo := $base:'CLAVE' + ' ' + $base:'DESCRIPCION'
+      LIMPIA_TABLA( &relacion )
+      PRIMER_REGISTRO( 'RELENT' )
+      MIENTRAS( FIN_BASE( 'RELENT' ) = FALSO )
+        $ent := 'RELENT':'ENTRENAMIENTO'
+        SI ( TRAE_REGISTRO( 'TABENT', $ent ) )
+          AGREGA_VALOR_COL( &relacion, 0, $ent )
+        FIN_SI
+        SIGUIENTE_REGISTRO ( 'RELENT' )
+      FIN_MIENTRAS
+      SI ( $salida = 'EXCEL' )
+        EXCEL( 'PON_VALOR', 1, _ren, $centro_costo )
+        _ren := _ren + 1
+        EXCEL( 'PON_VALOR', 1, _ren, 'CLAVE' )
+        EXCEL( 'PON_VALOR', 2, _ren, 'NOMBRE' )
+        EXCEL( 'PON_VALOR', 3, _ren, 'TURNO' )
+        EXCEL( 'PON_VALOR', 4, _ren, 'INGRESO' )
+        _ind := 0
+        MIENTRAS( TRAE_VALOR_TABLA( &relacion, 0, _ind ) <> '' )
+          SI ( TRAE_REGISTRO( 'TABENT', TRAE_VALOR_TABLA( &relacion, 0, _ind ) ) )
+            EXCEL( 'PON_VALOR', _ind + 5, _ren, 'TABENT':'DESCRIPCION' )
+          FIN_SI
+          _ind := _ind + 1
+        FIN_MIENTRAS
+        _ren := _ren + 1
+      FIN_SI
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+  IMPRIME
+  IMP ( 'DESCRIPCION DE CLAVES DE ENTRENAMIENTO' ) ;; IMPRIME
+  _ind := 0
+  SI ( $salida <> 'EXCEL' )
+    MIENTRAS( TRAE_VALOR_TABLA( &relacion, 0, _ind ) <> '' )
+      IMP ( COL(1), TRAE_VALOR_TABLA( &relacion, 0, _ind ) )
+      SI ( TRAE_REGISTRO( 'TABENT', TRAE_VALOR_TABLA( &relacion, 0, _ind ) ) )
+        IMP ( COL(10), 'TABENT':'DESCRIPCION' )
+        SI ( $salida = 'EXCEL' )
+          EXCEL( 'PON_VALOR', 2, _ren, 'TABENT':'DESCRIPCION' )
+          _ren := _ren + 1
+        FIN_SI
+      FIN_SI   
+      IMPRIME
+      _ind := _ind + 1
+    FIN_MIENTRAS
+  FIN_SI
+  IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+$orden := 'C' + SUBSTR ( $orden, 1, POS ( 'C', $orden )-1 ) +
+                SUBSTR ( $orden, POS ( 'C', $orden )+1, 255 )
+PON_VALOR_TABLA ( &in, 0, 3, 1 )
+PON_VALOR_TABLA ( &in, 8, 3, 1 )
+base_trabajadores
+_omitir_encabezados   := 1
+_omitir_total_general := 1
+
+ABRE_BASE   ( $base )
+USA_ARCHIVO ( $base, 'RELENT', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE( _fi, _ff ) )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

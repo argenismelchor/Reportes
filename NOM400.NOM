@@ -1,0 +1,106 @@
+#ALTAS Y BAJAS DE UN PERIODO CON PERCEPCIONES
+#NO EDITAR
+#USUARIO =*
+#REPORTE ESTANDAR DE NOMINA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como estandar en los reportes.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL', $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL', '', _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL', '', _ff )
+NUEVO_PARAMETRO     ( 'MES ACUMULADO', 'ENE', $mes )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 50
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INGRESO'
+_longitud  := 12
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'PERC'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+_condensado := 0
+$titulo_reporte := 'ALTAS Y BAJAS DE UN PERIODO CON PERCEPCIONES DEL ' + FECHA( _fi ) + ' AL ' + FECHA( _ff )
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+_acum := 0
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+
+   $valor := FECHA( 'EMPPRIN':'INGRESO' )
+   imprime_columna
+
+   DECIMALES := 2
+   _acum := ACUM_MENSUAL( $mes, 'PERC' )
+   $valor := $( _acum )
+   imprime_columna
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+  sub_total_util
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI (( 'EMPPRIN':'INGRESO' >= _fi ) AND ( 'EMPPRIN':'INGRESO' <= _ff ))
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+$indice := 'TOTAL'
+imprime_totales
+
+TERMINA_REPORTE

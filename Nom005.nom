@@ -1,0 +1,364 @@
+#TOTALES DE NOMINA POR CONCEPTO
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra el total o capturas de la nomina de los empleados de la empresa.
+#Este reporte imprime de los trabajadores la clave, nombre y los totales seleccionados.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO      ( 'CONCEPTO(S)', '', $conceptos )
+NUEVO_PARAMETRO_SEL  ( 'TIPO', 'TOTAL/CAP1/CAP2/CAP3', _tcap )
+NUEVO_PARAMETRO_CHEQ ( 'CHECAR_VIGENCIA', '', _vig )
+NUEVO_PARAMETRO_FEC  ( 'FECHA', '', _ff )
+NUEVO_PARAMETRO_CHEQ ( 'SOLO TOTALES', '', _solot )
+LEE_PARAMETROS
+
+SI ( $salida = 'DISCO' )
+  SALIDA_REPORTE( DIRECTORIO_TRABAJO + '\SALIDA.TXT' )
+  MODO_IMPRESION( 'DIRECTO' )
+FIN_SI
+
+BORRA_PARAMETROS
+
+FORMATO_PESOS := 2
+FORMATO_FECHA := 3
+ 
+_ancho      := 12
+$aux        := ''
+$conc       := ''
+$conc1      := ''
+$conc2      := ''
+_iaux       := 0
+_long       := 0
+_columnas   := 0
+_col        := 0
+$conceptosc := ''
+_num_con    := 0
+$tipos_nomina := ''
+_per_sel    := 0
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+
+SI ( $salida <> 'DISCO' )
+  ENCABEZADO
+     SI ( $tipos_nomina = '' )
+       $titulo_reporte := 'REPORTE DE TOTALES POR CONCEPTO '
+     SI_NO
+       DECIMALES := 0
+       $titulo_reporte := 'REPORTE DE TOTALES POR CONCEPTO ' + 'PERIODO ' + .('PERIODO':'NUMERO') + ' ' + 'PERIODO':'TIPONOM'
+       DECIMALES := 2
+     FIN_SI
+     encabezado_ini
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE' )
+     $aux := $conceptosc
+     _iaux := 0
+     MIENTRAS(( LONGITUD($aux) > 0 ) AND (_iaux < _num_con))
+       _iaux := _iaux + 1
+       _long:=POS(',', $aux)
+       SI ( _long > 0 )
+         $conc2:=SUBSTR($aux, 1, _long - 1 )
+         $aux:=ELIMINA($aux,1,_long)
+       SI_NO
+         $conc2:=$aux
+         $aux:=''
+       FIN_SI
+       IMP ( COL( 40 + ( (_iaux - 1) * _ancho ) ), DER( $conc2, _ancho) )
+     FIN_MIENTRAS
+     _iaux := _iaux + 1
+     IMP ( COL( 40 + ( (_iaux - 1) * _ancho ) ), DER( 'TOTAL', _ancho) ) 
+     IMPRIME
+     encabezado_fin
+  FIN_ENCABEZADO
+  
+  PIE
+     pie_estandar
+  FIN_PIE
+FIN_SI
+
+### VARIABLES GLOBALES DEL REPORTE 
+$tipo_act := ''
+VAR_T ( &indices )
+_num_ind := 0
+VAR_T ( &st_reg )
+VAR_T ( &st_suc )
+VAR_T ( &st_cen )
+VAR_T ( &st_dep )
+VAR_T ( &st_pue )
+VAR_T ( &st_emp )
+VAR_T ( &st_nom )
+VAR_T ( &acum )
+VAR_T ( &tab_imp )
+VAR_T ( &conceptos )
+_acum_tot:=0
+_tacum_tot:=0
+_acum_tot_trab := 0
+_nren:=0
+_ncol:=0
+_ren:=0
+_col:=0
+_acum:=0
+_nconc:=0
+$straux:=''
+$mes:=''
+$acum_tot:=''
+$tacum_tot:=''
+_primera := 0
+$indice := ''
+_mcap := 0
+_acum_aux := 0
+
+SUB_RUTINA lista_tabla
+  DECIMALES:=2
+  _ren:=0
+  $conc1:=TRAE_VALOR_TABLA(&tab_imp, 0, _ren)
+  MIENTRAS( $conc1 <> '' )
+    _col:=1
+    $tacum_tot:=''
+    _tacum_tot:=0
+    $straux:=TRAE_VALOR_TABLA(&tab_imp, _col, _ren)
+    MIENTRAS( $straux <> '' )
+      _acum_aux:=VALOR($straux)
+      $tacum_tot:=$tacum_tot + DER( $(_acum_aux), _ancho )
+      _tacum_tot:=_tacum_tot + _acum_aux
+      _col:=_col + 1
+      $straux:=TRAE_VALOR_TABLA(&tab_imp, _col, _ren)
+    FIN_MIENTRAS
+    SI ( _tacum_tot <> 0 )
+      IMP ( COL(3), $conc1 )
+      SI ( TRAE_REGISTRO('CONCEPTO', $conc1 ) )
+        IMP ( COL(8), SUBSTR('CONCEPTO':'DESCRIPCION',1,17) )
+      FIN_SI
+      DECIMALES:=2
+      $tacum_tot:=$tacum_tot + DER($(_tacum_tot), _ancho )
+      IMP ( COL(40), $tacum_tot )
+      IMPRIME
+    FIN_SI
+    _ren:=_ren + 1
+    $conc1:=TRAE_VALOR_TABLA(&tab_imp, 0, _ren)
+  FIN_MIENTRAS
+  LIMPIA_TABLA( &tab_imp )
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_conceptos
+  _iaux := 0
+  SI ( $conceptos='*')
+    MENSAJE('NO PUEDE SELECCIONAR TODOS LOS CONCEPTOS')
+    TERMINA_REPORTE
+  SI_NO
+    $aux:=$conceptos
+    MIENTRAS(( LONGITUD($aux) > 0 ) AND (_iaux < _num_con))
+      _iaux := _iaux + 1
+      _long:=POS(',', $aux)
+      SI ( _long > 0 )
+        $conc:=SUBSTR($aux, 1, _long - 1 )
+        AGREGA_VALOR_COL ( &conceptos, 0, $conc )
+        $aux:=ELIMINA($aux,1,_long)
+      SI_NO
+        $conc:=$aux
+        AGREGA_VALOR_COL ( &conceptos, 0, $conc )
+        $aux:=''
+      FIN_SI
+    FIN_MIENTRAS
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_acumulado
+  DECIMALES:=2
+  _acum := _mcap
+  _acum_tot_trab := _acum_tot_trab + _acum
+  SI ( _solot = 0 )
+    IMP ( COL( _ncol ), DER( $(_acum), _ancho ) )
+  FIN_SI
+  DECIMALES:=2
+  $mes := 'TOTAL'
+  INCREMENTA_TABLA(&acum, $mes, $conc, _acum)
+  SI ( TRAE_INDICE_COL ( &indices, 0, 'SUCURSAL' ) >= 0 )
+    INCREMENTA_TABLA(&st_suc, $mes, $conc, _acum)
+  FIN_SI
+  SI ( TRAE_INDICE_COL ( &indices, 0, 'REGISTRO PATRONAL' ) >= 0 )
+    INCREMENTA_TABLA(&st_reg, $mes, $conc, _acum)
+  FIN_SI
+  SI ( TRAE_INDICE_COL ( &indices, 0, 'CENTRO DE COSTO' ) >= 0 )
+    INCREMENTA_TABLA(&st_cen, $mes, $conc, _acum)
+  FIN_SI
+  SI ( TRAE_INDICE_COL ( &indices, 0, 'DEPARTAMENTO' ) >= 0 )
+    INCREMENTA_TABLA(&st_dep, $mes, $conc, _acum)
+  FIN_SI
+  SI ( TRAE_INDICE_COL ( &indices, 0, 'PUESTO' ) >= 0 )
+    INCREMENTA_TABLA(&st_pue, $mes, $conc, _acum)
+  FIN_SI
+  SI ( TRAE_INDICE_COL ( &indices, 0, 'TIPO DE EMPLEADO' ) >= 0 )
+    INCREMENTA_TABLA(&st_emp, $mes, $conc, _acum)
+  FIN_SI
+  SI ( TRAE_INDICE_COL ( &indices, 0, 'TIPO DE NOMINA' ) >= 0 )
+    INCREMENTA_TABLA(&st_nom, $mes, $conc, _acum)
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+  SI ( _solot = 0 )
+   SI ( _primera = 0 )
+     LETRA ( 'LETRA CONDENSADA' )
+     IMP ( COL(1), 'EMPPRIN':'CLAVE' )
+     IMP ( COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 25) )
+     _primera := 1
+   FIN_SI
+  FIN_SI
+  imprime_acumulado     
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+  IMP('   SUBTOTALES ', $indice ) ;; IMPRIME
+  SI ( $indice = 'REGISTRO PATRONAL' )
+    IMPRIME
+    ASIGNA_TABLA( &st_reg, &tab_imp )
+    lista_tabla
+    LIMPIA_TABLA( &st_reg )
+  FIN_SI
+  SI ( $indice = 'SUCURSAL' )
+    IMPRIME
+    ASIGNA_TABLA( &st_suc, &tab_imp )
+    lista_tabla
+    LIMPIA_TABLA( &st_suc )
+  FIN_SI
+  SI ( $indice = 'CENTRO DE COSTO' )
+    IMPRIME
+    ASIGNA_TABLA( &st_cen, &tab_imp )
+    lista_tabla
+    LIMPIA_TABLA( &st_cen )
+  FIN_SI
+  SI ( $indice = 'DEPARTAMENTO' )
+    IMPRIME
+    ASIGNA_TABLA( &st_dep, &tab_imp )
+    lista_tabla
+    LIMPIA_TABLA( &st_dep )
+  FIN_SI
+  SI ( $indice = 'PUESTO' )
+    IMPRIME
+    ASIGNA_TABLA( &st_pue, &tab_imp )
+    lista_tabla
+    LIMPIA_TABLA( &st_pue )
+  FIN_SI
+  SI ( $indice = 'TIPO DE NOMINA' )
+    IMPRIME
+    ASIGNA_TABLA( &st_nom, &tab_imp )
+    lista_tabla
+    LIMPIA_TABLA( &st_nom )
+  FIN_SI
+  SI ( $indice = 'TIPO DE EMPLEADO' )
+    IMPRIME
+    ASIGNA_TABLA( &st_emp, &tab_imp )
+    lista_tabla
+    LIMPIA_TABLA( &st_emp )
+  FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+
+SUB_RUTINA carga_monto
+  _mcap := 0
+  SI ( TRAE_REGISTRO( 'NOMINA', $conc ) )
+    MIENTRAS(( 'NOMINA':'CLAVE' = $conc ) AND ( FIN_BASE('NOMINA') = FALSO ))
+      SI ( _tcap = 0 ) _mcap := _mcap + 'NOMINA':'TOTAL' FIN_SI
+      SI ( _tcap = 1 ) _mcap := _mcap + 'NOMINA':'CAP1' FIN_SI
+      SI ( _tcap = 2 ) _mcap := _mcap + 'NOMINA':'CAP2' FIN_SI
+      SI ( _tcap = 3 ) _mcap := _mcap + 'NOMINA':'CAP3' FIN_SI     
+      SIGUIENTE_REGISTRO( 'NOMINA' )
+    FIN_MIENTRAS
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA condiciones
+  _primera := 0
+  _ncol := 0
+  _nren := 0
+  _nconc:= 0
+  $conc := TRAE_VALOR_TABLA( &conceptos, 0, _nconc)
+  _ncol := 40
+  _acum_tot_trab := 0  
+  MIENTRAS( $conc <> '' )
+    carga_monto
+    SI ( _mcap <> 0 )
+      SI ( _primera = 0 )
+        datos_trabajador
+      SI_NO
+        imprime_acumulado
+      FIN_SI
+    FIN_SI
+    _ncol := _ncol + _ancho
+    _nconc := _nconc + 1
+    $conc := TRAE_VALOR_TABLA( &conceptos, 0, _nconc)
+  FIN_MIENTRAS
+  SI ( _primera = 1 )
+    SI ( _solot = 0 )
+      IMP ( COL( _ncol ), DER( $(_acum_tot_trab), _ancho ) )
+      IMPRIME
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+$conceptosc := $conceptos
+
+$aux := $conceptos
+_iaux := 0
+MIENTRAS( LONGITUD($aux) > 0 )
+  _iaux := _iaux + 1
+  _long:=POS(',', $aux)
+  SI ( _long > 0 )
+    $conc:=SUBSTR($aux, 1, _long - 1 )
+    $aux:=ELIMINA($aux,1,_long)
+  SI_NO
+    $conc:=$aux
+    $aux:=''
+  FIN_SI
+FIN_MIENTRAS
+
+SI ( _iaux < 4 )
+  _columnas := 95
+SI_NO
+  _columnas := 80 + ((_iaux - 2) * _ancho) + 1
+FIN_SI
+
+COLUMNAS := _columnas
+_num_con := 8
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+ACTUALIZA_BASES
+base_trabajadores
+carga_conceptos
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI (( _vig = 0 ) OR ( ES_VIGENTE( _ff ) = VERDADERO )) 
+    condiciones 
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte

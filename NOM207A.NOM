@@ -1,0 +1,78 @@
+#PAGO SANTANDER 2 LB
+#FORMATO PRE PAGO NOMINA SANTANDER TIPO 2 GORH
+#FORMATO PRE PAGO NOMINA SANTANDER TIPO 2
+#FORMATO PRE PAGO NOMINA SANTANDER
+#USUARIO =*
+#FORMATO PAGO NOMINA SANTANDER
+#FORMATO PAGO SANTANDER
+#FORMATO PAGO SANTANDER
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte prepago santander
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'EXCEL', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+$cuenta := LEE_INI ( 'MACRO SANTANDER' , 'CUENTA' , '' ) 
+
+NUEVO_PARAMETRO_RUTA ( 'EXCEL' , '' , $ruta ) 
+NUEVO_PARAMETRO ( 'CUENTA' , $cuenta , $cuenta ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , $ruta ) 
+ESCRIBE_INI ( 'MACRO SANTANDER' , 'CUENTA' , $cuenta ) 
+
+
+
+# VARIABLES GLOBALES
+_filaexcel := 8
+$c := SUBSTR ( '''' , 1 , 1 ) 
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+
+ EXCEL ( 'PON_VALOR' ,  4 , _filaexcel , 'EMPPRIN':'NOMBREP'     ) 
+ EXCEL ( 'PON_VALOR' ,  5 , _filaexcel , 'EMPPRIN':'NOMBREM'     ) 
+ EXCEL ( 'PON_VALOR' ,  6 , _filaexcel , 'EMPPRIN':'NOMBREN'     ) 
+ EXCEL ( 'PON_VALOR' ,  7 , _filaexcel , 'EMPPRIN':'CTA_TARJETA' )
+
+ DECIMALES := 2 
+ EXCEL ( 'PON_VALOR' ,  8 , _filaexcel , .(TOTAL ( 'TOTA') ) )
+ EXCEL ( 'PON_VALOR' ,  9 , _filaexcel , 'EMPPRIN':'CLAVE' )
+
+ _filaexcel := ( _filaexcel + 1 ) 
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. RFC,E.NOMBREP,E.NOMBREM,E.NOMBREN,E.CTA_TARJETA'
+base_trabajadores
+
+
+
+EXCEL ( 'PON_VALOR' , 8 , 3 , $cuenta ) 
+
+FORMATO_FECHA := 3
+EXCEL ( 'PON_VALOR' , 8 , 4 , FECHA ( FECHA_HOY ) ) 
+
+
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT' , 'CLAVE'  ) 
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ( TOTAL ( 'TOTA' ) <> 0  )   AND ( 'EMPPRIN':'CTA_TARJETA' <> '' )  AND  ( 'EMPEXT':'BANCO'  = '2' ) ) 
+       formato_trabajador
+   FIN_SI
+
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+
+TERMINA_REPORTE

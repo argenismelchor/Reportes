@@ -1,0 +1,78 @@
+#IMPORTAR PERMANENTES
+#REPORTE ESTANDAR DE MUESTRA
+#USUARIO =*
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte para importar empleados permanentes
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA', $salida)
+NUEVO_PARAMETRO_RUTA ( 'EXCEL' , '' , $ruta )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( EXISTE_ARCHIVO ( $ruta ) = FALSO  )
+      MENSAJE ( 'ERROR; no se encontro el archivo en la ruta indicada.')  
+      TERMINA_REPORTE
+FIN_SI
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+_condensado := 0
+$titulo_reporte := 'REPORTE DE EMPLEADOS PERMANENTES'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+$clave := '' ;; _filaexcel := 1
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM'  +  ' ' + 'EMPPRIN':'NOMBREN' 
+   imprime_columna
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+ABRE_BASE ( 'EMPPRIN' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT' , 'CLAVE' ) 
+
+EXCEL  ( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , $ruta ) 
+_filaexcel := 2
+$clave := ''
+
+EXCEL  ( 'TRAE_VALOR' , 1 , _filaexcel , $clave ) 
+MIENTRAS ( $clave <> '' ) 
+SI (  TRAE_REGISTRO ( 'EMPPRIN' , $clave ) ) 
+      'EMPEXT':'AUT_PERM' := 1
+      GRABA_BASE ( 'EMPEXT')
+      formato_trabajador
+FIN_SI
+
+_filaexcel := _filaexcel + 1
+EXCEL  ( 'TRAE_VALOR' , 1 , _filaexcel , $clave ) 
+FIN_MIENTRAS
+
+TERMINA_REPORTE

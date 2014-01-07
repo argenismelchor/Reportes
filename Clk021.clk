@@ -1,0 +1,164 @@
+#HORAS LABORADAS X DIA (KARDEX ILIMITADO)
+#ACCESOS (KARDEX ILIMITADO)
+#USUARIO =*
+#VERSION 1.0
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra las horas laboradas por día de los trabajadores de la empresa que pertenescan al Registro Patronal y sucursal especificado.
+#Este reporte puede ser general, departamental/centro de costo o por puesto y puede ser indexado por clave o nombre.
+#imprime la clave, el nombre, fecha, horas laboradas x día, descanso y días no checados.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_FEC  ( 'FECHA INICIAL','',_fi)
+NUEVO_PARAMETRO_FEC  ( 'FECHA FINAL','',_ff) 
+NUEVO_PARAMETRO_CHEQ ( 'VER CHECADAS', '', _checadas )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE')) ;; IMPRIME
+   IMP ( CENTRA ('ACCESOS DEL '+ FECHA (_fi)+ ' AL ' + FECHA (_ff)));; IMPRIME
+   IMP ( REPITETXT('=',80)) ;; IMPRIME
+   SI ( CD_DC = 0 )
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE' )
+   SI_NO
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE' )
+   FIN_SI
+   IMPRIME
+   IMP ( COL ( 13 ), 'FECHA', COL(25), 'ENTRADA', COL (39), 'SALIDA', COL (53), 'DESC', COL(58), 'HORAS' ) ;; IMPRIME
+   IMP ( REPITETXT('-',80) );; IMPRIME;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   FORMATO_HORA := 0
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+$ant_trab   := '' 
+_faux       := 0
+_descanso   := 0
+_horas      := 0
+_entrada    := 0
+_salida     := 0
+_primero    := 0
+
+
+SUB_RUTINA formato_trabajador
+    SI ( $ant_trab<>'EMPPRIN':'CLAVE')
+       $ant_trab:='EMPPRIN':'CLAVE'
+       IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 30))
+       IMPRIME
+    FIN_SI
+    DECIMALES:=2
+    _faux := _fi
+    MIENTRAS ( _faux <= _ff )
+       FORMATO_HORA := 0
+       IMP ( COL ( 13 ), FECHA ( _faux ))
+       DECIMALES := 15
+       _descanso := ES_DESCANSO ( _faux )
+       _entrada  := HORA_ENTRADA ( _faux )
+       _salida   := HORA_SALIDA ( _faux )
+       SI (( _entrada = 0 ) O ( _salida = 0 ))
+          _horas := 0
+       SI_NO
+          _horas    := HORAS_LABORADAS ( _faux )
+       FIN_SI
+       _entrada  := HORA_ENTRADA ( _faux )
+       _salida   := HORA_SALIDA ( _faux )
+       SI (( _entrada > 0 ) O ( _salida > 0 ))
+          FORMATO_HORA := 0
+          IMP ( COL ( 25 ), HORA ( _entrada ), COL ( 39 ), HORA ( _salida ))
+       FIN_SI
+       SI ( _descanso )
+          IMP ( COL (54), 'SI' )
+       FIN_SI
+       SI ( _horas > 0 )
+          FORMATO_HORA := 2
+          IMP ( COL ( 58 ), HORA ( _horas ))
+       SI_NO
+          SI ( _descanso )
+             IMP ( COL ( 68 ), 'DESCANSO TOMADO' )
+          SI_NO
+             SI (( _entrada = 0 ) Y ( _salida = 0 ))
+                SI ( DIAS_INHABILES ( _faux, _faux, 'EMPPRIN':'CALENDARIO', 0, 0 ) <> 0 )
+                   IMP ( COL ( 68 ), 'FESTIVO' )
+                SI_NO
+                   IMP ( COL ( 68 ), 'AUSENCIA' )
+                FIN_SI
+             SI_NO
+                IMP ( COL ( 68 ), 'NO CHECO !' )
+             FIN_SI
+          FIN_SI
+       FIN_SI
+       IMPRIME
+       SI ( _checadas )
+          SI ( TRAE_REGISTRO ( 'EMPRELO2', 'EMPPRIN':'CLAVE', _faux ))
+             _primero := 1
+             MIENTRAS ( 'EMPRELO2':'FECHA' = _faux )
+                SI (( 'EMPRELO2':'ENTRADA' <> 0 ) O ( 'EMPRELO2':'SALIDA' <> 0 ))
+                   SI ( _primero )
+                      IMP ( COL ( 25 ), REPITETXT ( '-', 41 )) IMPRIME
+                      _primero := 0
+                   FIN_SI
+                   DECIMALES := 15
+                   FORMATO_HORA := 0
+                   IMP ( COL ( 25 ), HORA ( 'EMPRELO2':'ENTRADA' ), COL ( 39 ), HORA ( 'EMPRELO2':'SALIDA' ))
+                   FORMATO_HORA := 2
+                   SI (( 'EMPRELO2':'ENTRADA' = 0 ) O ( 'EMPRELO2':'SALIDA' = 0 ))
+                      IMP ( COL ( 68 ), 'NO CHECO !' )
+                   SI_NO
+                      SI ( 'EMPRELO2':'ENTRADA' < 'EMPRELO2':'SALIDA' )
+                         IMP ( COL ( 58 ), HORA ( 'EMPRELO2':'SALIDA' - 'EMPRELO2':'ENTRADA' ))
+                      SI_NO
+                         IMP ( COL ( 58 ), HORA ( ( 'EMPRELO2':'SALIDA' + 1 ) - 'EMPRELO2':'ENTRADA' ))
+                      FIN_SI
+                   FIN_SI
+                   IMPRIME
+                FIN_SI
+                SIGUIENTE_REGISTRO ( 'EMPRELO2' )
+             FIN_MIENTRAS
+          FIN_SI
+          IMPRIME
+       FIN_SI
+      _faux := _faux + 1
+    FIN_MIENTRAS
+    IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+
+$campos_extras := 'E.CALENDARIO'
+
+
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+PRIMER_REGISTRO ( 'EMPPRIN' )
+
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE ( _fi, _ff ) > 0 )
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

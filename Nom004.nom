@@ -1,0 +1,186 @@
+#DESGLOCE DE MONEDA
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra el desgloce de moneda de los trabajadores que tuvieron pago en EFECTIVO en el periodo actual.
+#Este reporte imprime de los trabajadores la clave, nombre y el desgloce de moneda.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+
+ENCABEZADO
+   $titulo_reporte := 'Periodo ' + 'TIPONOM':'CLAVE' + ' Del '+ FECHA ('PERIODO':'FECHA INICIAL')+ ' al ' + FECHA ('PERIODO':'FECHA FINAL')
+   encabezado_ini
+   IMP ( COL (1)  , 'CLAVE' , COL (11) , 'NOMBRE' )
+   IMP ( COL (50) , DER ( '200'  , 5 ) )
+   IMP ( COL (55) , DER ( '100'  , 5 ) , COL (60)  , DER ( '50'   , 5 ) , COL (65)  , DER ( '20'   , 5 ) , COL (70)  , DER ( '10'   , 5 ) )
+   IMP ( COL (75) , DER ( '5'    , 5 ) , COL (80)  , DER ( '2'    , 5 ) , COL (85)  , DER ( '1'    , 5 ) , COL (90)  , DER ( '0.50' , 5 ) )
+   IMP ( COL (95) , DER ( '0.20' , 5 ) , COL (100) , DER ( '0.10' , 5 ) , COL (105) , DER ( '0.05' , 5 ) , COL (115) , DER ( 'TOTAL' , 15 ) ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+RENGLONES     := 65
+COLUMNAS      := 130
+
+#Variables Globales
+$tipo_act := ''
+VAR_T ( &indices  )
+VAR_T ( &kardex   )
+VAR_T ( &desglose )
+_num_ind       := 0
+_total_general := 0
+_sub_total     := 0
+_cuenta        := 0
+$indice        := ''
+_num           := 1
+$tipo          := ''
+CREA_DESGLOCE (  0 , 200 )
+CREA_DESGLOCE (  1 , 100 )
+CREA_DESGLOCE (  2 , 50 )
+CREA_DESGLOCE (  3 , 20 )
+CREA_DESGLOCE (  4 , 10 )
+CREA_DESGLOCE (  5 , 5 )
+CREA_DESGLOCE (  6 , 2 )
+CREA_DESGLOCE (  7 , 1 )
+CREA_DESGLOCE (  8 , 0.50 )
+CREA_DESGLOCE (  9 , 0.20 )
+CREA_DESGLOCE ( 10 , 0.10 )
+CREA_DESGLOCE ( 11 , 0.05 )
+
+# Subrutinas diversas
+SUB_RUTINA sub_desgloce
+  DECIMALES := 0
+  IMP ( COL (50)  , DER ( . ( VALOR_TABLA ( &desglose , $indice , '200'  ) ) , 5 ) )
+  IMP ( COL (55)  , DER ( . ( VALOR_TABLA ( &desglose , $indice , '100'  ) ) , 5 ) )
+  IMP ( COL (60)  , DER ( . ( VALOR_TABLA ( &desglose , $indice , '50'   ) ) , 5 ) )
+  IMP ( COL (65)  , DER ( . ( VALOR_TABLA ( &desglose , $indice , '20'   ) ) , 5 ) )
+  IMP ( COL (70)  , DER ( . ( VALOR_TABLA ( &desglose , $indice , '10'   ) ) , 5 ) )
+  IMP ( COL (75)  , DER ( . ( VALOR_TABLA ( &desglose , $indice , '5'    ) ) , 5 ) )
+  IMP ( COL (80)  , DER ( . ( VALOR_TABLA ( &desglose , $indice , '2'    ) ) , 5 ) )
+  IMP ( COL (85)  , DER ( . ( VALOR_TABLA ( &desglose , $indice , '1'    ) ) , 5 ) )
+  IMP ( COL (90)  , DER ( . ( VALOR_TABLA ( &desglose , $indice , '0.50' ) ) , 5 ) )
+  IMP ( COL (95)  , DER ( . ( VALOR_TABLA ( &desglose , $indice , '0.20' ) ) , 5 ) )
+  IMP ( COL (100) , DER ( . ( VALOR_TABLA ( &desglose , $indice , '0.10' ) ) , 5 ) )
+  IMP ( COL (105) , DER ( . ( VALOR_TABLA ( &desglose , $indice , '0.05' ) ) , 5 ) )
+  DECIMALES := 2
+  IMP ( COL (115) , DER ( $ ( VALOR_TABLA ( &desglose , $indice , 'SUB'  ) ) , 15 ) )
+  IMPRIME
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , '200'  , 0 ) 
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , '100'  , 0 ) 
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , '50'   , 0 ) 
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , '20'   , 0 ) 
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , '10'   , 0 ) 
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , '5'    , 0 ) 
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , '2'    , 0 ) 
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , '1'    , 0 ) 
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , '0.50' , 0 ) 
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , '0.20' , 0 ) 
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , '0.10' , 0 ) 
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , '0.05' , 0 ) 
+  ASIGNA_VALOR_TABLA ( &desglose , $indice , 'SUB'  , 0 ) 
+FIN_SUB_RUTINA
+
+SUB_RUTINA sumatoria
+  _num := 1
+  REPITE
+    SI ( _num = 1 ) ;; $tipo := 'TOTAL' ;; FIN_SI
+    SI ( _num = 2 ) ;; $tipo := 'REGISTRO PATRONAL' ;; FIN_SI
+    SI ( _num = 3 ) ;; $tipo := 'SUCURSAL' ;; FIN_SI
+    SI ( _num = 4 ) ;; $tipo := 'CENTRO DE COSTO' ;; FIN_SI
+    SI ( _num = 5 ) ;; $tipo := 'DEPARTAMENTO' ;; FIN_SI
+    SI ( _num = 6 ) ;; $tipo := 'PUESTO' ;; FIN_SI
+    SI ( _num = 7 ) ;; $tipo := 'TIPO DE EMPLEADO' ;; FIN_SI
+    SI ( _num = 8 ) ;; $tipo := 'TIPO DE NOMINA' ;; FIN_SI
+    SI ( _num = 9 ) ;; $tipo := 'TURNO' ;; FIN_SI
+    SI ( TRAE_INDICE_COL ( &indices , 0 , $tipo ) >= 0 )
+      INCREMENTA_TABLA ( &desglose , $tipo , '200'  , DESGLOCE (0) )
+      INCREMENTA_TABLA ( &desglose , $tipo , '100'  , DESGLOCE (1) )
+      INCREMENTA_TABLA ( &desglose , $tipo , '50'   , DESGLOCE (2) )
+      INCREMENTA_TABLA ( &desglose , $tipo , '20'   , DESGLOCE (3) )
+      INCREMENTA_TABLA ( &desglose , $tipo , '10'   , DESGLOCE (4) )
+      INCREMENTA_TABLA ( &desglose , $tipo , '5'    , DESGLOCE (5) )
+      INCREMENTA_TABLA ( &desglose , $tipo , '2'    , DESGLOCE (6) )
+      INCREMENTA_TABLA ( &desglose , $tipo , '1'    , DESGLOCE (7) )
+      INCREMENTA_TABLA ( &desglose , $tipo , '0.50' , DESGLOCE (8) )
+      INCREMENTA_TABLA ( &desglose , $tipo , '0.20' , DESGLOCE (9) )
+      INCREMENTA_TABLA ( &desglose , $tipo , '0.10' , DESGLOCE (10) )
+      INCREMENTA_TABLA ( &desglose , $tipo , '0.05' , DESGLOCE (11) )
+      INCREMENTA_TABLA ( &desglose , $tipo , 'SUB'  , TOTAL ('TOTA') )
+    FIN_SI
+    _num := _num + 1
+  HASTA( _num > 9 )
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+  PRIMER_REGISTRO ('NOMINA')
+  IMP ( COL (1)   , 'EMPPRIN':'CLAVE' , COL (11) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 37 ) )
+  DECIMALES := 2 
+  DESGLOSA ( TOTAL ('TOTA') )
+  DECIMALES := 0
+  IMP ( COL (50)  , DER ( DESGLOCE (0) , 5 ) ) 
+  IMP ( COL (55)  , DER ( DESGLOCE (1) , 5 ) , COL (60)  , DER ( DESGLOCE  (2) , 5 ) , COL (65)  , DER ( DESGLOCE (3)  , 5 ) , COL (70) , DER ( DESGLOCE (4) , 5 ) )
+  IMP ( COL (75)  , DER ( DESGLOCE (5) , 5 ) , COL (80)  , DER ( DESGLOCE  (6) , 5 ) , COL (85)  , DER ( DESGLOCE (7)  , 5 ) , COL (90) , DER ( DESGLOCE (8) , 5 ) )
+  IMP ( COL (95)  , DER ( DESGLOCE (9) , 5 ) , COL (100) , DER ( DESGLOCE (10) , 5 ) , COL (105) , DER ( DESGLOCE (11) , 5 ) )
+  DECIMALES := 2
+  IMP ( COL (115) , DER ( $ (TOTAL ('TOTA')) , 15 ) ) ;; IMPRIME
+  sumatoria
+  _total_general := _total_general + TOTAL ('TOTA')
+  _sub_total     := _sub_total     + TOTAL ('TOTA')
+  LIMPIA_DESGLOCE
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+  IMPRIME
+  IMP( COL (11) , 'SubTotales ' , $indice )
+  sub_desgloce
+  IMPRIME 
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+# Definicion de variables en base a los parametros
+SALIDA   := $salida
+$ind_act := ''
+$nom_ind := ''
+
+# Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+$campos_extras := 'E.TIPO_PAGO'
+base_trabajadores
+
+PRIMER_REGISTRO ('EMPPRIN')
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   SI (( TOTAL ('TOTA') <> 0 ) AND ( 'EMPPRIN':'TIPO_PAGO' = 'EFE' ))
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte

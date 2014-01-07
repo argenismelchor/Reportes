@@ -1,0 +1,110 @@
+#KARDEX DE CURSOS TOMADOS POR EMPLEADO
+#GENERAL DE TRABAJADORES
+#USUARIO =*
+#NO EDITAR
+#EXCEL
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra e imprime el kárdex de cursos tomados por el trabajador seleccionado, además de indicar su departamento/cento de costo, puesto y sucursal
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL','',_fi) 
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL','',_ff)
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+COLUMNAS := 90
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'KARDEX DE CURSOS TOMADOS'
+   encabezado_ini
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 2
+
+#Variables Globales
+$ant_trab := ''
+
+#Subrutina diversas
+SUB_RUTINA imprime_trabajador
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL(1), 'NOMBRE :', COL (30), ' ' )
+   LETRA ( 'LETRA NORMAL' )
+   IMP ( 'EMPPRIN':'CLAVE', '  ', 'EMPPRIN':'NOMBRE' ) ;; IMPRIME
+   IMPRIME
+   #SI ( TRAE_REGISTRO ( 'SUCURSAL', 'EMPPRIN':'SUC_CLAVE' ) )
+   #   LETRA ( 'LETRA ENFATISADA' )
+   #   IMP ( COL (1), 'SUCURSAL :', COL (30), ' ' )
+   #   LETRA ( 'LETRA NORMAL' )
+   #   IMP ( 'SUCURSAL':'CLAVE', ' ', 'SUCURSAL':'NOMBRE' );; IMPRIME
+   #FIN_SI
+   SI ( TRAE_REGISTRO ( 'PUESTO', 'EMPPRIN':'PUE_CLAVE' ))
+      LETRA ( 'LETRA ENFATISADA' )
+      IMP (COL(1), 'PUESTO :', COL (30), ' ' )
+      LETRA ( 'LETRA NORMAL' )
+      IMP ( 'PUESTO':'CLAVE', ' ', 'PUESTO':'DESCRIPCION' ) ;; IMPRIME
+   FIN_SI
+   SI ( TRAE_REGISTRO ( 'CENTROC', 'EMPPRIN':'DEP_CLAVE' ))
+      LETRA ( 'LETRA ENFATISADA' )
+      IMP ( COL(1), 'LINEA  :', COL (30), ' ' ) 
+      LETRA ( 'LETRA NORMAL' )
+      IMP ( 'DEPTO':'CLAVE', ' ', 'CENTROC':'DESCRIPCION' ) ;; IMPRIME
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+  SI ( $ant_trab <> 'EMPPRIN':'CLAVE' )
+    $ant_trab := 'EMPPRIN':'CLAVE'
+    imprime_trabajador
+  FIN_SI
+  IMP ( COL (10), 'EMPPRIN':'CURSO', COL (20), 'EMPPRIN':'DESCRIPCION' ) ;; IMPRIME
+  IMP ( COL (15), 'INICIO : ', FECHA ( 'EMPPRIN':'FECHA_INICIAL' ), COL (35), 'TERMINO : ', FECHA ( 'EMPPRIN':'FECHA_FINAL' ) )
+  IMP ( COL(60), 'EVAL : ', DER( .('EMPPRIN':'EVALUACION'), 5 ) )
+  IMP ( COL(75), 'HORAS : ', DER( .('EMPPRIN':'HORAS'), 5 ) ) ;; IMPRIME
+  SI ( 'EMPPRIN':'INSTRUCTOR' <> '' )
+    IMP ( COL(20), 'INST. : ', 'EMPPRIN':'INSTRUCTOR' )
+    SI ( TRAE_REGISTRO( 'INSTRUCT', 'EMPPRIN':'INSTRUCTOR' ) )
+      IMP ( COL(35), 'INSTRUCT':'NOMBRE' )
+    FIN_SI
+    IMPRIME
+  FIN_SI
+  SI ( 'EMPPRIN':'DOCUMENTO' <> '' )
+    IMP ( COL(20), 'DOCUM : ', 'EMPPRIN':'DOCUMENTO' ) IMPRIME
+  FIN_SI
+  SI ( 'EMPPRIN':'COMENTARIO' <> '' )
+    IMP ( COL(20), 'COMEN : ', 'EMPPRIN':'COMENTARIO' ) IMPRIME
+  FIN_SI
+  IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+$campos_extras := 'C.*, U.*'
+$bases_extras := 'EMPCURSO C, CURSO U'
+$condiciones_extras := 'C. CLAVE = E. CLAVE AND C. FECHA_INICIAL <= :ffin AND C. FECHA_FINAL >= :fini AND U. CLAVE = C. CURSO'
+base_trabajadores
+PARAMETRO_SQL( 'EMPPRIN', 'fini', _fi )
+PARAMETRO_SQL( 'EMPPRIN', 'ffin', _ff )
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte

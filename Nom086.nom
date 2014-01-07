@@ -1,0 +1,88 @@
+#SERVINOMINA BANORTE
+#TRABAJADORES VIGENTES
+#USUARIO =*
+#VERSION 2.000
+#NO EDITAR
+#DESCRIPCION
+#Genera un archivo ASCII para el pago electrónico de nómina con BANORTE.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA APLICACION' , '' , _fi ) 
+NUEVO_PARAMETRO     ( 'CUENTA EMPRESA' , '999999999' , $cuenta )
+NUEVO_PARAMETRO     ( 'ARCHIVO' , DIRECTORIO_TRABAJO + '\NOMINA.DAT' , $archivo )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+MODO_IMPRESION ( 'DIRECTO' )
+SALIDA_REPORTE ( $archivo )
+SALIDA        := $salida
+FORMATO_FECHA := 2
+FORMATO_PESOS := 3
+RELLENO       := '0'
+
+# Variables Globales
+$nombre  := ''
+$clave   := ''
+_trab    := 0
+_total   := 0
+$nombre1 := ''
+$nombre2 := ''
+_l       := 0
+
+# Subrutinas diversas
+
+SUB_RUTINA formato_trabajador
+   _trab   := _trab + 1
+   _total  := _total + TOTAL ('TOTA')
+   $nombre := SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 20 )
+   $nombre := REEMPLAZA ( '.' , ' ' , $nombre )
+   $clave  := 'EMPPRIN':'CLAVE'
+   SI ( POS ( '.' , $clave ) > 0 )
+      $clave := ELIMINA ( $clave , POS ( '.' , $clave ) , 1 )
+   FIN_SI
+   IMP ( COL (1) , $nombre , COL (27) , '001' , COL (30) , SUBSTR ('EMPPRIN':'CTA_TARJETA' , 1 , 9 ) , COL (39)  , '0000000000000' )
+   DECIMALES := 2
+   _l := LONGITUD ( $ (TOTAL ('TOTA')) )
+   IMP ( COL (53 - _l) , $ (TOTAL ('TOTA')) )
+   IMP ( COL (53) , '0000000000' )
+   DECIMALES := 0
+   _l := LONGITUD ( .(_trab) ) 
+   IMP ( COL (63 - _l) , _trab )
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina       := 1
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+$ano := ''
+$mes := ''
+$dia := '' 
+
+$campos_extras := 'E. CTA_TARJETA'
+base_trabajadores
+
+# ---------- Impresión del Registro Encabezado
+FORMATO_FECHA := 6
+$ano := SUBSTR ( FECHA ( _fi ) , 5 , 4 )
+$mes := SUBSTR ( FECHA ( _fi ) , 3 , 2 )
+$dia := SUBSTR ( FECHA ( _fi ) , 1 , 2 )
+IMP ( COL (1) , $ano , $mes , $dia , COL (9) , $cuenta , COL (18) , SUBSTR ( 'EMPRESA':'NOMBRE' , 1 , 40 ) , COL (62) , '#' ) ;; IMPRIME
+_total := 0
+_trab  := 0
+
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   SI (( 'EMPPRIN':'CTA_TARJETA' <> '' ) AND ( TOTAL ('TOTA') <> 0 ))
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte

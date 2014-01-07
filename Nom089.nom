@@ -1,0 +1,118 @@
+#NOMINA BITAL
+#NO EDITAR
+#USUARIO =*
+#VERSION 1.000
+#DESCRIPCION
+#Generación de Archivo ASCII para pago electrónico de nómina con BITAL.
+#FIN_DESCRIPCION
+#
+_fi := 0
+_ff := 0
+_fa := 0
+DECIMALES := 0
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_PESOS := 1
+FORMATO_FECHA := 0
+$archi := ''
+SI ( $salida = 'DISCO' )
+   NUEVO_PARAMETRO ( 'ARCHIVO' , DIRECTORIO_TRABAJO + '\TARJETA.TXT' , $archi )
+   LEE_PARAMETROS
+   BORRA_PARAMETROS
+   SALIDA_REPORTE ( $archi )
+   MODO_IMPRESION ('DIRECTO')
+FIN_SI 
+SALIDA   := $salida
+COLUMNAS := 80
+DRAFT    :='S'
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &totales )
+VAR_T ( &indices )
+_num_ind := 0
+$indice  := ''
+$tipo    := ''
+_cont    := 0
+_imp     := 0
+_l       := 0
+_lsem    := 0
+_net     := 0
+_cont    := 0
+_totnom  := 0
+_fecha   := 0
+_ext     := 0
+$t       := ''
+$f       := ''
+$a       := ''
+$m       := ''
+$d       := ''
+$x       := ''
+$cta     := ''
+$nombre  := ''
+
+#SUB_RUTINA sumatoria
+#  DECIMALES:=2
+#  Incremento de valores para los indices seleccionados
+#  _num_ind := 0
+#  REPITE
+#    _num_ind := _num_ind + 1
+#  HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+#FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   DECIMALES := 2
+   RELLENO   := '0'
+   IMP ( COL (1) , 'EMPPRIN':'CTA_TARJETA' , COL (11) , DER ( $ (TOTAL ('TOTA') ) , 13 ) )
+   IMPRIME
+FIN_SUB_RUTINA
+
+
+#SUB_RUTINA sub_totales
+  #
+#FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina       := 1
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_sub_total     := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+
+# Definicion de variables en base a los parametros
+SALIDA   := $salida
+$ind_act := ''
+$nom_ind := ''
+
+# Definicion de la tabla de indices utilizados
+REPITE
+   $nom_ind := TRAE_VALOR_TABLA ( &in , 2 , _num_ind )
+   $ind_act := TRAE_VALOR_TABLA ( &in , 0 , _num_ind )
+   SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+      AGREGA_VALOR_COL ( &indices , 0 , $nom_ind )
+   FIN_SI
+   _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL ( &indices , 0 , 'TOTAL' )
+
+$campos_extras := 'E.CTA_TARJETA'
+base_trabajadores
+
+# ---------- Impresi¢n de Registros Individuales
+PRIMER_REGISTRO ('EMPPRIN')
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   DECIMALES := 2 
+   SI ( FUE_VIGENTE ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' ) ) 
+      SI ( VALOR ( 'EMPPRIN':'CTA_TARJETA' ) <> 0 )
+         SI ( TOTAL ('TOTA') > 0 )
+            datos_trabajador
+         FIN_SI
+      FIN_SI 
+  FIN_SI
+  SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+TERMINA_REPORTE

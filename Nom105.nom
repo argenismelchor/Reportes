@@ -1,0 +1,69 @@
+#CATALOGO DE CUOTAS DE PAGO
+#NO EDITAR
+#USUARIO =*
+#DESCRIPCION
+#Este reporte imprime las cuotas de pago. Puede seleccionar una fecha para que imprima el registro vigente o seleccionar todos los registros.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+NUEVO_PARAMETRO_FEC ('FECHA','', _fecha )
+NUEVO_PARAMETRO_CHEQ('TODOS', '', _todos )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 3
+SALIDA        := $salida
+COLUMNAS      := 82
+RENGLONES     := 65
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO   
+   SI ( _todos = 0 )
+     $titulo_reporte := 'CUOTAS DE PAGO VIGENTES AL ' + FECHA( _fecha  )
+   SI_NO
+     $titulo_reporte := 'CUOTAS DE PAGO'
+   FIN_SI
+   encabezado_ini
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+SUB_RUTINA imprime_registro
+    IMP ( COL(1), 'FECHA : ', FECHA ( 'PAGOIMSS':'FECHA' ) ) ;; IMPRIME
+    IMPRIME
+    IMP ( COL(5), 'EG FIJO                    : ', DER( $( 'PAGOIMSS':'EG FIJO' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'EG ESPECIE PATRON          : ', DER( $( 'PAGOIMSS':'EG ESPECIE PATRON' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'EG ESPECIE EMPLEADO        : ', DER( $( 'PAGOIMSS':'EG ESPECIE EMPLEADO' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'EG 3SMGDF PATRON           : ', DER( $( 'PAGOIMSS':'EG 3SMGDF PATRON' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'EG 3SMGDF EMPLEADO         : ', DER( $( 'PAGOIMSS':'EG 3SMGDF EMPLEADO' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'EG DINERO PATRON           : ', DER( $( 'PAGOIMSS':'EG DINERO PATRON' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'EG DINERO EMPLEADO         : ', DER( $( 'PAGOIMSS':'EG DINERO EMPLEADO' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'RT                         : ', DER( $( 'PAGOIMSS':'RT' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'INVALIDEZ Y VIDA PATRON    : ', DER( $( 'PAGOIMSS':'INVALIDEZ Y VIDA PATRON' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'INVALIDEZ Y VIDA EMPLEADO  : ', DER( $( 'PAGOIMSS':'INVALIDEZ Y VIDA EMPLEADO' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'GUARDERIA                  : ', DER( $( 'PAGOIMSS':'GUARDERIA' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'RETIRO                     : ', DER( $( 'PAGOIMSS':'RETIRO' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'CESANTIA Y VEJEZ PATRON    : ', DER( $( 'PAGOIMSS':'CESANTIA Y VEJEZ PATRON' ), 10 ) ) ;; IMPRIME
+    IMP ( COL(5), 'CESANTIA Y VEJEZ EMPLEADO  : ', DER( $( 'PAGOIMSS':'CESANTIA Y VEJEZ EMPLEADO' ), 10 ) ) ;; IMPRIME
+    IMPRIME
+    IMPRIME
+FIN_SUB_RUTINA
+
+IMPRIME
+IMPRIME
+FORMATO_FECHA := 3
+DECIMALES := 4
+SI ( _todos = 0 )
+  SI ( TRAE_REGISTRO_VIG( 'PAGOIMSS', _fecha ) )    
+    imprime_registro
+  FIN_SI
+SI_NO
+  ABRE_BASE( 'PAGOIMSS' )
+  PRIMER_REGISTRO( 'PAGOIMSS' )
+  MIENTRAS( FIN_BASE( 'PAGOIMSS' ) = FALSO )
+    imprime_registro
+    SIGUIENTE_REGISTRO( 'PAGOIMSS' )
+  FIN_MIENTRAS
+FIN_SI

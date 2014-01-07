@@ -1,0 +1,207 @@
+#VALIDACION DE EXENTOS DE PTU Y PRIMA VAC
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.5
+#DESCRIPCION
+#Valida exentos de PTU y Prima, pide la opcion de checar por PTU o por PRIMA
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida )
+NUEVO_PARAMETRO_FEC ( 'FIN AÑO', '', _ff )
+NUEVO_PARAMETRO_CHEQ( 'PTU', '', _ptu )
+NUEVO_PARAMETRO_CHEQ( 'PRIMA', '', _prima )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'VALIDACION DE EXENTOS DE PTU Y PRIMA VAC EN 2002'
+   encabezado_ini
+   IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+  pie_estandar
+FIN_PIE
+
+VAR_T ( &meses )
+AGREGA_VALOR_COL( &meses, 0, 'ENE' )
+AGREGA_VALOR_COL( &meses, 0, 'FEB' )
+AGREGA_VALOR_COL( &meses, 0, 'MAR' )
+AGREGA_VALOR_COL( &meses, 0, 'ABR' )
+AGREGA_VALOR_COL( &meses, 0, 'MAY' )
+AGREGA_VALOR_COL( &meses, 0, 'JUN' )
+AGREGA_VALOR_COL( &meses, 0, 'JUL' )
+AGREGA_VALOR_COL( &meses, 0, 'AGO' )
+AGREGA_VALOR_COL( &meses, 0, 'SEP' )
+AGREGA_VALOR_COL( &meses, 0, 'OCT' )
+AGREGA_VALOR_COL( &meses, 0, 'NOV' )
+AGREGA_VALOR_COL( &meses, 0, 'DIC' )
+AGREGA_VALOR_COL( &meses, 0, 'AGUINALDO' )
+AGREGA_VALOR_COL( &meses, 0, 'FINIQUITO' )
+AGREGA_VALOR_COL( &meses, 0, 'ESPECIAL'  )
+
+# PARAMETROS
+DECIMALES     := 2
+COLUMNAS      := 80
+RENGLONES     := 65
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+_indice := 0
+$mes    := ''
+_anual  := 0
+_tope   := 0
+_monto  := 0
+_exento := 0
+_dif    := 0
+_dif2   := 0
+
+SUB_RUTINA checa_ptu
+  DECIMALES := 2
+  SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', '31' ) )
+    _indice := 0
+    $mes := TRAE_VALOR_TABLA( &meses, 0, _indice )
+    MIENTRAS ( $mes <> '' )
+      SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', '31' ) ) ;; FIN_SI
+      _monto := 'EMPACUM':$mes
+      SI ( _monto > 0 )
+        SI ( _monto > _tope )
+          _exento := _tope
+        SI_NO
+          _exento := _monto
+        FIN_SI
+       
+        _dif := 0
+        SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', 'EX31' ) = FALSO )
+          AGREGA_REGISTRO( 'EMPACUM' )
+          'EMPACUM':'CLAVE'    := 'EMPPRIN':'CLAVE'
+          'EMPACUM':'CONCEPTO' := 'EX31'
+        SI_NO
+          _dif := _exento - 'EMPACUM':$mes
+        FIN_SI
+        'EMPACUM':$mes := _exento
+        GRABA_BASE( 'EMPACUM' )
+
+        SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', 'EXEN' ) )
+          'EMPACUM':$mes := 'EMPACUM':$mes + _dif
+          GRABA_BASE( 'EMPACUM' )
+        FIN_SI
+
+        SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', 'PGRA' ) )
+          'EMPACUM':$mes := 'EMPACUM':$mes - _dif
+          GRABA_BASE( 'EMPACUM' )
+        FIN_SI
+
+      FIN_SI
+      _indice := _indice + 1
+      $mes := TRAE_VALOR_TABLA( &meses, 0, _indice )
+    FIN_MIENTRAS   
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA checa_prima
+  DECIMALES := 2
+  _tope   := 0
+  SI ( TRAE_REGISTRO( 'SUCURSAL', TRAE_DSP( 'S', _ff ) ) )
+    SI ( TRAE_REGISTRO( 'PATRONAL', 'SUCURSAL':'REGISTRO PATRONAL' ) )
+      _tope   := 15 * 'MINIMO':'MINIMO C'
+    FIN_SI
+  FIN_SI
+
+  DECIMALES := 2
+  SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', 'EX13' ) )
+    _indice := 0
+    $mes := TRAE_VALOR_TABLA( &meses, 0, _indice )
+    MIENTRAS ( $mes <> '' )
+      'EMPACUM':$mes := 0
+      _indice := _indice + 1
+      $mes := TRAE_VALOR_TABLA( &meses, 0, _indice )      
+    FIN_MIENTRAS    
+    GRABA_BASE( 'EMPACUM' )
+  FIN_SI
+
+  SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', '13' ) )
+    _indice := 0
+    $mes := TRAE_VALOR_TABLA( &meses, 0, _indice )
+    MIENTRAS ( $mes <> '' )
+      _anual := ACUM_ANUAL( 'EX13' )
+      SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', '13' ) ) ;; FIN_SI
+      _monto := 'EMPACUM':$mes
+      SI ( _monto > 0 )
+        SI ( _monto > _tope - _anual )
+          _exento := _tope - _anual
+        SI_NO
+          _exento := _monto
+        FIN_SI
+       
+        _dif2 := 0
+        SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', 'EX13' ) = FALSO )
+          AGREGA_REGISTRO( 'EMPACUM' )
+          'EMPACUM':'CLAVE'    := 'EMPPRIN':'CLAVE'
+          'EMPACUM':'CONCEPTO' := 'EX13'
+        SI_NO
+          _dif2 := _exento - 'EMPACUM':$mes
+        FIN_SI
+        'EMPACUM':$mes := _exento
+        GRABA_BASE( 'EMPACUM' )
+
+        SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', 'EXEN' ) )
+          'EMPACUM':$mes := 'EMPACUM':$mes + _dif2
+          GRABA_BASE( 'EMPACUM' )
+        FIN_SI
+
+        SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', 'PGRA' ) )
+          'EMPACUM':$mes := 'EMPACUM':$mes - _dif2
+          GRABA_BASE( 'EMPACUM' )
+        FIN_SI
+      SI_NO
+        SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', 'EX13' ) )
+          'EMPACUM':$mes := 0
+          GRABA_BASE( 'EMPACUM' )          
+        FIN_SI
+      FIN_SI
+      _indice := _indice + 1
+      $mes := TRAE_VALOR_TABLA( &meses, 0, _indice )
+    FIN_MIENTRAS   
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   SI ( _ptu = 1 )
+     checa_ptu
+   FIN_SI
+   SI ( _prima = 1 )
+     checa_prima
+   FIN_SI
+   IMP ( COL(60), DER( $( _dif ), 10 ) )
+   IMP ( COL(70), DER( $( _dif2 ), 10 ) )
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+SI ( TRAE_REGISTRO_VIG( 'MINIMO', _ff ) = FALSO )
+  TERMINA_REPORTE
+FIN_SI
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+  datos_trabajador
+  SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+TERMINA_REPORTE

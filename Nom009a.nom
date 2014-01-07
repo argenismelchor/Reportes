@@ -1,0 +1,309 @@
+#VALIDACION DE ACUMULADO CON PERIODOS DE NOMINA
+#EXCEL
+#USUARIO =*
+#VERSION 1.0
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL', $salida )
+NUEVO_PARAMETRO_TAB ( 'TIPO DE NOMINA', 'TIPONOM/CLAVE/TIPOS DE NOMINA', $tiponom )
+NUEVO_PARAMETRO_SEL ( 'MES', 'ENE/FEB/MAR/ABR/MAY/JUN/JUL/AGO/SEP/OCT/NOV/DIC/OTRO', $mes )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_especificar := 0
+SI ( $mes = 'OTRO' )
+  NUEVO_PARAMETRO ( 'PERIODO', 'BIMESTRE1/BIMESTRE2/BIMESTRE3/BIMESTRE4/BIMESTRE5/BIMESTRE6/SEMESTRE1/SEMESTRE2/ANUAL', $mes )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+  _especificar := 1
+FIN_SI
+
+_p_ini := 0
+_p_fin := 0
+_ok    := 0
+
+SI ( _especificar = 0 )
+  ABRE_BASE( 'PERIODO' )
+  PRIMER_REGISTRO( 'PERIODO' )
+  SI ( TRAE_REGISTRO( 'PERIODO', $tiponom ) )
+    MIENTRAS(( 'PERIODO':'TIPONOM' = $tiponom ) AND ( FIN_BASE( 'PERIODO' ) = FALSO ) AND ( _ok < 2 ))
+      SI (( _p_ini = 0 ) AND ( 'PERIODO':'MES DE ACUMULACION' = $mes ))
+        _p_ini := 'PERIODO':'NUMERO'
+        _ok := 1
+      FIN_SI
+      SI ( _ok = 1 ) 
+        SI ( 'PERIODO':'MES DE ACUMULACION' = $mes )
+          _p_fin := 'PERIODO':'NUMERO'
+        SI_NO
+          _ok := 2
+        FIN_SI
+      FIN_SI
+      SIGUIENTE_REGISTRO( 'PERIODO' )
+    FIN_MIENTRAS
+  FIN_SI
+FIN_SI
+
+DECIMALES := 0
+NUEVO_PARAMETRO( 'PERIODO INICIAL', .( _p_ini ), _p_ini )
+NUEVO_PARAMETRO( 'PERIODO FINAL', .( _p_fin ), _p_fin )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_pantalla := 1
+SI ( _p_fin - _p_ini > 5 )
+  MENSAJE( 'SON DEMASIADAS COLUMNAS Y EL REPORTE SOLO SE EMITIRA POR EXCEL.' )
+  SALIDA := 'EXCEL'
+  _pantalla := 0
+FIN_SI
+
+SI ( _p_ini > _p_fin )
+  MENSAJE( 'EL PERIODO INICIAL ES MENOR AL FINAL.' )
+  TERMINA_REPORTE
+FIN_SI
+
+NUEVO_PARAMETRO_SEL ( 'CONCEPTOS', 'SOLO IMPRIMIBLES/TODOS/ALGUNOS', _tipo )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+$lista_conceptos := ''
+SI ( _tipo = 2 )
+  NUEVO_PARAMETRO ( 'CONCEPTO(S)', '', $lista_conceptos )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+FIN_SI
+
+FORMATO_PESOS := 2
+FORMATO_FECHA := 2
+SALIDA := $salida
+_paux := 0
+_iaux := 0
+_ancho := 14
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+COLUMNAS := 120
+
+ENCABEZADO
+   DECIMALES := 0
+   $titulo_reporte := 'VALIDACION DEL PERIODO ' + .( _p_ini ) + ' AL ' + .( _p_fin ) + ' CONTRA EL ACUMULADO ' + $mes
+   encabezado_ini
+   IMP ( COL(1), 'CVE', COL(7), 'CONCEPTO' )
+   _paux := _p_ini
+   _iaux := 0
+   MIENTRAS ( _paux <= _p_fin )   
+     IMP ( COL(40 + ( _iaux * _ancho ) ), DER( .( _paux ) , _ancho )  )
+     _iaux := _iaux + 1
+     _paux := _paux + 1
+   FIN_MIENTRAS
+   IMP ( COL(40 + ( _iaux * _ancho ) ), DER( $mes , _ancho )  )
+   _iaux := _iaux + 1
+   IMP ( COL(40 + ( _iaux * _ancho ) ), DER( 'DIF.' , _ancho )  )
+   IMPRIME
+   encabezado_fin
+   DECIMALES := 2
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+#VARIABLES GLOBALES
+VAR_T ( &conceptos )
+VAR_T ( &totales )
+$concepto   := ''
+_acumulados := 0
+_valido     := 0
+_renglon    := 0
+_columna    := 0
+$periodo    := ''
+_acum       := 0
+$per_num    := ''
+_monto      := 0
+_suma       := 0
+_dif        := 0
+_tot_mes    := 0
+_ex_col     := 0
+_ex_ren     := 2
+
+SUB_RUTINA formato_trabajador
+   DECIMALES := 2
+   _renglon := 0
+   $concepto := TRAE_VALOR_TABLA( &conceptos, 0, _renglon )
+   MIENTRAS( $concepto <> '' )
+     SI ( _acumulados = 1 )
+       _acum := ACUM_MENSUAL( $mes, $concepto )
+       INCREMENTA_TABLA( &totales, $mes, $concepto, _acum )
+     FIN_SI
+     SI ( TOTAL( $concepto ) <> 0 )
+       INCREMENTA_TABLA( &totales, $per_num, $concepto, TOTAL( $concepto ) )
+     FIN_SI
+     _renglon := _renglon + 1
+     $concepto := TRAE_VALOR_TABLA( &conceptos, 0, _renglon )
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_totales
+  _renglon := 1
+  $concepto := TRAE_VALOR_TABLA( &totales, 0, _renglon )
+  MIENTRAS( $concepto <> '' )
+    IMP ( COL(1), $concepto )
+    SI ( $salida = 'EXCEL' )
+      EXCEL( 'PON_VALOR', 1, _ex_ren, '"' + $concepto )
+    FIN_SI
+    SI ( TRAE_REGISTRO( 'CONCEPTO', $concepto ) )
+      IMP ( COL(7), 'CONCEPTO':'DESCRIPCION' )
+      SI ( $salida = 'EXCEL' )
+        EXCEL( 'PON_VALOR', 2, _ex_ren, 'CONCEPTO':'DESCRIPCION' )
+      FIN_SI
+    SI_NO
+      IMP ( COL(7), 'SIN DESCRIPCION' )
+      SI ( $salida = 'EXCEL' )
+        EXCEL( 'PON_VALOR', 2, _ex_ren, 'SIN DESCRIPCION' )
+      FIN_SI
+    FIN_SI
+    DECIMALES := 2
+    _columna  := 2    
+    _suma     := 0
+    $periodo := TRAE_VALOR_TABLA( &totales, _columna, 0 )
+    MIENTRAS( $periodo <> '' )
+      _monto := VALOR( TRAE_VALOR_TABLA( &totales, _columna, _renglon ) )
+      SI ( _monto <> 0 )
+        IMP ( COL(40 + ( (_columna - 2 ) * _ancho ) ), DER( $( _monto ), _ancho ) )
+        SI ( $salida = 'EXCEL' )
+          EXCEL( 'PON_VALOR', _columna + 1, _ex_ren, $( _monto ) )
+        FIN_SI
+        _suma := _suma + _monto
+      FIN_SI
+      _columna := _columna + 1
+      $periodo := TRAE_VALOR_TABLA( &totales, _columna, 0 )
+    FIN_MIENTRAS
+    _tot_mes := VALOR( TRAE_VALOR_TABLA( &totales, 1, _renglon ) )
+    SI ( _tot_mes <> 0 )
+      IMP ( COL(40 + ( (_columna - 2 ) * _ancho ) ), DER( $( _tot_mes ), _ancho ) )
+      SI ( $salida = 'EXCEL' )
+        EXCEL( 'PON_VALOR', _columna + 1, _ex_ren, $( _tot_mes ) )
+      FIN_SI
+    FIN_SI
+    _columna := _columna + 1
+    _dif := _tot_mes - _suma
+    SI ( _dif <> 0 )
+      IMP ( COL(40 + ( (_columna - 2 ) * _ancho ) ), DER( $( _dif ), _ancho ) )
+      SI ( $salida = 'EXCEL' )
+        EXCEL( 'PON_VALOR', _columna + 1, _ex_ren, $( _dif ) )
+      FIN_SI
+    FIN_SI
+    IMPRIME
+    _renglon := _renglon + 1
+    _ex_ren  := _ex_ren + 1
+    $concepto := TRAE_VALOR_TABLA( &totales, 0, _renglon )
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+
+#RUTINAS PARA CARGAR LOS CONCEPTOS
+
+SI ( _tipo = 0 )  
+  PRIMER_REGISTRO( 'CONCEPTO' )
+  MIENTRAS ( FIN_BASE( 'CONCEPTO' ) = FALSO )
+    SI ( 'CONCEPTO':'IMPRIMIR' = 1 )
+      $concepto := 'CONCEPTO':'CLAVE'
+      AGREGA_VALOR_COL( &conceptos, 0, $concepto )
+    FIN_SI
+    SIGUIENTE_REGISTRO( 'CONCEPTO' )
+  FIN_MIENTRAS
+FIN_SI
+
+SI ( _tipo = 1 )
+  PRIMER_REGISTRO( 'CONCEPTO' )
+  MIENTRAS ( FIN_BASE( 'CONCEPTO' ) = FALSO )
+    $concepto := 'CONCEPTO':'CLAVE'
+    AGREGA_VALOR_COL( &conceptos, 0, $concepto )
+    SIGUIENTE_REGISTRO( 'CONCEPTO' )
+  FIN_MIENTRAS
+FIN_SI
+
+$saux := ''
+SI ( _tipo = 2 )
+  MIENTRAS( LONGITUD( $lista_conceptos ) > 0 )
+    SI ( POS(',', $lista_conceptos ) > 0 )
+      $concepto := SUBSTR( $lista_conceptos, 1, POS(',', $lista_conceptos ) - 1 )
+      $lista_conceptos := ELIMINA( $lista_conceptos, 1, POS(',', $lista_conceptos ) )
+    SI_NO
+      $concepto := $lista_conceptos
+    FIN_SI
+    AGREGA_VALOR_COL( &conceptos, 0, $concepto )
+  FIN_MIENTRAS
+FIN_SI
+
+SUB_RUTINA procesa_periodo
+  MUESTRA_AVANCE( 'EMPPRIN', 'PER ' + $per_num )
+  PRIMER_REGISTRO( 'EMPPRIN' )
+  MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )  
+    _valido := 0
+    SI (( _acumulados = 1 ) AND ( ACUM_MENSUAL( $mes, 'TOTA' ) > 0 ))
+      _valido := 1
+    FIN_SI
+    SI (( TOTAL('PERC') > 0 ) OR ( TOTAL('DEDU') > 0 ))
+      _valido := 1
+    FIN_SI
+    SI ( _valido = 1 )
+      datos_trabajador
+    FIN_SI
+    SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+  FIN_MIENTRAS
+  inicializa
+FIN_SUB_RUTINA
+
+SI ( $salida = 'EXCEL' )
+  EXCEL( 'PON_VALOR', 1, 1, 'CLAVE' )
+  EXCEL( 'PON_VALOR', 2, 1, 'CONCEPTO' )
+  _paux := _p_ini
+  _iaux := 3
+  MIENTRAS ( _paux <= _p_fin )
+     DECIMALES := 0
+     EXCEL( 'PON_VALOR', _iaux, 1, 'PER ' + .( _paux ) )
+     _paux := _paux + 1
+     _iaux := _iaux + 1
+  FIN_MIENTRAS     
+  EXCEL( 'PON_VALOR', _iaux, 1, $mes )
+  EXCEL( 'PON_VALOR', _iaux + 1, 1, 'DIFERENCIA' )
+FIN_SI
+
+_acumulados := 1
+_per := _p_ini
+_ind_col := 2
+PON_VALOR_TABLA( &totales, 1, 0, $mes )
+MIENTRAS( _per <= _p_fin )
+  DECIMALES := 0
+  $per_num    := .( _per )
+  PON_VALOR_TABLA( &totales, _ind_col, 0, $per_num )
+  SI ( CAMBIA_PERIODO( $tiponom, _per, FALSO ) = FALSO )
+    MENSAJE ( 'EL PERIODO ' + .( _per ) + ' NO SE PUDO CONSULTAR.' )
+  SI_NO
+    procesa_periodo
+  FIN_SI
+  _per := _per + 1
+  _ind_col := _ind_col + 1
+  _acumulados := 0
+FIN_MIENTRAS
+
+termina_reporte
+
+imprime_totales
+
+TERMINA_REPORTE

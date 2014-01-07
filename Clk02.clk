@@ -1,0 +1,118 @@
+#TRABAJADORES SIN CHECAR
+#TRABAJADORES SIN CHECAR
+#USUARIO =*
+#TRABAJADORES SIN CHECAR
+#AUSENCIAS DEL TURNO
+#VERSION 1.0
+#DESCRIPCION
+#Reporte que muestra las ausencias del personal que pertenece a un turno determinado
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA' , '', _fecha )
+NUEVO_PARAMETRO_CHEQ( 'GRAFICAR INCIDENCIAS','', _grafica )
+NUEVO_PARAMETRO_CHEQ( 'GRAFICAR INVALIDAS  ','', _inval   )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+COLUMNAS := 100
+MODO_IMPRESION ('DIRECTO')
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+
+   IMP ( CENTRA ( 'DEL ' + FECHA ( _fecha ))) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( 'CLAVE     NOMBRE' ,COL(45), 'CLAVE DEPTO', COL(55), 'EXCEPCION', COL(72), 'CHECADAS INV.' ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+#DECALRACION DE VARIABLES GLOBALES Y LIBRERIAS ESPECIALES PARA RELOJ
+_valida_accesos := 0  #RECORRE LA CHECADA DE COMIDA A CHECADA DE ENTRADA O CHECADA DE SALIDA "0" DESACTIVA "1" ACTIVA
+INCLUYE LIBREL.DAT
+
+VAR_T( &grafica  )
+VAR_T( &checinval)
+_ausente := 0
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' , COL(48), 'EMPPRIN':'DEP_CLAVE'  )
+  #######  NO CHECO ENTRADA NI SALIDA O NO CHECO ENTRADA Y SALIDA SI O VISERVERSA
+   SI (( FRAC( _ac1 ) = 0 ) AND ( FRAC( _ac4 ) = 0 ) )
+     DECIMALES := 2
+     carga_excepciones
+     IMP ( COL(55), $excepcion )
+     INCREMENTA_TABLA( &grafica, $excepcion ,'TOTAL' ,1 )
+   SI_NO
+     SI ( FRAC( _ac1 ) = 0 )
+       IMP ( COL(55), 'NO CHECO ENTRADA' )
+       INCREMENTA_TABLA( &grafica,'SIN ENTRADA', 'TOTAL', 1 )
+     SI_NO
+       IMP ( COL(55), 'NO CHECO SALIDA' )
+       INCREMENTA_TABLA( &grafica, 'SIN SALIDA', 'TOTAL', 1 )
+     FIN_SI
+   FIN_SI
+  #######  NO CHECO ENTRADA NI SALIDA A COMEDOR O NO CHECO ENTRADA A COMEDOR  Y SALIDA SI O VISERVERSA 
+  ####### ESTA OPCION SOLO FUNCIONA SI DESACTIVA LA VARIABLE "_valida_accesos"
+   SI ( (( FRAC ( _ac1 ) > 0 ) ) OR ( ( FRAC ( _ac1 ) > 0 ) ) )
+       SI (( FRAC( _ac2 ) = 0 ) AND ( FRAC( _ac3 ) = 0 ) )
+         DECIMALES := 2
+         IMP ( COL(72), 'SIN CHECADAS COM' )
+         INCREMENTA_TABLA( &checinval, 'SIN CHECADAS COMEDOR', 'TOTAL', 1 )
+       SI_NO
+         SI ( FRAC( _ac2 ) = 0 )
+           IMP ( COL(72), 'NO CHECO ENT COM' )
+           INCREMENTA_TABLA( &checinval, 'SIN ENTRADA COMEDOR', 'TOTAL', 1 )
+         SI_NO
+           IMP ( COL(72), 'NO CHECO SAL COM' )
+           INCREMENTA_TABLA( &checinval, 'SIN SALIDA COMEDOR', 'TOTAL', 1 )
+         FIN_SI
+       FIN_SI
+   FIN_SI 
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_incluir_dep := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. CALENDARIO'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPRELOJ' , 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS( FIN_BASE( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE( _fecha ) )
+     _faux := _fecha
+     calcula_dia
+     SI (( FRAC( _ac1 ) = 0 ) OR ( FRAC( _ac4 ) = 0 ))
+       datos_trabajador
+     FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+SI ( _grafica = 1 )
+  CREA_GRAFICA( &grafica )
+FIN_SI
+SI ( _inval = 1 )
+  CREA_GRAFICA( &checinval )
+FIN_SI

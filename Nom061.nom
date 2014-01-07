@@ -1,0 +1,178 @@
+#REPORTE DE PRESTAMOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra los prestamos vigentes de los trabajadores de la empresa. Este reporte permite seleccionar el concepto o conceptos de prestamo.
+#Por cada prestamo puede emitir el desgloce de los abonos al prestamo e inclusive puede hacerce un ajuste de saldos.
+#Utiliza los parametros estandares de todos los reportes.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC  ( 'FECHA', '',_fi) 
+NUEVO_PARAMETRO_CHEQ ( '', 'AJUSTAR SALDOS', _ajuste )
+NUEVO_PARAMETRO      ( 'CONCEPTO', '*', $conceptos )
+NUEVO_PARAMETRO_SEL  ( 'TIPO PREST.','TODOS/SALDADOS/PENDIENTES',_tipo_pres)
+LEE_PARAMETROS
+
+_lv := 0
+_ai := 0
+_af := 0
+_imp_abo := 0
+_fabo    := 0
+SI ( _ajuste = 0 )
+  BORRA_PARAMETROS
+  NUEVO_PARAMETRO_CHEQ ( 'IMPRIMIR ABONOS', '', _imp_abo)
+  NUEVO_PARAMETRO_SEL  ( 'TIPO', 'TODOS LOS ABONOS/RANGO DE ABONOS', _fabo )
+  LEE_PARAMETROS
+
+  SI ( _fabo = 1 )
+    BORRA_PARAMETROS
+    NUEVO_PARAMETRO_FEC ('F. INI ABONOS','', _ai)
+    NUEVO_PARAMETRO_FEC ('F. FIN ABONOS','', _af)
+    LEE_PARAMETROS
+  FIN_SI
+FIN_SI
+
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 3 
+FORMATO_PESOS := 2
+SALIDA        := $salida
+RENGLONES     := 65
+COLUMNAS      := 80
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO   
+   $titulo_reporte := 'Reporte de Prestamos al '+ FECHA (_fi)
+   encabezado_ini
+   SI ( CD_DC = 0 )
+     IMP ( COL(1), 'CLAVE', COL(8), 'NOMBRE', COL(50), 'SUCURSAL', COL(60), 'DEPTO', COL(70), 'PUESTO' );; IMPRIME
+   SI_NO
+     IMP ( COL(1), 'CLAVE', COL(8), 'NOMBRE', COL(50), 'SUCURSAL', COL(60), 'C.C.', COL(70), 'PUESTO' );; IMPRIME
+   FIN_SI
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+### VARIABLES GLOBALES DEL REPORTE
+_tot_abonos := 0
+_gtot_abonos := 0
+$co := ''
+VAR_T ( &subtotales )
+VAR_T ( &indices )
+_num_ind := 0
+$indice := ''
+
+SUB_RUTINA formato_trabajador 
+   IMP( COL (1) , 'EMPPRIN':'CLAVE', COL(8), SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 40 ) , COL(50), TRAE_DSP('S', FECHA_HOY ), COL(60), TRAE_DSP('D', FECHA_HOY ), COL(70), TRAE_DSP('P', FECHA_HOY )) ;; IMPRIME
+   SI ( TRAE_REGISTRO( 'EMPPRES', 'EMPPRIN':'CLAVE', 'EMPPRIN':'ID' ) )
+      _tot_abonos := 0
+      DECIMALES := 2
+      SI ( TRAE_REGISTRO ( 'CONCEPTO', 'EMPPRES':'CLAVE_CONCEPTO' ))
+         IMP ( COL ( 10 ), 'CONCEPTO':'CLAVE', COL ( 20 ), 'CONCEPTO':'DESCRIPCION' ) IMPRIME
+      SI_NO
+         IMP ( COL ( 10 ), 'EMPPRES':'CLAVE_CONCEPTO', COL ( 20 ), 'CONCEPTO DESCONOCIDO' ) IMPRIME
+      FIN_SI
+      IMP ( COL(10), 'Fecha : ', FECHA('EMPPRES':'FECHA'), COL(35), 'Por : ', DER ( $('EMPPRES':'MONTO'), 10 ), COL(55), 'Descuento de : ', DER ( $ ( 'EMPPRES':'DESCUENTO' ), 10 )) ;; IMPRIME
+      PRIMER_REGISTRO( 'EMPABO' )
+      MIENTRAS ( FIN_BASE( 'EMPABO' ) = FALSO )
+         SI (( _fabo = 0 ) OR (( 'EMPABO':'FECHA' >= _ai ) AND ( 'EMPABO':'FECHA' <= _af )))
+            SI ( _imp_abo = 1 )
+               IMP ( COL(17), 'Abono : ', FECHA ( 'EMPABO':'FECHA' ), COL(41), DER($('EMPABO':'MONTO'),10), COL ( 55 ), 'EMPABO':'COMENTARIO' ) ;; IMPRIME
+            FIN_SI
+            #Incremeto de valores para los indices seleccionados
+            _num_ind := 0
+            REPITE
+               INCREMENTA_TABLA( &subtotales, 'SUBTOTAL', TRAE_VALOR_TABLA( &indices, 0, _num_ind ), 'EMPABO':'MONTO' )
+               _num_ind := _num_ind + 1
+            HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+            _tot_abonos := _tot_abonos + 'EMPABO':'MONTO'
+         FIN_SI
+         SIGUIENTE_REGISTRO( 'EMPABO' )
+      FIN_MIENTRAS
+      SI ( _imp_abo )
+         IMP ( COL ( 41 ), '----------' ) IMPRIME
+      FIN_SI
+      IMP ( COL(25), 'Total Abonado : ', DER($(_tot_abonos),10) )
+      SI ( _fabo = 0 )
+         SI ( 'EMPPRES':'MONTO' > 0 )
+           IMP ( COL(62), 'Saldo : ', DER($('EMPPRES':'MONTO' - _tot_abonos),10) )
+         SI_NO
+           IMP ( COL(62), 'Saldo : ', DER($(_tot_abonos),10) )
+         FIN_SI
+      FIN_SI
+      IMPRIME
+      SI (( _ajuste = 1 ) AND ( _fabo = 0 ))
+         SI ( 'EMPPRES':'MONTO' > 0 )
+           'EMPPRES':'SALDO' := 'EMPPRES':'MONTO' - _tot_abonos
+         SI_NO
+           'EMPPRES':'SALDO' := _tot_abonos
+         FIN_SI
+         GRABA_BASE ( 'EMPPRES' )
+      FIN_SI
+      IMPRIME
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+   DECIMALES := 2
+   IMP ( COL(13), 'Subtotales ' + $indice + ' : ', DER( $( VALOR_TABLA( &subtotales, 'SUBTOTAL', $indice ) ), 13 ) ) ;; IMPRIME
+   ASIGNA_VALOR_TABLA( &subtotales, 'SUBTOTAL', $indice, 0 )
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+   $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+   $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+   SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+      AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+   FIN_SI
+   _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+ABRE_BASE   ( 'EMPPRES' )
+USA_ARCHIVO ( 'EMPPRES', 'EMPABO', 'ID' )
+
+$campos_extras      := 'P. ID, P. FECHA AS FECHA_PRESTAMO, P. SALDO, P. CLAVE_CONCEPTO'
+$bases_extras       := 'EMPPRES P'
+$condiciones_extras := 'P.CLAVE = E.CLAVE'
+$co                 := $conceptos
+
+SI ( $co <> '*' )
+   $condiciones_extras := $condiciones_extras + ' AND P. CLAVE_CONCEPTO IN ( "'+$co+'" )'
+FIN_SI
+
+SI ( _tipo_pres = 1 )
+   $condiciones_extras := $condiciones_extras + ' AND P. SALDO <= 0.001'
+FIN_SI
+
+SI ( _tipo_pres = 2 )
+   $condiciones_extras := $condiciones_extras + ' AND P. SALDO >= 0.01'
+FIN_SI
+base_trabajadores
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE ( _fi ) )
+       datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte

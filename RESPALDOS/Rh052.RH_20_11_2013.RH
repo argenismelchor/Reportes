@@ -1,0 +1,167 @@
+#ACREDITADOS INFONAVIT
+#VERSION 1.000
+#NO EDITAR
+#EXCEL
+#DESCRIPCION
+#Descripcion no disponible.
+#FIN_DESCRIPCION
+#
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA/EXCEL',$salida)
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','',_fi)
+NUEVO_PARAMETRO_FEC ('FECHA FINAL','',_ff)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_PESOS := 2
+FORMATO_FECHA := 2
+SI ( $salida = 'EXCEL' )
+  SALIDA := 'PANTALLA'
+SI_NO
+  SALIDA := $salida
+FIN_SI
+RENGLONES:=65
+COLUMNAS:=100
+DRAFT:='S'
+_ncol := 1
+_nren := 3
+
+ENCABEZADO
+   IMPRIME
+   DECIMALES:=0
+   LETRA ( 'LETRA CONDENSADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), 'giro Ver 1.0' );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+   IMP ( CENTRA ('ACREDITADOS INFONAVIT'));; IMPRIME
+   IMP ( REPITETXT('=',100));; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(13), 'NOMBRE COMPLETO', COL(65), 'CRED. INF.', COL(77), 'INI. DES. INF', COL(92), DER('V. DESC', 6) ) ;; IMPRIME
+   IMP ( REPITETXT('-',100) );; IMPRIME
+   LETRA ( 'LETRA CONDENSADA' )
+   IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA CONDENSADA' )
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA CONDENSADA' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+#
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &totales )
+VAR_T ( &indices )
+_num_ind := 0
+$indice := ''
+$tipo := ''
+_cont := 0
+_imp := 0
+$strtipo := ''
+
+SUB_RUTINA sumatoria
+  DECIMALES:=2
+  #Incremeto de valores para los indices seleccionados
+  _num_ind := 0
+  REPITE
+    _num_ind := _num_ind + 1
+  HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   LETRA ( 'LETRA CONDENSADA' )
+  _ncol := 1
+  _nren := _nren + 1
+  IMP ( COL(1), SUBSTR('EMPPRIN':'CLAVE', 1, 10 ) )
+  SI ( $salida = 'EXCEL' )
+    EXCEL ( 'PON_VALOR', _ncol, _nren, SUBSTR('EMPPRIN':'CLAVE', 1, 10 ) )
+    _ncol := _ncol + 1
+  FIN_SI
+  IMP ( COL(13), SUBSTR('EMPPRIN':'NOMBRE', 1, 50 ) )
+  SI ( $salida = 'EXCEL' )
+    EXCEL ( 'PON_VALOR', _ncol, _nren, SUBSTR('EMPPRIN':'NOMBRE', 1, 50 ) )
+    _ncol := _ncol + 1
+  FIN_SI
+  IMP ( COL(65), SUBSTR('EMPPRIN':'CREDITO_INFONAVIT', 1, 10 ) )
+  SI ( $salida = 'EXCEL' )
+    EXCEL ( 'PON_VALOR', _ncol, _nren, SUBSTR('EMPPRIN':'CREDITO_INFONAVIT', 1, 10 ) )
+    _ncol := _ncol + 1
+  FIN_SI
+  IMP ( COL(77), FECHA( 'EMPPRIN':'INICIO DESCUENTO INF' ) )
+  SI ( $salida = 'EXCEL' )
+    EXCEL ( 'PON_VALOR', _ncol, _nren, FECHA( 'EMPPRIN':'INICIO DESCUENTO INF' ) )
+    _ncol := _ncol + 1
+  FIN_SI
+  $strtipo := ''
+  SI ( 'EMPPRIN':'TIPO DESCUENTO' = '1' )
+    DECIMALES := 0
+    $strtipo := '%'
+  FIN_SI
+  SI ( 'EMPPRIN':'TIPO DESCUENTO' = '2' )
+    $strtipo := '$'
+    DECIMALES := 2
+  FIN_SI
+  SI ( 'EMPPRIN':'TIPO DESCUENTO' = '3' )
+    $strtipo := 'V'
+    DECIMALES := 4
+  FIN_SI
+  IMP ( COL(91), DER(.('EMPPRIN':'VALOR DESCUENTO'), 7) + ' ' + $strtipo )
+  SI ( $salida = 'EXCEL' )
+    EXCEL ( 'PON_VALOR', _ncol, _nren, DER(.('EMPPRIN':'VALOR DESCUENTO'), 7) + ' ' + $strtipo )
+    _ncol := _ncol + 1
+  FIN_SI
+  IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+  #
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 0
+_omitir_sub_totales   := 0
+_incluir_pue := 1
+_incluir_dep := 1
+_incluir_suc := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+SI ( $salida = 'EXCEL')
+  EXCEL ( 'PON_VALOR', 1, 1, 'CLAVE' )
+  EXCEL ( 'PON_VALOR', 2, 1, 'NOMBRE COMPLETO' )
+  EXCEL ( 'PON_VALOR', 3, 1, 'CRED. INF.' )
+  EXCEL ( 'PON_VALOR', 4, 1, 'INI. DES. INF' )
+  EXCEL ( 'PON_VALOR', 5, 1, 'V. DESC' )
+FIN_SI
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+$campos_extras:='E.CREDITO_INFONAVIT, E."INICIO DESCUENTO INF", E."VALOR DESCUENTO", E. "TIPO DESCUENTO"'
+base_trabajadores
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( FUE_VIGENTE ( _fi, _ff))
+    SI ( ( 'EMPPRIN':'CREDITO_INFONAVIT' <>'' ) )
+      datos_trabajador
+    FIN_SI
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte
+
+$indice := 'TOTAL'
+sub_totales

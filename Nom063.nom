@@ -1,0 +1,68 @@
+#SALDOS DE PRESTAMOS ACUMULATIVOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra los saldos de aquellos prestamos especificados como de tipo acumulativo.
+#Mostrando Total del Prestamo, Descuento Normal y Saldo Actual.
+#Este reporte utiliza los parametros estandares de los reportes.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO     ( 'CLAVE PRESTAMO', '', $concepto )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_fi := 0
+_ff := 0
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   DECIMALES := 0
+   $titulo_reporte := 'Saldo de Prestamos al ' + FECHA (FECHA_HOY)
+   encabezado_ini
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), 'PRESTAMO', COL(60), 'DESCUENTO', COL(70), 'SALDO' ) ;; IMPRIME
+   encabezado_fin
+   DECIMALES := 2
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+RENGLONES     := 65
+COLUMNAS      := 80
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+   DECIMALES:=2
+   IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR ( 'EMPPRIN':'NOMBRE', 1 , 35 ) , COL(50), DER ( $ ( CAP1 ( $concepto )), 10 ), COL(60), DER ( $ ( CAP2 ( $concepto )), 10 ), COL(70), DER ( $ ( CAP3 ( $concepto )), 10 ))
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  PRIMER_REGISTRO ( 'NOMINA' )
+  SI ( CAP1 ( $concepto ) <> 0 )
+    datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte

@@ -1,0 +1,137 @@
+#AVANCE DEL PROGRAMA DE CAPACITACION POR PUESTO
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra el avance del programa de capacitación por curso y grafica los resultados.
+#FIN_DESCRIPCION
+#GRAFICA
+
+VAR_T ( &graf )
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida )
+NUEVO_PARAMETRO_FEC  ( 'FECHA', '', _fi )
+NUEVO_PARAMETRO_CHEQ ( 'INCLUIR', 'EMPLEADOS', _empleados )
+NUEVO_PARAMETRO_CHEQ ( '', 'GRAFICA', _grafica )
+NUEVO_PARAMETRO_CHEQ ( 'VOLUMEN', 'SOLO OBLIGATORIOS',_obliga )
+NUEVO_PARAMETRO_TAB  ( 'PUESTO', 'PUESTO/CLAVE/TABLA DE PUESTOS', &puestos )
+
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+FORMATO_FECHA      := 1
+SALIDA             := $salida
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'AVANCE EN EL PLAN DE CAPACITACION POR PUESTO AL ' + FECHA (_fi)
+   encabezado_ini
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+### VARIABLES GLOBALES DEL REPORTE
+$puesto_ant        := ''
+_tomado            := FALSO
+_cursos_tomados    := 0
+_cursos_pendientes := 0
+_sub_tomados       := 0
+_sub_pendientes    := 0
+
+SUB_RUTINA imprime_totales
+      IMPRIME
+      IMP ( 'TOTAL DE CURSOS TOMADOS   ', DER ( _sub_tomados, 10 )) ;; IMPRIME
+      IMP ( 'TOTAL DE CURSOS PENDIENTES', DER ( _sub_pendientes, 10 )) ;; IMPRIME
+      SI ( _cursos_tomados <> 0 )
+         IMP ( 'AVANCE DEL PROGRAMA       ', DER (((_sub_tomados / ( _sub_pendientes + _sub_tomados )) * 100 ), 10 ), ' %' ) ;; IMPRIME
+         INCREMENTA_TABLA ( &graf, '&', 'EMPPRIN':'PUE_CLAVE'+' '+'EMPPRIN':'PUE_DESCRIPCION', (_sub_tomados / ( _sub_pendientes + _sub_tomados )) * 100 )
+      SI_NO
+         IMP ( 'AVANCE DEL PROGRAMA       ', DER ( 0, 10 ), ' %' ) ;; IMPRIME
+         INCREMENTA_TABLA ( &graf, '&', 'EMPPRIN':'PUE_CLAVE'+' '+'EMPPRIN':'PUE_DESCRIPCION', 0 )
+      FIN_SI
+     _sub_tomados    := 0
+     _sub_pendientes := 0
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   SI ( $puesto_ant <> 'EMPPRIN':'PUE_CLAVE' )
+     SI ( $puesto_ant <> '' )
+       imprime_totales
+     FIN_SI
+     $puesto_ant := 'EMPPRIN':'PUE_CLAVE'
+     IMPRIME
+     IMP ( '*** PUESTO : ' + 'EMPPRIN':'PUE_CLAVE' + ' ' + 'EMPPRIN':'PUE_DESCRIPCION' ) ;; IMPRIME
+   FIN_SI
+   SI ( _empleados = 1 )
+      IMP( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 28), COL(40), 'EMPPRIN':'CURSO' )
+      IMP( COL(46), SUBSTR('EMPPRIN':'DESCRIPCION', 1 ,22) )
+   FIN_SI
+   SI ( 'EMPPRIN':'CURSO PROGRAMADO' > 0 )
+      SI ( _empleados )
+         IMP ( COL ( 70 ), 'TOMADO' )
+      FIN_SI
+      _cursos_tomados := _cursos_tomados + 1
+      _sub_tomados := _sub_tomados + 1
+   SI_NO
+      SI ( _empleados )
+         IMP ( COL ( 70 ), 'PENDIENTE' )
+      FIN_SI
+      _cursos_pendientes := _cursos_pendientes + 1
+      _sub_pendientes := _sub_pendientes + 1
+   FIN_SI
+   SI ( _empleados )
+     IMPRIME
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+_omitir_total_general := 1
+
+$puesto := TRAE_SELECCION( &puestos )
+$campos_extras := 'P. CURSO, CUR. DESCRIPCION, C. "CURSO PROGRAMADO", P. OBLIGATORIO, PUE. DESCRIPCION AS PUE_DESCRIPCION'
+$bases_extras := 'EMPCAPAC P LEFT JOIN EMPCURSO C ON C. CLAVE = P. CLAVE AND C. "CURSO PROGRAMADO" = P. PROGRAMADO, CURSO CUR, PUESTO PUE'
+$condiciones_extras := 'P. CLAVE = E. CLAVE AND CUR. CLAVE = P. CURSO AND PUE. CLAVE = EP. CATALOGO'
+SI ( $puesto <> '' )
+  $condiciones_extras := $condiciones_extras + ' AND EP. PUE_CLAVE IN ( ' + $puesto +' )'
+FIN_SI
+SI ( _obliga = 1 )
+  $condiciones_extras := $condiciones_extras + ' AND P. OBLIGATORIO = "TRUE"'
+FIN_SI
+$ordenes_extras := 'EP. PUE_CLAVE'
+
+base_trabajadores
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+
+imprime_totales
+
+IMPRIME ;; IMPRIME
+IMP( '*** TOTALES GENERALES' ) ;; IMPRIME
+_sub_tomados    := _cursos_tomados
+_sub_pendientes := _cursos_pendientes
+imprime_totales
+
+SI ( _grafica = VERDADERO )
+   CREA_GRAFICA ( &graf )
+   TITULOS_GRAFICA ( &graf, 'AVANCE DEL PROGRAMA DE CAPACITACION POR CURSO', '', '', '' )
+FIN_SI
+
+TERMINA_REPORTE

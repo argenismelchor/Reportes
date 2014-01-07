@@ -1,0 +1,39 @@
+#CAPTURA DE NACIMIENTOS
+#NO EDITAR
+#USUARIO =*
+#DESCRIPCION
+#Utileria para la captura automática de fechas de nacimiento en base al RFC del empleado
+#Esta utileria solamente modifica aquellos kárdex personales que no tengan registrada la fecha de
+#nacimiento y que tengan RFC.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+LEE_PARAMETROS
+
+$rfc := ''
+_ano := 0
+_mes := 0
+_dia := 0
+_fech := 0
+$nac := ''
+
+ABRE_BASE( 'EMPPRIN' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPRH', 'CLAVE' )
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO' )
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE( 'EMPPRIN' ) = FALSO )
+  SI ( 'EMPRH':'FECHA_NACIMIENTO' = 0 )
+    $rfc := 'EMPPRIN':'RFC'
+    SI ( $rfc <> '' )
+      $nac := SUBSTR( $rfc, 5, 6 )
+      _ano := VALOR ( SUBSTR( $nac, 1, 2 ) )
+      _mes := VALOR ( SUBSTR( $nac, 3, 2 ) )
+      _dia := VALOR ( SUBSTR( $nac, 5, 2 ) )
+      _fech := CALCULA_FECHA( _ano, _mes, _dia )
+      'EMPRH':'FECHA_NACIMIENTO' := _fech
+      GRABA_BASE ( 'EMPRH' )
+    FIN_SI
+  FIN_SI
+  SIGUIENTE_REGISTRO( 'EMPPRIN' )
+FIN_MIENTRAS

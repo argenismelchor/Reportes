@@ -1,0 +1,102 @@
+#REPORTE PARA IMPORTAR PRESTAMOS
+#REPORTE ESTANDAR DE MUESTRA
+#USUARIO =*
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte para importar prestamos.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA', $salida)
+NUEVO_PARAMETRO_RUTA ( 'RUTA' , '' , $ruta )
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR' , '' , _grabar ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_filaexcel := 2
+DECIMALES := 2
+$anio := '' ;; $mes := '' ;; $dia := '' ;; $clave := '' ;; $concepto := '' ;; _prestamo := 0 ;; _descuento := 0 ;; _fecha := 0  ;; _interes := 0
+$nombre := '' ;; $grabar := '' ;; $fecha := ''
+_id := 0 
+
+ENCABEZADO
+     LETRA ( 'LETRA ENFATISADA')
+     IMPRIME
+
+     IMP ( COL( 5 ) , 'CLAVE' , COL(15) , 'NOMBRE'  , COL(45 ) , 'CONCEPTO'  , COL(60) , 'FECHA' , COL(75) , 'PRESTAMO' , COL(90 ) , 'DESCUENTO' , COL ( 105 ) , 'ESTADO' ) 
+     IMPRIME
+
+     LETRA ( 'LETRA CONDENSADA') 
+     IMPRIME 
+
+FIN_ENCABEZADO
+
+
+ABRE_BASE ( 'EMPPRIN' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPPRES' , 'CLAVE' ) 
+
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , $ruta ) 
+
+EXCEL ( 'TRAE_VALOR' , 1  , _filaexcel , $clave ) 
+MIENTRAS ( $clave <> '' ) 
+
+EXCEL ( 'TRAE_VALOR' , 1  , _filaexcel , $clave     ) 
+EXCEL ( 'TRAE_VALOR' , 2  , _filaexcel , $concepto  ) 
+EXCEL ( 'TRAE_VALOR' , 3  , _filaexcel , $fecha     ) 
+EXCEL ( 'TRAE_VALOR' , 4  , _filaexcel , _prestamo  ) 
+EXCEL ( 'TRAE_VALOR' , 5  , _filaexcel , _interes   ) 
+EXCEL ( 'TRAE_VALOR' , 6  , _filaexcel , _descuento ) 
+
+$anio := SUBSTR ( $fecha , 7 , 4 ) 
+$mes  := SUBSTR ( $fecha , 4 , 2 ) 
+$dia  := SUBSTR ( $fecha , 1 , 2 ) 
+_fecha := CALCULA_FECHA ( VALOR ( $anio ) , VALOR ( $mes ) , VALOR ( $dia ) ) 
+
+SI ( TRAE_REGISTRO ( 'EMPPRIN' , $clave ) ) 
+
+     $nombre := 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN'
+
+      DECIMALES:= 0 
+      ULTIMO_REGISTRO ( 'EMPPRES' ) 
+      _id := 'EMPPRES':'ID' + 1 
+
+     $grabar := ''
+     SI ( _grabar = 1 )        
+
+
+         SI ( TRAE_REGISTRO ( 'EMPPRES' , $clave ) = FALSO )     
+     
+                AGREGA_REGISTRO ( 'EMPPRES')
+                'EMPPRES':'CLAVE'  := $clave
+                #'EMPPRES':'ID'  := _id
+                
+         FIN_SI
+
+
+        'EMPPRES':'CLAVE_CONCEPTO'  := $concepto
+        'EMPPRES':'FECHA'           := _fecha
+
+        DECIMALES:= 2
+        'EMPPRES':'MONTO'           := _prestamo
+        'EMPPRES':'DESCUENTO'       := _descuento
+        'EMPPRES':'ESTADO'          := 'S'
+        'EMPPRES':'PRESTAMO'        := _prestamo
+        'EMPPRES':'INTERES'         := _interes
+        GRABA_BASE ( 'EMPPRES')
+
+        $grabar := 'GRABAR'
+     SI_NO
+        $grabar := 'CONSULTA' 
+     FIN_SI
+
+     IMP ( COL( 5 ) , $clave , COL(15) , $nombre , COL(45 ) , $concepto , COL(60) , $fecha , COL(75) , .(_prestamo ) , COL(90 ) , .(_descuento ) , COL ( 105 ) , $grabar ) 
+     IMPRIME
+
+FIN_SI
+
+_filaexcel := ( _filaexcel + 1 ) 
+EXCEL ( 'TRAE_VALOR' , 1  , _filaexcel , $clave ) 
+FIN_MIENTRAS
+
+
+TERMINA_REPORTE

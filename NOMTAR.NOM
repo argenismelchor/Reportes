@@ -1,0 +1,165 @@
+#ALTAS DE TARJETAS HSBC
+#REPORTE ESTANDAR DE MUESTRA
+#USUARIO =*
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte de alta de tarjetas HSBC.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/EXCEL', $salida)
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR' , '' , _grabar ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+_condensado := 0
+$titulo_reporte := 'REPORTE DE ALTA DE TARJETAS HSBC'
+define_encabezado
+
+# PARAMETROS GENERALES
+
+FORMATO_FECHA := 6
+
+# VARIABLES GLOBALES
+_ren_excel := 1
+
+$sexo      := ''
+$sc        := ''
+$fecha     := ''
+$dia       := ''
+$mes       := ''
+$ano       := ''
+
+_fecha     := 0
+_dia       := 0
+_mes       := 0
+_ano       := 0
+
+
+# SUBRUTINAS GLOBALES
+
+SUB_RUTINA validaciones
+   $sexo   := 'EMPPRIN':'SEXO'
+   $sc     := 'EMPPRIN':'ESTADO_CIVIL'
+   $fecha  := FECHA('EMPPRIN':'FECHA_NACIMIENTO')
+
+   SI(  'EMPPRIN':'CLAVE' = '0015')
+        $sc := $sc     
+   FIN_SI
+
+   SI ( $sexo = 'M' ) $sexo := 'MASCULINO' FIN_SI
+   SI ( $sexo = 'F' ) $sexo := 'FEMENINO' FIN_SI
+
+   SI ( $sc = 'SOL' ) $sc := 'SOLTERO' FIN_SI
+   SI ( $sc = 'CAS' ) $sc := 'CASADO' FIN_SI
+   SI ( $sc = 'VIU' ) $sc := 'VIUDA' FIN_SI
+   SI ( $sc = 'DIV' ) $sc := 'DIVORCIADA' FIN_SI
+   SI ( $sc = 'ULI' ) $sc := 'UNION LIBRE' FIN_SI
+
+   $dia := SUBSTR( $fecha  , 1 , 2 )
+   $mes := SUBSTR( $fecha  , 3 , 2 )
+   $ano := SUBSTR( $fecha  , 5 , 4 )
+   _dia := VALOR($dia)
+   _mes := VALOR($mes)
+   _ano := VALOR($ano)
+
+  FORMATO_FECHA := 6
+  _fecha := CALCULA_FECHA(_ano, _mes, _dia)
+#  $fecha := .(_fecha)
+  #$c := SUBSTR(  )
+   #$c := SUBSTR ( '''', 1 , 1 )
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA formato_trabajador
+   validaciones
+   $valor := '"' + 'EMPPRIN':'CTA_TARJETA'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBREN'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBREP'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBREM'
+   imprime_columna
+
+   $valor := $dia + '/' + $mes + '/' + $ano
+   imprime_columna
+
+   $valor := 'EMPPRIN':'RFC'
+   imprime_columna
+ 
+   $valor := $sc
+   imprime_columna
+
+   $valor := $sexo
+   imprime_columna
+
+   $valor := 'MX'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'CALLE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NUMERO'
+   imprime_columna
+
+   $valor := ''
+   imprime_columna
+
+   $valor := 'EMPPRIN':'INTERIOR'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'COLONIA'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'CP'
+   imprime_columna
+
+   $valor := ''
+   imprime_columna
+
+   $valor := ''
+   imprime_columna
+
+   $valor := '4422152484'
+   imprime_columna
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras  := 'E. RFC, E.NOMBREN, E.NOMBREP, E.NOMBREM, E.CTA_TARJETA, R.FECHA_NACIMIENTO, R.ESTADO_CIVIL, R.SEXO,'
+$campos_extras  := $campos_extras + 'R.CALLE, R.NUMERO, R.INTERIOR, R.COLONIA, R.CP, R.TELEFONO_1, R.TELEFONO_2, R.CLAVE'
+$bases_extras   := 'EMPRH R'
+$condiciones_extras := 'E.CLAVE=R.CLAVE'
+base_trabajadores
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT' , 'CLAVE' ) 
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ( 'EMPEXT':'ALTA_TARJETA'  = 0 ) AND ( 'EMPEXT':'BANCO' = '3' ) )
+       formato_trabajador
+   FIN_SI
+
+   SI ( _grabar = 1 ) 
+        'EMPEXT':'ALTA_TARJETA' := 1
+        GRABA_BASE ( 'EMPEXT')  
+   FIN_SI
+
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+TERMINA_REPORTE

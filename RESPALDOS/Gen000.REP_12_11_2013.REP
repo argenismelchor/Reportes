@@ -1,0 +1,34 @@
+#CEDENAS DE AUTORIZACION
+
+NUEVO_PARAMETRO('CLAVE', '', $clave_empleado)
+NUEVO_PARAMETRO('SUCURSAL' , '' , $sucursal) 
+LEE_PARAMETROS
+
+USA_ARCHIVO ('EMPPRIN' , 'EMPSUC'      , 'CLAVE') 
+
+SI ( TRAE_REGISTRO ('EMPPRIN' , $clave_empleado) = VERDADERO  )
+  $sucursal := TRAE_DSP('S',FECHA_HOY) #D= Depto, S= Sucursal P=puesto  
+  SI ( TRAE_REGISTRO('SUCURSAL', $sucursal)= VERDADERO )
+    $sucursal := 'SUCURSAL':'AUTORIZADOR1'
+       SI ( $sucursal = '' )
+          MENSAJE ('MAIL_coordinador_nominas@apsisgorh.com')       
+       SI_NO
+          MENSAJE('MAIL_' + $sucursal)  
+       FIN_SI
+    SI_NO
+      MENSAJE ('MAIL_coordinador_nominas@apsisgorh.com')
+  FIN_SI
+ SI_NO
+  $sucursal := $sucursal
+  SI ( TRAE_REGISTRO('SUCURSAL', $sucursal)= VERDADERO )
+    $sucursal := 'SUCURSAL':'AUTORIZADOR1'
+      SI ( $sucursal = '' )
+          MENSAJE ('MAIL_coordinador_nominas@apsisgorh.com')       
+       SI_NO
+          MENSAJE('MAIL_' + $sucursal)  
+       FIN_SI
+    SI_NO
+      MENSAJE ('MAIL_coordinador_nominas@apsisgorh.com')
+  FIN_SI
+FIN_SI
+

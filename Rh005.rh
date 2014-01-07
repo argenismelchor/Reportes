@@ -1,0 +1,110 @@
+#ONOMASTICOS
+#ANIVERSARIOS
+#USUARIO =*
+#EXCEL
+#ONOMASTICOS
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra los onomasticos de los trabajadores vigentes de la empresa. 
+#Este reporte pide la fecha de vigencia, mes inicial y mes final.
+#Este reporte imprime de los trabajadores la clave, nombre y la fecha de aniversario.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO/EXCEL' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIO' , '' , _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL'  , '' , _ff )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_lv := 0
+
+ENCABEZADO
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   _lv := LONGITUD ( VERSION_GIRO )
+   IMP ( COL (1) , NOMBRE_REPORTE , COL (COLUMNAS - _lv) , VERSION_GIRO ) ;; IMPRIME
+   IMP ( COL (1) , CLAVE_REPORTE , CENTRA ('EMPRESA':'NOMBRE' ) ) ;; IMPRIME
+   IMP ( CENTRA ('ONOMASTICOS DEL ' + FECHA (_fi) + ' AL ' + FECHA (_ff) ) ) ;; IMPRIME
+   IMP ( REPITETXT ( '=' , 80 ) ) ;; IMPRIME
+   IMP ( COL (1) , 'Clave' , COL (11) , 'Nombre' , COL (60) , 'F. NACIMIENTO', COL(75), 'EDAD' ) ;; IMPRIME
+   IMP ( REPITETXT ( '-' , 80 ) ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL (1) , 'Fecha : ' , FECHA (FECHA_HOY) , '    ' , 'Hora : ' , HORA (HORA_ACTUAL) , COL (65) , 'PAGINA : ' , PAGINA ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' ) ;; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+_ren_excel    := 2
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador  
+   IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (11) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 45 ) ) 
+   IMP ( COL (60) , FECHA ( 'EMPRH':'FECHA_NACIMIENTO' ))
+   DECIMALES := 0
+   IMP ( COL (75) , .( TRUNCAR (( _ff - 'EMPRH':'FECHA_NACIMIENTO' ) / 365) ) + ' Años' )
+   IMPRIME
+   SI ( $salida = 'EXCEL' )
+     EXCEL( 'PON_VALOR', 1, _ren_excel, 'EMPPRIN':'CLAVE' )
+     EXCEL( 'PON_VALOR', 2, _ren_excel, 'EMPPRIN':'NOMBRE' )
+     EXCEL( 'PON_VALOR', 3, _ren_excel, FECHA( 'EMPRH':'FECHA_NACIMIENTO' ) )
+     EXCEL( 'PON_VALOR', 4, _ren_excel, TRUNCAR (( _ff - 'EMPRH':'FECHA_NACIMIENTO' ) / 365) )
+     _ren_excel := _ren_excel + 1
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+
+SI ( $salida = 'EXCEL' )
+  EXCEL( 'PON_VALOR', 1, 1, 'CLAVE' )
+  EXCEL( 'PON_VALOR', 2, 1, 'NOMBRE' )
+  EXCEL( 'PON_VALOR', 3, 1, 'F. NACIMIENTO' )
+  EXCEL( 'PON_VALOR', 4, 1, 'EDAD' )
+FIN_SI
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+$mes  := ''
+_mes  := 0
+_dia  := 0
+_ano  := 0
+_faux := 0
+
+DECIMALES := 0
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPRH' , 'CLAVE' )
+
+DECIMALES := 0
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS (( FIN_BASE ('EMPPRIN') = FALSO ))
+   SI ( FUE_VIGENTE ( _fi , _ff ) )
+      FORMATO_FECHA := 6
+      _mes := MES ( 'EMPRH':'FECHA_NACIMIENTO' )
+      _dia := DIA ( 'EMPRH':'FECHA_NACIMIENTO' )
+      _ano := AÑO ( FECHA_HOY )
+      _faux := CALCULA_FECHA( _ano, _mes, _dia )
+      
+      FORMATO_FECHA := 3
+      SI (( _faux >= _fi ) AND ( _faux <= _ff ))
+         datos_trabajador
+      FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+   PRIMER_REGISTRO ( 'EMPSDO' )
+FIN_MIENTRAS
+
+termina_reporte

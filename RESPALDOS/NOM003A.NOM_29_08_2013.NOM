@@ -1,0 +1,674 @@
+#DETALLE DE NOMINA MODIFICADO
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como base en los reportes.
+#CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO/EXCEL' , $salida )
+#NUEVO_PARAMETRO_SEL  ( 'TIPO', 'NORMAL/CONDENSADO/EXTENDIDO', _tipo )
+NUEVO_PARAMETRO_CHEQ ( 'OMITIR CARGAS SOCIAL' , '' , _omitir_carga )
+#NUEVO_PARAMETRO_CHEQ ( 'DETALLE PRESTAMOS', '', _detalle_prestamos )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_detalle_prestamos := 0
+
+_tipo := 1
+
+$comilla := SUBSTR('''',2,1)
+
+$cuenta := '' ;; $banco := '' ;; $clave := ''
+
+VAR_A ( HE ) ;; VAR_A ( H3 ) ;; VAR_A ( PERC ) ;; VAR_A ( DEDU )
+HE := '10' ;; H3 := '11' ;; PERC := 'PERC' ;; DEDU := 'DEDU'
+_ac   := 5      ;; # Ancho de la clave del concepto
+_ad   := 20     ;; # Ancho de la descripcion del concepto
+SI ( _tipo = 2 )
+  _ad   := 30   ;; # Ancho de la descripcion del concepto
+FIN_SI
+_at   := 12     ;; # Ancho del total del concepto
+_sc   := 2      ;; # Separacion entre las columnas de percepciones, deducciones y conceptos
+_c1   := 2      ;; # Inicio de la primera columna
+_d1   := _c1 + _ac
+_t1   := _c1 + _ac + _ad - 2
+_c2   := _c1 + _ac + _ad + _at + _sc
+_d2   := _c2 + _ac
+_t2   := _c2 + _ac + _ad - 2
+_c3   := _c2 + _ac + _ad + _at + _sc
+_d3   := _c3 + _ac
+_t3   := _c3 + _ac + _ad - 2
+_tefe := 0
+_tche := 0
+_ttar := 0
+_eefe := 0
+_eche := 0
+_etar := 0
+_cefe := 0
+_cche := 0
+_ctar := 0
+
+INCLUYE ENCPIE.DAT
+SI ( _tipo = 0 )
+  COLUMNAS := 95
+FIN_SI
+SI ( _tipo = 1 )
+  COLUMNAS := 130
+  _condensado := 1
+FIN_SI
+SI ( _tipo = 2 )
+  COLUMNAS := 136
+FIN_SI
+
+ENCABEZADO
+   DECIMALES := 0
+   FORMATO_FECHA := 3
+   $titulo_reporte := 'Detalle de Nómina Periodo ' + .('PERIODO':'NUMERO') + ' ' + 'TIPONOM':'CLAVE' + ' Del ' + FECHA ('PERIODO':'FECHA INICIAL') + ' al ' + FECHA ('PERIODO':'FECHA FINAL') + REPITETXT(' ' ,20) + 'PAGINA: ' + .(PAGINA)
+   encabezado_ini
+   SI ( _tipo = 1 )
+     IMP ( COL (1)   , 'Clave' , COL (11) , 'Nombre' , COL (45) , 'Turno' , COL (55) , 'Puesto' , COL (65) , 'RFC' , COL (82) , 'IMSS' , COL (98) , 'F.Ingreso' )
+     IMP ( COL (110) , DER ( 'S.Diario' , 10 ) , COL (120) , DER ( 'S.Integ' , 10 ) ) ;; IMPRIME
+     IMP ( COL (10)  , 'P E R C E P C I O N E S' )
+     IMP ( COL (55)  , 'D E D U C C I O N E S' )
+     IMP ( COL (98)  , 'C O N C E P T O S' ) ;; IMPRIME
+   FIN_SI
+   SI ( _tipo = 0 )
+     IMP ( COL (1)   , 'Clave' , COL (11) , 'Nombre' , COL (45) , 'Turno' , COL (55) , 'Puesto' , COL (65) , 'RFC' , COL (82) , 'IMSS' );;IMPRIME
+     IMP ( COL (10)  , 'P E R C E P C I O N E S' )
+     IMP ( COL (38)  , 'D E D U C C I O N E S' )
+     IMP ( COL (71)  , 'C O N C E P T O S' ) ;; IMPRIME
+   FIN_SI
+
+   SI ( _tipo = 2 )
+     IMP ( COL (1)   , 'Clave' , COL (11) , 'Nombre' , COL (45) , 'Turno' , COL (55) , 'Puesto' , COL (65) , 'RFC' , COL (82) , 'IMSS' );;IMPRIME
+     IMP ( COL (10)  , 'P E R C E P C I O N E S' )
+     IMP ( COL (55)  , 'D E D U C C I O N E S' )
+     IMP ( COL (100)  , 'C O N C E P T O S' ) ;; IMPRIME
+   FIN_SI
+   encabezado_fin
+   DECIMALES := 2
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+RENGLONES     := 65
+
+#CIERRA_BASE ( 'PATRONAL' )
+### VARIABLES GLOBALES DEL REPORTE
+$tipo_act := ''
+VAR_T ( &kardex  )
+VAR_T ( &kardex2 )
+VAR_T ( &indices )
+_num_ind  := 0
+_total_general := 0
+CREA_DESGLOCE (  1 , 200  )
+CREA_DESGLOCE (  2 , 100  )
+CREA_DESGLOCE (  3 , 50   )
+CREA_DESGLOCE (  4 , 20   )
+CREA_DESGLOCE (  5 , 10   )
+CREA_DESGLOCE (  6 , 5    )
+CREA_DESGLOCE (  7 , 2    )
+CREA_DESGLOCE (  8 , 1    )
+CREA_DESGLOCE (  9 , 0.50 )
+CREA_DESGLOCE ( 10 , 0.20 )
+CREA_DESGLOCE ( 11 , 0.10 )
+CREA_DESGLOCE ( 12 , 0.05 )
+#sub_totales
+_200     := 0
+_100     := 0
+_50      := 0
+_20      := 0
+_10      := 0
+_5       := 0
+_2       := 0
+_1       := 0
+_0.50    := 0
+_0.20    := 0
+_0.10    := 0
+_0.05    := 0
+$perc    := ''
+$dedu    := ''
+$conc    := ''
+$dperc   := ''
+$ddedu   := ''
+$dconc   := ''
+$tperc   := ''
+$tdedu   := ''
+$tconc   := ''
+_ren     := 0
+_hay     := 0
+_sueldo  := 0
+_integ   := 0
+$indice  := ''
+$tindice := ''
+$depto   := ''
+$turno   := ''
+$puesto  := ''
+_he2     := 0
+
+#Subrutina diversas
+
+SUB_RUTINA sumatoria
+   _200  := _200  + DESGLOCE (1) ;; _100  := _100  + DESGLOCE (2)  ;; _50   := _50   + DESGLOCE (3)  ;; _20   := _20   + DESGLOCE (4)
+   _10   := _10   + DESGLOCE (5) ;; _5    := _5    + DESGLOCE (6)  ;; _2    := _2    + DESGLOCE (7)  ;; _1    := _1    + DESGLOCE (8)
+   _0.50 := _0.50 + DESGLOCE (9) ;; _0.20 := _0.20 + DESGLOCE (10) ;; _0.10 := _0.10 + DESGLOCE (11) ;; _0.05 := _0.05 + DESGLOCE (12)
+FIN_SUB_RUTINA
+
+SUB_RUTINA trae_renglon
+   $perc := TRAE_VALOR_TABLA ( &kardex ,  0 , _ren )
+   $dedu := TRAE_VALOR_TABLA ( &kardex ,  6 , _ren )
+   $conc := TRAE_VALOR_TABLA ( &kardex , 12 , _ren )
+   SI (( $perc <> '' ) OR ( $dedu <> '' ) OR ( $conc <> '' ))
+      _hay   := 1
+      $dperc := TRAE_VALOR_TABLA ( &kardex ,  1 , _ren )
+      $ddedu := TRAE_VALOR_TABLA ( &kardex ,  7 , _ren )
+      $dconc := TRAE_VALOR_TABLA ( &kardex , 13 , _ren )
+      $tperc := TRAE_VALOR_TABLA ( &kardex ,  5 , _ren )
+      $tdedu := TRAE_VALOR_TABLA ( &kardex , 11 , _ren )
+      $tconc := TRAE_VALOR_TABLA ( &kardex , 17 , _ren )
+   SI_NO
+      _hay := 0
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_tabla
+   SI ( _tipo = 0 )
+     IMPRIME_TABLA ( &kardex , 5 , 10 , 0 , 0 , 0 , 23 , 38 , 43 , 0 , 0 , 0 , 56 , 0 , 71 , 0 , 0 , 0 , 84 )
+   FIN_SI
+   SI ( _tipo = 1 )
+     IMPRIME_TABLA ( &kardex , 5 , 10 , 0 , 0 , 0 , 30 , 50 , 55 , 0 , 0 , 0 , 75 , 90 , 96 , 0 , 0 , 0 , 116 )
+   FIN_SI
+   SI ( _tipo = 2 )
+     IMPRIME_TABLA ( &kardex , 5 , 10 , 0 , 0 , 0 , 35 , 50 , 55 , 0 , 0 , 0 , 80 , 0 , 100 , 0 , 0 , 0 , 125 )
+   FIN_SI
+
+FIN_SUB_RUTINA
+
+INCLUYE PRESTAMO.DAT
+_ren_gen := 0
+_ren_per := 0
+_ind_per := 0
+_ren_emp := 1
+$des_puesto := ''
+$cad_temp := ''
+_columnas_per := -1
+_columnas_ded := -1
+_columnas_con := -1
+VAR_T ( &empleado )
+  PON_VALOR_TABLA ( &empleado , 0 , 0  , 'CLAVE' )
+  PON_VALOR_TABLA ( &empleado , 1 , 0  , 'NOMBRE' )
+  PON_VALOR_TABLA ( &empleado , 2 , 0  , 'TURNO' )
+  PON_VALOR_TABLA ( &empleado , 3 , 0  , 'PUESTO' )
+  PON_VALOR_TABLA ( &empleado , 4 , 0  , 'RFC' )
+  PON_VALOR_TABLA ( &empleado , 5 , 0  , 'IMSS' )
+  PON_VALOR_TABLA ( &empleado , 6 , 0  , 'FECHA DE INGRESO' )
+  PON_VALOR_TABLA ( &empleado , 7 , 0  , 'SALARIO DIARIO' )
+  PON_VALOR_TABLA ( &empleado , 8 , 0  , 'INTEGRADO' )
+  PON_VALOR_TABLA ( &empleado , 9 , 0  , 'TARJETA VALE' )
+VAR_T ( &percepciones )
+VAR_T ( &deducciones )
+VAR_T ( &conceptos )
+VAR_T ( &omisiones )
+AGREGA_VALOR_COL(&omisiones,0,'C01')
+AGREGA_VALOR_COL(&omisiones,0,'C02')
+AGREGA_VALOR_COL(&omisiones,0,'C03')
+AGREGA_VALOR_COL(&omisiones,0,'C04')
+AGREGA_VALOR_COL(&omisiones,0,'C05')
+AGREGA_VALOR_COL(&omisiones,0,'C06')
+AGREGA_VALOR_COL(&omisiones,0,'C07')
+AGREGA_VALOR_COL(&omisiones,0,'C08')
+AGREGA_VALOR_COL(&omisiones,0,'C09')
+AGREGA_VALOR_COL(&omisiones,0,'C10')
+AGREGA_VALOR_COL(&omisiones,0,'C11')
+AGREGA_VALOR_COL(&omisiones,0,'C12')
+
+
+SUB_RUTINA restructura_conceptos
+
+   ASIGNA_TABLA(&kardex,&kardex2)
+
+
+   LIMPIA_TABLA(&kardex)
+   _ren_gen := 0
+   REPITE
+     AGREGA_VALOR_COL( &kardex , 0 , TRAE_VALOR_TABLA ( &kardex2 , 0 , _ren_gen ) )
+     AGREGA_VALOR_COL( &kardex , 1 , TRAE_VALOR_TABLA ( &kardex2 , 1 , _ren_gen ) )
+     AGREGA_VALOR_COL( &kardex , 2 , TRAE_VALOR_TABLA ( &kardex2 , 2 , _ren_gen ) )
+     AGREGA_VALOR_COL( &kardex , 3 , TRAE_VALOR_TABLA ( &kardex2 , 3 , _ren_gen ) )
+     AGREGA_VALOR_COL( &kardex , 4 , TRAE_VALOR_TABLA ( &kardex2 , 4 , _ren_gen ) )
+     AGREGA_VALOR_COL( &kardex , 5 , TRAE_VALOR_TABLA ( &kardex2 , 5 , _ren_gen ) )
+      _ren_gen := _ren_gen + 1
+   HASTA ( TRAE_VALOR_TABLA ( &kardex2 , 0 , _ren_gen ) = '')
+   _ren_gen := 0
+   REPITE
+     AGREGA_VALOR_COL( &kardex , 6  , TRAE_VALOR_TABLA ( &kardex2 , 6  , _ren_gen ) )
+     AGREGA_VALOR_COL( &kardex , 7  , TRAE_VALOR_TABLA ( &kardex2 , 7  , _ren_gen ) )
+     AGREGA_VALOR_COL( &kardex , 8  , TRAE_VALOR_TABLA ( &kardex2 , 8  , _ren_gen ) )
+     AGREGA_VALOR_COL( &kardex , 9  , TRAE_VALOR_TABLA ( &kardex2 , 9  , _ren_gen ) )
+     AGREGA_VALOR_COL( &kardex , 10  , TRAE_VALOR_TABLA ( &kardex2 , 10  , _ren_gen ) )
+     AGREGA_VALOR_COL( &kardex , 11 , TRAE_VALOR_TABLA ( &kardex2 , 11 , _ren_gen ) )
+      _ren_gen := _ren_gen + 1
+   HASTA ( TRAE_VALOR_TABLA ( &kardex2 , 6 , _ren_gen ) = '')
+   _ren_gen := 0
+
+   REPITE
+     SI ( TRAE_INDICE_COL ( &omisiones , 0 , TRAE_VALOR_TABLA ( &kardex2 , 12 , _ren_gen )) < 0 )
+       AGREGA_VALOR_COL( &kardex , 12  , TRAE_VALOR_TABLA ( &kardex2 , 12  , _ren_gen ) )
+       AGREGA_VALOR_COL( &kardex , 13  , TRAE_VALOR_TABLA ( &kardex2 , 13  , _ren_gen ) )
+       AGREGA_VALOR_COL( &kardex , 14  , TRAE_VALOR_TABLA ( &kardex2 , 14  , _ren_gen ) )
+       AGREGA_VALOR_COL( &kardex , 15  , TRAE_VALOR_TABLA ( &kardex2 , 15  , _ren_gen ) )
+       AGREGA_VALOR_COL( &kardex , 16  , TRAE_VALOR_TABLA ( &kardex2 , 16  , _ren_gen ) )
+       AGREGA_VALOR_COL( &kardex , 17  , TRAE_VALOR_TABLA ( &kardex2 , 17  , _ren_gen ) )
+     FIN_SI
+      _ren_gen := _ren_gen + 1
+   HASTA ( TRAE_VALOR_TABLA ( &kardex2 , 12 , _ren_gen ) = '')
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA guarda_datos
+############################################ DATOS DEL EMPLEADO #########################################
+  PON_VALOR_TABLA ( &empleado , 0 , _ren_emp  , 'EMPPRIN':'CLAVE' )
+  PON_VALOR_TABLA ( &empleado , 1 , _ren_emp  , 'EMPPRIN':'NOMBRE' )
+  PON_VALOR_TABLA ( &empleado , 2 , _ren_emp  , $turno )
+    SI ( $des_puesto <> '' )
+      $des_puesto := '(' + $des_puesto + ')'
+    FIN_SI
+  PON_VALOR_TABLA ( &empleado , 3 , _ren_emp  , $puesto + $des_puesto )
+  $des_puesto := ''
+  PON_VALOR_TABLA ( &empleado , 4 , _ren_emp  , FORMATO ( 'EMPPRIN':'RFC' , 'XXXX-XXXXXX-XXX') )
+  PON_VALOR_TABLA ( &empleado , 5 , _ren_emp  , FORMATO ( 'EMPPRIN':'AFILIACION' , 'XXXX-XX-XXXX-X' ) )
+  FORMATO_FECHA := 2
+  PON_VALOR_TABLA ( &empleado , 6 , _ren_emp  , '"' + FECHA ( 'EMPPRIN':'INGRESO' ) )
+  DECIMALES := 2
+  PON_VALOR_TABLA ( &empleado , 7 , _ren_emp  , _sueldo )
+  PON_VALOR_TABLA ( &empleado , 8 , _ren_emp  , _integ )
+  PON_VALOR_TABLA ( &empleado , 9 , _ren_emp  , $comilla + 'EMPEXT':'CUENTA_VALES' )
+
+############################################ DATOS DEL EMPLEADO #########################################
+############################ PERCEPCIONES , DEDUCCIONES  Y CONCEPTOS ####################################
+#################################### PERCEPCIONES ####################################
+  _ren_gen := 0
+  _ind_per := 0
+  MIENTRAS ( TRAE_VALOR_TABLA ( &kardex , 0 , _ren_gen  ) <> '' )
+    _ind_per := TRAE_INDICE_REN ( &percepciones , 0 , '(' + TRAE_VALOR_TABLA ( &kardex , 0 , _ren_gen  ) + ') ' + TRAE_VALOR_TABLA ( &kardex , 1 , _ren_gen  ) )
+      SI (  _ind_per < 0  )
+        AGREGA_VALOR_REN ( &percepciones , 0 , '(' + TRAE_VALOR_TABLA ( &kardex , 0 , _ren_gen  ) + ') ' + TRAE_VALOR_TABLA ( &kardex , 1 , _ren_gen  ) )
+        _ind_per := TRAE_INDICE_REN ( &percepciones , 0 , '(' + TRAE_VALOR_TABLA ( &kardex , 0 , _ren_gen  ) + ') ' + TRAE_VALOR_TABLA ( &kardex , 1 , _ren_gen  ) )
+        _columnas_per := _columnas_per + 1
+      FIN_SI
+    PON_VALOR_TABLA ( &percepciones , _ind_per , _ren_emp , TRAE_VALOR_TABLA ( &kardex , 5 , _ren_gen  ) )
+    _ren_gen := _ren_gen + 1
+  FIN_MIENTRAS
+#################################### PERCEPCIONES ####################################
+#################################### DEDUCCIONES #####################################
+  _ren_gen := 0
+  _ind_per := 0
+  MIENTRAS ( TRAE_VALOR_TABLA ( &kardex , 6 , _ren_gen ) <> '' )
+    _ind_per := TRAE_INDICE_REN ( &deducciones , 0 , '(' + TRAE_VALOR_TABLA ( &kardex , 6 , _ren_gen  ) + ') ' + TRAE_VALOR_TABLA ( &kardex , 7 , _ren_gen  ) )
+      SI (  _ind_per < 0 )
+        AGREGA_VALOR_REN ( &deducciones , 0 , '(' + TRAE_VALOR_TABLA ( &kardex , 6 , _ren_gen ) + ') ' +  TRAE_VALOR_TABLA ( &kardex , 7 , _ren_gen  ) )
+        _ind_per := TRAE_INDICE_REN ( &deducciones , 0 , '(' + TRAE_VALOR_TABLA ( &kardex , 6 , _ren_gen  ) + ') ' + TRAE_VALOR_TABLA ( &kardex , 7 , _ren_gen  ) )
+        _columnas_ded := _columnas_ded + 1
+      FIN_SI
+    PON_VALOR_TABLA ( &deducciones , _ind_per , _ren_emp , TRAE_VALOR_TABLA ( &kardex , 11 , _ren_gen  ) )
+    _ren_gen := _ren_gen + 1
+  FIN_MIENTRAS
+#################################### DEDUCCIONES #####################################
+#################################### CONCEPTOS #######################################
+  _ren_gen := 0
+  _ind_per := 0
+  MIENTRAS ( TRAE_VALOR_TABLA ( &kardex , 13 , _ren_gen ) <> '' )
+    _ind_per := TRAE_INDICE_REN ( &conceptos , 0 , TRAE_VALOR_TABLA ( &kardex , 13 , _ren_gen  ) )
+      SI (  _ind_per < 0  )
+        AGREGA_VALOR_REN ( &conceptos , 0 , TRAE_VALOR_TABLA ( &kardex , 13 , _ren_gen  ) )
+        _ind_per := TRAE_INDICE_REN ( &conceptos , 0 , TRAE_VALOR_TABLA ( &kardex , 13 , _ren_gen  ) )
+        _columnas_con := _columnas_con + 1
+      FIN_SI
+    PON_VALOR_TABLA ( &conceptos , _ind_per , _ren_emp , TRAE_VALOR_TABLA ( &kardex , 17 , _ren_gen  ) )
+    _ren_gen := _ren_gen + 1
+  FIN_MIENTRAS
+#################################### CONCEPTOS #######################################
+  SI ( CAP1 ( HE ) <> 0 )
+    SI ( TRAE_INDICE_REN ( &percepciones , 0 , '(10) HORAS EXTRAS' ) < 0 )
+      AGREGA_VALOR_REN ( &percepciones , 0 , '(10) HORAS EXTRAS' )
+    FIN_SI
+    _ind_per := TRAE_INDICE_REN ( &percepciones , 0 , '(10) HORAS EXTRAS' )
+    PON_VALOR_TABLA ( &percepciones , _ind_per , _ren_per , _he2 )
+    _ren_gen := _ren_gen + 1
+  FIN_SI
+  SI ( CAP1 ( H3 ) <> 0 )
+    SI ( TRAE_INDICE_REN ( &percepciones , 0 , '(11) HORAS TRIPLES' ) < 0 )
+      AGREGA_VALOR_REN ( &percepciones , 0 , '(11) HORAS TRIPLES' )
+    FIN_SI
+    _ind_per := TRAE_INDICE_REN ( &percepciones , 0 , '(11) HORAS TRIPLES' )
+    PON_VALOR_TABLA ( &percepciones , _ind_per , _ren_per , _he2 )
+    _ren_gen := _ren_gen + 1
+  FIN_SI
+############################ PERCEPCIONES , DEDUCCIONES  Y CONCEPTOS ####################################
+  _ren_emp := _ren_emp + 1
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   SI ( _condensado = 1 )
+     LETRA ( 'LETRA CONDENSADA' )
+   SI_NO
+     LETRA ( 'LETRA NORMAL' )
+   FIN_SI
+   _sueldo := SUELDO_ACTUAL   ( 'PERIODO':'FECHA FINAL' , 'PERIODO':'FECHA FINAL' )
+   _integ  := INT_IMSS_ACTUAL ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' )
+   USA_KARDEX ('GENERAL')
+   DECIMALES := 2
+   $depto  := 'EMPPRIN':'DEP_CLAVE'
+   $turno  := 'EMPPRIN':'TURNO'
+   $puesto := 'EMPPRIN':'PUE_CLAVE'
+   IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 30 ) , COL (45) , $turno , COL (55) , $puesto )
+   IMP ( COL (65) , FORMATO ( 'EMPPRIN':'RFC' , 'XXXX-XXXXXX-XXX') , COL (82) , FORMATO ( 'EMPPRIN':'AFILIACION' , 'XXXX-XX-XXXX-X' ) )
+   IMP ( COL (98) , FECHA ( 'EMPPRIN':'INGRESO' ) , COL (110) , DER ( $ ( _sueldo ) , 10 ) , COL (120) , DER ( $ (_integ) , 10 ) )
+   IMPRIME
+   SI ( TRAE_REGISTRO ( 'PUESTO' , $puesto ) )
+      IMP ( COL (10) , 'PUESTO':'DESCRIPCION' )
+      $des_puesto := 'PUESTO':'DESCRIPCION'
+   FIN_SI
+   _he2 := 0
+   SI ( TRAE_REGISTRO( 'NOMINA', HE ) )
+     MIENTRAS( 'NOMINA':'CLAVE' = HE )
+       _he2 := _he2 + CAP2 (HE)
+       SIGUIENTE_REGISTRO( 'NOMINA' )
+     FIN_MIENTRAS
+   FIN_SI
+   SI ( _he2 > 9 )
+     _he2 := 9
+   FIN_SI
+   SI ( CAP1 (HE) <> 0 )
+      IMP ( COL (60) , 'H Dob : ' , DER ( _he2 , 5 ) )
+   FIN_SI
+   SI ( CAP1 (H3) <> 0 )
+      IMP ( COL (80) , 'H Tri : ' , DER ( CAP1 (H3) , 5 ) )
+   FIN_SI
+   IMPRIME
+   DECIMALES := 2
+   TABULA_KARDEX_NOMINA ( &kardex , 12 )
+   SI ( _detalle_prestamos = 1 )
+     checa_prestamos
+   FIN_SI
+   SI ( _omitir_carga )
+      restructura_conceptos
+   FIN_SI
+   imprime_tabla
+   _total_general := _total_general + TOTAL ('TOTA')
+
+   SI ( 'EMPPRIN':'CTA_TARJETA'  = '' )
+      _tefe := _tefe + TOTAL ('TOTA')
+      DESGLOSA ( TOTAL ('TOTA') )
+      sumatoria
+      LIMPIA_DESGLOCE
+      _eefe := _eefe + 1
+      SI ( TOTAL('TOTA') > 0 )
+        _cefe := _cefe + 1
+      FIN_SI
+   FIN_SI
+
+   SI ( 'EMPPRIN':'CTA_TARJETA'  <> '' )
+      _ttar := _ttar + TOTAL ('TOTA')
+      _etar := _etar + 1
+      SI ( TOTAL('TOTA') > 0 )
+        _ctar := _ctar + 1
+      FIN_SI
+   FIN_SI
+
+   DECIMALES := 2
+   #Incremento de valores para los indices seleccionados
+   _num_ind := 0
+   REPITE
+      ACUMULA_TOTALES ( TRAE_VALOR_TABLA ( &indices , 0 , _num_ind ) )
+      _num_ind := _num_ind + 1
+   HASTA ( TRAE_VALOR_TABLA ( &indices , 0 , _num_ind ) = '' )
+   IMPRIME
+   guarda_datos
+FIN_SUB_RUTINA
+
+SUB_RUTINA pon_subtotales_tablas
+  PON_VALOR_TABLA ( &empleado , 0 , _ren_emp , 'SubTOTAL ' + $indice )
+  _ren_emp := _ren_emp + 1
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+   IMPRIME
+   IMPRIME
+   pon_subtotales_tablas
+   IMP ( CENTRA ( 'SubTOTAL ' + $indice ) ) ;; IMPRIME
+   IMP ( COL (50) , REPITETXT ( '-' , 30 ) ) ;; IMPRIME
+   IMPRIME
+   DECIMALES := 2
+    USA_KARDEX ( $indice )
+   TABULA_KARDEX_NOMINA ( &kardex , 12 )
+   imprime_tabla
+   PON_TOTAL_0
+   TABULA_KARDEX_NOMINA ( &kardex , 12 )
+   USA_KARDEX ('GENERAL')
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_incluir_dep    := 1
+_incluir_pue    := 1
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+SI ( _tipo = 2 )
+  _ad := 30     ;; # Ancho de la descripcion del concepto
+FIN_SI
+_d1 := _c1 + _ac
+_t1 := _c1 + _ac + _ad - 2
+_c2 := _c1 + _ac + _ad + _at + _sc
+_d2 := _c2 + _ac
+_t2 := _c2 + _ac + _ad - 2
+_c3 := _c2 + _ac + _ad + _at + _sc
+_d3 := _c3 + _ac
+_t3 := _c3 + _ac + _ad - 2
+
+# Definicion de variables en base a los parametros
+SALIDA   := $salida
+$ind_act := ''
+$nom_ind := ''
+
+# Definicion de la tabla de indices utilizados
+REPITE
+   $nom_ind := TRAE_VALOR_TABLA ( &in , 2 , _num_ind )
+   $ind_act := TRAE_VALOR_TABLA ( &in , 0 , _num_ind )
+   SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+      AGREGA_VALOR_COL( &indices , 0 , $nom_ind )
+   FIN_SI
+  _num_ind := _num_ind + 1
+HASTA ( $nom_ind = '' )
+AGREGA_VALOR_COL ( &indices , 0 , 'TOTAL' )
+
+# Creacion de Kardex para los indices seleccionados
+_num_ind := 0
+REPITE
+   CREA_KARDEX ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) )
+   _num_ind := _num_ind + 1
+HASTA ( TRAE_VALOR_TABLA ( &indices , 0 , _num_ind ) = '' )
+
+$tnom := TRAE_VALOR_TABLA( &in, 11, 6 )
+$arch_salida := ''
+SI ( $tnom = '' )
+  FORMATO_FECHA := 0
+  $arch_salida := DIRECTORIO_TRABAJO + '\D' + FECHA( FECHA_HOY ) + '.TXT'
+  FORMATO_FECHA := 0
+SI_NO
+  DECIMALES := 0
+  $arch_salida := DIRECTORIO_TRABAJO + '\DET-' + SUBSTR( $tnom, 2, 1 ) + .( 'PERIODO':'NUMERO' ) + '.TXT'
+  DECIMALES := 2
+FIN_SI
+
+_debuger := 0
+$campos_extras := 'E. RFC, E. AFILIACION, E. TIPO_PAGO,E.CTA_TARJETA'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPPRES' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT'  , 'CLAVE' ) 
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   SI ((( TOTAL ('PERC') <> 0 ) OR ( TOTAL ('DEDU') <> 0 )) AND (TOTAL ('TOTA') <> 0))
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte
+
+CIERRA_BASE ( 'EMPPRIN')
+
+ABRE_BASE ( '_CUENTA_BANCO')
+ABRE_BASE  ( 'EMPPRIN')
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT' , 'CLAVE' )
+
+############################# SALIDA A EXCEL ####################################
+_ren_gen  := 0
+_col_exc  := 1
+_col_gen  := 0
+_ren_exc  := 6
+_cont_gen := 0
+  SI ( $salida = 'EXCEL' )
+    ORDENA_RENGLON ( &percepciones , 0 )
+    ORDENA_RENGLON ( &deducciones , 0 )
+    EXCEL ( 'PON_VALOR' , 1 , 1 , NOMBRE_REPORTE )
+    EXCEL ( 'PON_VALOR' , 5 , 1 , VERSION_GIRO )
+    EXCEL ( 'PON_VALOR' , 1 , 2 , CLAVE_REPORTE )
+    EXCEL ( 'PON_VALOR' , 3 , 2 , 'EMPRESA':'NOMBRE' )
+    EXCEL ( 'PON_VALOR' , 1 , 3 , NOMBRE_REPORTE )
+    DECIMALES := 2
+    MIENTRAS ( TRAE_VALOR_TABLA ( &empleado , 0 , _ren_gen ) <> '' )
+############################# VACIADO DE &empleado ###############################
+       _col_gen := 0
+       _col_exc := 1
+       MIENTRAS ( TRAE_VALOR_TABLA ( &empleado , _col_gen , _ren_gen ) <> '' )
+         $clave :=  TRAE_VALOR_TABLA ( &empleado , 0 , _ren_gen )
+
+        SI ( $clave <> 'CLAVE' )
+         $cuenta :=  '' ;; $banco := ''
+         SI ( TRAE_REGISTRO  ( 'EMPPRIN' , $clave ) )
+              $cuenta := $comilla + 'EMPPRIN':'CTA_TARJETA'
+         FIN_SI
+
+         $banco := 'EMPEXT':'BANCO'
+         SI ( TRAE_REGISTRO ( '_CUENTA_BANCO' , $banco ) )
+              $banco :=   '_CUENTA_BANCO':'DESCRIPCION'
+         FIN_SI
+
+        FIN_SI
+
+         EXCEL ( 'PON_VALOR' , _col_exc , _ren_exc , TRAE_VALOR_TABLA ( &empleado , _col_gen , _ren_gen ) )
+         _col_gen := _col_gen + 1
+         _col_exc := _col_exc + 1
+       FIN_MIENTRAS
+############################# VACIADO DE &empleado ###############################
+############################# VACIADO DE &percepciones ###########################
+       _cont_gen := 0
+         SI ( _ren_gen = 0 )
+           EXCEL ( 'PON_VALOR' , _col_exc , _ren_exc - 1 , 'PERCEPCIONES' )
+         FIN_SI
+       MIENTRAS ( _cont_gen <= _columnas_per )
+         EXCEL ( 'PON_VALOR' , _col_exc , _ren_exc , TRAE_VALOR_TABLA ( &percepciones , _cont_gen , _ren_gen ) )
+         _col_exc := _col_exc + 1
+         _cont_gen := _cont_gen + 1
+       FIN_MIENTRAS
+############################# VACIADO DE &percepciones ###########################
+############################# VACIADO DE &deducciones ############################
+      _cont_gen := 0
+         SI ( _ren_gen = 0 )
+           EXCEL ( 'PON_VALOR' , _col_exc , _ren_exc - 1 , 'DEDUCCIONES' )
+         FIN_SI
+      MIENTRAS ( _cont_gen <= _columnas_ded )
+        EXCEL ( 'PON_VALOR' , _col_exc , _ren_exc , TRAE_VALOR_TABLA ( &deducciones , _cont_gen  , _ren_gen ) )
+        _col_exc := _col_exc + 1
+        _cont_gen := _cont_gen + 1
+      FIN_MIENTRAS
+############################# VACIADO DE &deducciones ############################
+############################# VACIADO DE &conceptos ##############################
+      _cont_gen := 0
+         SI ( _ren_gen = 0 )
+           EXCEL ( 'PON_VALOR' , _col_exc , _ren_exc - 1 , 'CONCEPTOS' )
+         FIN_SI
+      MIENTRAS ( _cont_gen <= _columnas_con )
+        EXCEL ( 'PON_VALOR' , _col_exc , _ren_exc , TRAE_VALOR_TABLA ( &conceptos , _cont_gen , _ren_gen ) )
+        _col_exc := _col_exc + 1
+        _cont_gen := _cont_gen + 1
+      FIN_MIENTRAS
+############################# VACIADO DE &conceptos ##############################
+
+    SI ( $clave   <> 'CLAVE'  )
+      EXCEL ( 'PON_VALOR' , _col_exc , _ren_exc  , $cuenta )
+      EXCEL ( 'PON_VALOR' , _col_exc + 1, _ren_exc  , $banco  )
+    SI_NO
+      EXCEL ( 'PON_VALOR' , _col_exc  , _ren_exc  , 'CUENTA BANCO' )
+      EXCEL ( 'PON_VALOR' , _col_exc + 1, _ren_exc  , 'TIPO BANCO'  )
+    FIN_SI
+
+      _ren_gen := _ren_gen + 1
+      _ren_exc := _ren_exc + 1
+    FIN_MIENTRAS
+  FIN_SI
+############################# SALIDA A EXCEL ####################################
+
+IMPRIME
+IMPRIME
+DECIMALES := 2
+USA_KARDEX ('TOTAL')
+TABULA_KARDEX_NOMINA ( &kardex , 12 )
+imprime_tabla
+IMPRIME ;; IMPRIME
+IMP ( COL (10) , 'TOTALES POR TIPO DE PAGO' ) ;; IMPRIME
+IMPRIME
+IMP ( COL (1)  , 'Efectivo : ' , COL (15) , DER ( $ ( _tefe ) , 12 ) )
+DECIMALES := 0
+IMP ( COL(30), 'Empleados: ', DER( _eefe, 5), COL(50), 'Con Pago: ', DER(_cefe, 5 ) )
+IMPRIME
+DECIMALES := 2
+IMP ( COL (1)  , 'Tarjeta  : ' , COL (15) , DER ( $ ( _ttar ) , 12 ) )
+DECIMALES := 0
+IMP ( COL(30), 'Empleados: ', DER( _etar, 5 ), COL(50), 'Con Pago: ', DER( _ctar, 5 )  )
+IMPRIME
+DECIMALES := 2
+IMP ( COL (15) , REPITETXT ( '_' , 12 ) ) ;; IMPRIME
+IMP ( COL (1)  , 'TOTAL    : ' , COL (15) , DER( $ ( _tefe + _ttar + _tche ) , 12 ) ) ;; IMPRIME
+IMPRIME
+
+SI ( $salida = 'EXCEL' )
+     DECIMALES:= 2
+     _ren_exc := _ren_exc + 2
+     EXCEL ( 'PON_VALOR' , 1 , _ren_exc, 'TOTALES POR TIPO DE PAGO' )
+
+     _ren_exc := _ren_exc + 1
+     EXCEL ( 'PON_VALOR' , 1 , _ren_exc, 'EFECTIVO '  )
+     EXCEL ( 'PON_VALOR' , 2 , _ren_exc, (_tefe ) )
+
+     EXCEL ( 'PON_VALOR' , 3 , _ren_exc, 'EMPLEADOS ' )
+     EXCEL ( 'PON_VALOR' , 4 , _ren_exc, .(_eefe) )
+     EXCEL ( 'PON_VALOR' , 5 , _ren_exc, 'CON PAGO' )
+     EXCEL ( 'PON_VALOR' , 6 , _ren_exc, .(_cefe) )
+
+     _ren_exc := _ren_exc + 1
+     EXCEL ( 'PON_VALOR' , 1 , _ren_exc, 'TARJETA '  )
+     EXCEL ( 'PON_VALOR' , 2 , _ren_exc, .(_ttar ) )
+     EXCEL ( 'PON_VALOR' , 3 , _ren_exc, 'EMPLEADOS ')
+     EXCEL ( 'PON_VALOR' , 4 , _ren_exc, .(_etar) )
+     EXCEL ( 'PON_VALOR' , 5 , _ren_exc, 'CON PAGO' )
+     EXCEL ( 'PON_VALOR' , 6 , _ren_exc, .(_ctar) )
+
+     _ren_exc := _ren_exc + 1
+     EXCEL ( 'PON_VALOR' , 1 , _ren_exc, 'TOTAL ' )
+     EXCEL ( 'PON_VALOR' , 2 , _ren_exc, .(_tefe + _ttar ) )
+
+FIN_SI
+TERMINA_REPORTE

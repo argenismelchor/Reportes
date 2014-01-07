@@ -1,0 +1,120 @@
+#NOMINAS A CEROS
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como base en los reportes.
+#CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+$usuario := USUARIO_ACTUAL
+
+SI ( USUARIO_ACTUAL <> '001' ) 
+   SI ( USUARIO_ACTUAL <> 'giro' )
+      MENSAJE ( 'NO ESTA AUTORIZADO A EJECUTAR ESTE REPORTE' )
+      TERMINA_REPORTE
+   FIN_SI
+FIN_SI
+
+SI ( PREGUNTA ( 'PRECAUCION REPORTE DELICADO ELIMINA DATOS DE NOMINA, DESEA CONTINUAR' ) = FALSO )
+   TERMINA_REPORTE
+FIN_SI
+
+SI ( PREGUNTA ( 'ESTE REPORTE BORRARA TODOS LOS DATOS DE LA NOMINA DESEA CONTINUAR' ) = FALSO )
+   TERMINA_REPORTE
+FIN_SI
+
+MENSAJE ( 'ES IMPORTANTE SELECCIONAR EL TIPO DE NOMINA DESEADO Y VERIFICAR QUE ESTA EN EL PERIODO QUE DESEA DEJAR EN BLANCO' )
+SI ( PREGUNTA ('DESEA CONTINUAR') = FALSO )
+   TERMINA_REPORTE
+FIN_SI
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'RFC'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INGRESO'
+_longitud  := 12
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+
+_condensado := 0
+$titulo_reporte := 'REPORTE ESTANDAR DE TRABAJADORES'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+
+   PON_TOTAL_0
+   PON_CAPTURAS_0
+   GRABA_BASE ('EMPNOM')
+   GRABA_BASE ('NOMINA')
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+
+   $valor := FORMATO( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' )
+   imprime_columna
+
+   $valor := FECHA( 'EMPPRIN':'INGRESO' )
+   imprime_columna
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. RFC'
+base_trabajadores
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+USA_ARCHIVO ( 'EMPPRIN', 'EMPNOM', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+     datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+TERMINA_REPORTE

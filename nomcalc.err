@@ -1,0 +1,83 @@
+$tipo_nomina := 'QUI'
+# declaracion de variables para calculo
+#USUARIO =*
+$ispt := 'ISPT'
+$subs := 'SUBS'
+$cred := 'CRED'
+_aux1 := 0
+
+ENCABEZADO
+   IMPRIME
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), 'giro Ver 1.0' );; IMPRIME
+   IMP ( CENTRA ('EMPLEADOS VIGENTES'));; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+# inicio del reporte, apertura de bases de datos y archivos
+
+SI ( TRAE_REGISTRO ( 'TIPONOM', $tipo_nomina ) = 0 )
+  IMP ( 'NO SE HA ENCONTRADO EL TIPO DE NOMINA SELECCIONADO' ) ;; IMPRIME
+  TERMINA_REPORTE
+FIN_SI
+SI ( TRAE_REGISTRO ( 'PERIODO', $tipo_nomina, 'TIPONOM':'ACTUAL' ) = 0 )
+  IMP ( 'NO SE HA ENCONTRADO EL PERIODO ACTUAL DEL TIPO DE NOMINA SELECCIONADO' ) ;; IMPRIME
+  TERMINA_REPORTE
+FIN_SI
+ABRE_BASE( 'TABISPT' )
+GRABA_LOCAL( 'TABISPT' )
+
+NUEVO_PARAMETRO_TAB ('EMPLEADO','EMPPRIN/CLAVE/EMPLEADOS', &empleado )
+LEE_PARAMETROS
+
+VAR_T ( &tabla_sql )
+AGREGA_VALOR_COL ( &tabla_sql, 0, 'SELECT E.CLAVE, E.NOMBREP || " " || E.NOMBREM || " " || E.NOMBREN AS NOMBRE, E.TIPO_NOM' )
+AGREGA_VALOR_COL ( &tabla_sql, 0, 'FROM EMPPRIN E' )
+AGREGA_VALOR_COL ( &tabla_sql, 0, 'WHERE E.TIPO_NOM = :tipo_nomina' )
+SI ( TRAE_VALOR_TABLA ( &empleado, 0, 0 ) <> '*' )
+   AGREGA_VALOR_COL ( &tabla_sql, 0, '      AND E.CLAVE IN' )
+   CREA_SELECCION_SQL ( &tabla_sql, &empleado )
+FIN_SI
+AGREGA_VALOR_COL ( &tabla_sql, 0, 'ORDER BY E.CLAVE' )
+CREA_CONSULTA ( 'EMPPRIN', &tabla_sql )
+PARAMETRO_SQL ( 'EMPPRIN', 'tipo_nomina', $tipo_nomina )
+
+USA_ARCHIVO ( 'EMPPRIN', 'EMPNOM', 'CLAVE' )
+
+SUB_RUTINA calcula_ispt
+  _aux1 := 1
+
+  MIENTRAS ( _aux1 <= 50 )
+    SI (TRAE_REGISTRO ('TABISPT', $ispt))
+       #TOTAL('IMPS') := CALCULA_ISPT (_aux1)
+    FIN_SI
+  
+    SI (TRAE_REGISTRO ('TABISPT', $subs))
+       #TOTAL('SUBS') := CALCULA_SUBSIDIO (_aux1) 
+    FIN_SI
+  
+    SI (TRAE_REGISTRO ('TABISPT', $cred))
+       #TOTAL('CRED') := CALCULA_ISPT (_aux1)
+    FIN_SI
+    _aux1 := _aux1 + 1
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+# calculo por trabajador
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = 0 )
+   MUESTRA_AVANCE( 'EMPPRIN', 'CALC. : ' + 'EMPPRIN':'CLAVE' )
+   IMP ( 'EMPPRIN':'CLAVE', COL (7) , 'EMPPRIN':'NOMBRE' ) 
+   IMPRIME
+   calcula_ispt
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+# termino del reporte
+IMPRIME ;; IMPRIME
+IMP ( '    **** TOTALES GENERALES ****' ) ;; IMPRIME ;; IMPRIME

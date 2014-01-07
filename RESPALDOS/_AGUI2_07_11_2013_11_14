@@ -1,0 +1,316 @@
+[] ('DVIG') ;; #
+   CAPTURA_CONCEPTO ('13')
+   _ant := 0
+][
+[] ('30') ;; #
+   DECIMALES := 8
+   SI (( CAP1 ('30') <> 0 ) OR ( CAP2 ('30') <> 0 ))
+      TOTAL ('30') := ( CAP1 ('30') * _sueldo_prom ) + CAP2 ('30')
+      _aguinaldo   := TOTAL ('30')
+   SI_NO
+      _ff  := CALCULA_FECHA ( _faño , 12 , 31 )
+
+       DECIMALES:= 8
+
+      _reing := 0
+      ULTIMO_REGISTRO ( 'EMPSDO')
+      MIENTRAS ( (   INICIO_BASE  ( 'EMPSDO' ) = FALSO  ) AND  ( _reing  = 0  ) )
+         SI ( 'EMPSDO':'TIPO'  = 'R'  )
+            _reing := 1
+         FIN_SI
+
+         SI  ( _reing = 0 )
+            REGISTRO_ANTERIOR ( 'EMPSDO')
+         FIN_SI
+
+      FIN_MIENTRAS
+
+     SI ( _reing = 1 )
+         _ant       := ( ( _ff - 'EMPSDO':'FECHA' ) + 1 ) / 365
+         _diastrans :=  ( _ff - 'EMPSDO':'FECHA' ) + 1
+     SI_NO
+         _ant       := ( ( _ff - 'EMPPRIN':'PLANTA' ) + 1 ) / 365
+         _diastrans :=  ( _ff - 'EMPPRIN':'PLANTA' ) + 1
+
+     FIN_SI
+
+       SI ( _diastrans >  365  ) ;; _diastrans := 365 ;; FIN_SI
+
+      SI ( _ant > 0 )
+
+         SI ( TRAE_REGISTRO ( 'PUESTO' , $puesto ) )
+
+            SI ( 'PUESTO':'TIPO EMPLEADO'  = '01'   )
+
+                  SI ( _ant <  1  )
+                       _f_agdo :=  ( _diastrans *  16 )  / 365
+                  SI_NO
+                       _f_agdo := 16
+                  FIN_SI
+
+            SI_NO
+
+                  SI ( _ant <  1  )
+                       _f_agdo :=  16
+                  SI_NO
+                   SI ( TRAE_FACTOR(_fecha_prom,'', _ant ))
+                       _f_agdo := 'FACTOR':'DIAS DE AGUINALDO'
+                   FIN_SI
+                   CAP3 ('DVIG') := _f_agdo
+
+                   # PRIMER_REGISTRO ( 'FACTOR' )
+                   # MIENTRAS ( ( FIN_BASE ('FACTOR') = FALSO ) AND (( 'FACTOR':'CLAVE' <> 'PUESTO':'TIPO EMPLEADO' ) OR ( 'FACTOR':'ANT FINAL' < _ant )) )
+                   #    SIGUIENTE_REGISTRO ( 'FACTOR' )
+                   # FIN_MIENTRAS
+                   # SI (( 'FACTOR':'CLAVE' = 'PUESTO':'TIPO EMPLEADO' ) AND ( 'FACTOR':'ANT INICIAL' <= _ant ) AND ( 'FACTOR':'ANT FINAL' >= _ant ))
+                   #    _f_agdo := 'FACTOR':'DIAS DE AGUINALDO'
+                   #    CAP3 ('DVIG') := _f_agdo
+                   # FIN_SI
+
+                 FIN_SI
+
+            FIN_SI
+
+         FIN_SI
+      SI_NO
+         _f_agdo := 15
+      FIN_SI
+      _vfec := _inicio_año
+      SI ( 'EMPPRIN':'INGRESO' > _inicio_año )
+         _vfec := 'EMPPRIN':'INGRESO'
+      FIN_SI
+      _aux1 := ( _ff - _vfec ) + 1
+      SI ( _aux1 > 365 )
+         _aux1 := 365
+      FIN_SI
+
+      ## VALIDACION PARA DESCONTAR FALTAS.
+      SI ( _desc_fal = 1)
+         _faltas := TRAE_FALTAS ( _vfec , _ff , $tipo_faltas )
+      SI_NO
+         _faltas := 0
+      FIN_SI
+      ## VALIDACION PARA DESCONTAR INCAPACIDADES DE ENFERMEDAD GENERAL.
+      SI ( $inc = 'S' )
+         _incapacidades := TRAE_INCAPACIDADES ( _vfec , _ff , 'EG' )
+      SI_NO
+         _incapacidades := 0
+      FIN_SI
+
+      _aux1     := _aux1 - ( _faltas + _incapacidades )
+      _dias_agui := _aux1
+      _f_agdo   := _f_agdo * ( _aux1 / 365 )
+      _aguinaldo:= _f_agdo * _sueldo_prom
+      TOTAL ('30')  := _aguinaldo
+      TOTAL ('DVIG'):= _f_agdo
+   FIN_SI
+   _exento := 0
+   _aux1 := _minimo * 30
+   CAPTURA_CONCEPTO ('EX30')
+   SI ( TOTAL ('30') > _aux1 )
+      _exento := _exento + _aux1
+      TOTAL ('EX30') := _aux1
+   SI_NO
+      _exento := _exento + TOTAL ('30')
+      TOTAL ('EX30') := TOTAL ('30')
+   FIN_SI
+   SI ( _afectar = 1 )
+      CAP3 ('30')  := TOTAL ('30')
+      CAP3 ('DVIG'):= TOTAL ('DVIG')
+      CAP3 ('EX13'):= TOTAL ('EX13')
+   FIN_SI
+][
+[] ('16') ;; #
+   SI ( CAP1 ('16') <> 0 )
+      TOTAL ('16') := CAP1 ('16')
+      CAP3 ('16') := TOTAL ('16')
+   FIN_SI
+][
+[] ('51') ;; #
+    _aux1 :=  CAP1 ('51')
+   SI ( CAP1 ('51') <> 0 )
+      TOTAL ('51') := CAP1 ('51')
+   SI_NO
+
+        _fechaing    := 'EMPPRIN':'INGRESO'
+        _diastrab    := FUE_VIGENTE ( _fi , _fecha_prom )
+        _montoanual  := ACUM_ANUAL ( 'PERC' )
+        _ajuste_anual:= 0
+
+         SI  ( ( _fechaing  <=  CALCULA_FECHA  ( AÑO ( FECHA_HOY ) , 01 , 01 )  )   AND  ( _diastrab >= 365 )  AND ( _montoanual <= 400000  ) )
+                 _ajuste_anual := 1
+         FIN_SI
+         SI ( MES(FECHA_HOY) < 12)
+            _ajuste_anual := 0
+         FIN_SI
+         SI ( _ajuste_anual = 0 )
+            _base1 := ( _sueldo_prom * 30.4 ) + ( ( ( TOTAL_PERCEPCIONES - _exento ) / 365 ) * 30.4 )
+            _base2 := ( _sueldo_prom * 30.4 )
+            SI ( TRAE_REGISTRO ( 'TABISPT' , $ispt ) )
+               _ispt1 := CALCULA_ISPT (_base1)
+               _ispt2 := CALCULA_ISPT (_base2)
+            FIN_SI
+            #SI ( TRAE_REGISTRO ( 'TABISPT' , $subs ) )# ESTABA COMENTADO
+             #   _ispt1 := _ispt1 - CALCULA_SUBSIDIO (_base1)# ESTABA COMENTADO
+              #  _ispt2 := _ispt2 - CALCULA_SUBSIDIO (_base2)# ESTABA COMENTADO
+            #FIN_SI# ESTABA COMENTADO
+           # La Ley del ISR establece la aplicación de la tabla del crédito al salario en la Tarifa Art.86; sin embargo,
+           # algunos usuarios prefieren que no se aplique para que siempre se calcule IMPUESTO ... basta entonces con
+           # marcar como comentarios las siguientes 4 líneas ...
+            #SI ( TRAE_REGISTRO ( 'TABISPT' , $cred ) )
+              # _ispt1 := _ispt1 - CALCULA_ISPT (_base1)
+              # _ispt2 := _ispt2 - CALCULA_ISPT (_base2)
+            #FIN_SI
+            SI (( _ispt1 <= 0 ) OR ( _ispt2 <= 0 ))
+               TOTAL ('51') := 0
+             SI_NO
+               TOTAL ('51')  := (( _ispt1 - _ispt2 ) / ( _base1 - _base2 )) * ( TOTAL_PERCEPCIONES - _exento )
+               TOTAL ('IMPS') := (( _ispt1 - _ispt2 ) / ( _base1 - _base2 )) * ( TOTAL_PERCEPCIONES - _exento )
+            FIN_SI
+
+         FIN_SI
+
+   # ------------------------------------------------------------------------
+   # Aplicación ISPT Tarifa Art. 141 ( APLICACION TABLA ANUAL DE IMPUESTOS )
+   # ------------------------------------------------------------------------
+
+         SI ( _ajuste_anual = 1 )
+            SI ( 'EMPPRIN':'INGRESO' <= _inicio_año )
+               _base1 := ( TOTAL_PERCEPCIONES - _exento ) + ACUM_ANUAL ('PGRA')
+
+               _dias  := ACUM_ANUAL ('DIAS')
+               _base1 := ( _base1 / _dias ) * 365
+
+               SI ( TRAE_REGISTRO ( 'TABISPT' , $ispta ) )
+                  _ispt1 := CALCULA_ISPT (_base1)
+               FIN_SI
+               _ispt1 := ( _ispt1 / 365 ) * _dias
+
+               SI ( _ispt1 > 0 )
+                  _ispt1 := _ispt1 - ACUM_ANUAL ('51')
+                  SI ( _ispt1 > 0 )
+                     TOTAL ('51')   := _ispt1
+                     TOTAL ('IMPS') := _ispt1
+                     TOTAL ('CRED') := 0
+                  SI_NO
+                     TOTAL ('51')   := 0
+                     TOTAL ('CRED') := 0
+                  FIN_SI
+               SI_NO
+                  TOTAL ('51')   := 0
+                  TOTAL ('CRED') := 0
+               FIN_SI
+            SI_NO
+             _base1 := ( _sueldo_prom * 30.4 ) + ( ( ( TOTAL_PERCEPCIONES - _exento ) / 365 ) * 30.4 )
+             _base2 := ( _sueldo_prom * 30.4 )
+             SI ( TRAE_REGISTRO ( 'TABISPT' , $ispt ) )
+                _ispt1 := CALCULA_ISPT (_base1)
+                _ispt2 := CALCULA_ISPT (_base2)
+             FIN_SI
+             SI ( TRAE_REGISTRO ( 'TABISPT' , $subs ) )
+                _ispt1 := _ispt1 - CALCULA_SUBSIDIO (_base1)
+                _ispt2 := _ispt2 - CALCULA_SUBSIDIO (_base2)
+             FIN_SI
+
+             SI ( TRAE_REGISTRO ( 'TABISPT' , $cred ) )
+                _ispt1 := _ispt1 - CALCULA_ISPT (_base1)
+                _ispt2 := _ispt2 - CALCULA_ISPT (_base2)
+             FIN_SI
+             SI (( _ispt1 <= 0 ) OR ( _ispt2 <= 0 ))
+                TOTAL ('51') := 0
+             SI_NO
+                TOTAL ('51')   := (( _ispt1 - _ispt2 ) / ( _base1 - _base2 )) * ( TOTAL_PERCEPCIONES - _exento )
+                TOTAL ('IMPS') := (( _ispt1 - _ispt2 ) / ( _base1 - _base2 )) * ( TOTAL_PERCEPCIONES - _exento )
+             FIN_SI
+            FIN_SI
+          FIN_SI
+
+   FIN_SI
+
+   SI ( CAP2 ('51') = -1 )
+      TOTAL ('51')   := 0
+      TOTAL ('IMPS') := 0
+      TOTAL ('SUBS') := 0
+      TOTAL ('SUBN') := 0
+      TOTAL ('CRED') := 0
+   FIN_SI
+   SI ( _afectar = 1 )
+      CAP3 ('51')  := TOTAL ('51')
+      CAP3 ('IMPS'):= TOTAL ('IMPS')
+      CAP3 ('SUBS'):= TOTAL ('SUBS')
+      CAP3 ('SUBN'):= TOTAL ('SUBN')
+      CAP3 ('CRED'):= TOTAL ('CRED')
+   FIN_SI
+][
+[] ('51A') ;; #
+][
+[] ('AJUS') ;; #
+   DECIMALES := 2
+   TOTAL ('AJUS') := AJUSTA ( ( TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES ) , 0.10 ) * -1
+   DECIMALES := 8
+   SI ( _afectar = 1 )
+      CAP3 ('AJUS'):= TOTAL ('AJUS')
+   FIN_SI
+][
+[] ('C01') ;; #
+   TOTAL ('C01') := TOTAL_PERCEPCIONES * 0.02
+   SI ( _afectar = 1 )
+      CAP3 ('C01'):= TOTAL ('C01')
+   FIN_SI
+][
+[] ('EX13') ;; #
+][
+[] ('IMPS') ;; #
+][
+[] ('SUBS') ;; #
+][
+[] ('SUBN') ;; #
+][
+[] ('CRED') ;; #
+][
+[] ('EXEN') ;; #
+   DECIMALES := 2
+   TOTAL ('EXEN') := _exento
+   SI ( _afectar = 1 )
+      CAP3 ('EXEN'):= TOTAL ('EXEN')
+   FIN_SI
+][
+[] ('PGRA') ;; #
+   TOTAL ('PGRA') := TOTAL_PERCEPCIONES - _exento
+   SI ( _afectar = 1 )
+      CAP3 ('PGRA'):= TOTAL ('PGRA')
+   FIN_SI
+][
+[] ('PERC') ;; #
+   TOTAL ('PERC') := TOTAL_PERCEPCIONES
+   SI ( _afectar = 1 )
+      CAP3 ('PERC'):= TOTAL ('PERC')
+   FIN_SI
+][
+[] ('66') ;; #
+   SI ( CAP1 ('66') <> 0 )
+      TOTAL ('66') := CAP1 ('66')
+      CAP3 ('66') := TOTAL ('66')
+   SI_NO
+      SI (TOTAL ('51') > 0 )
+          TOTAL ( '66' ) := ((TOTAL ('PERC') - TOTAL ('51') - TOTAL ( '52')) * (CAP1 ( '66' ) /100)) + CAP2 ('66')
+      SI_NO
+          TOTAL ( '66' ) := ((TOTAL ('PERC') - TOTAL ( '52')) * (CAP1 ( '66' ) /100)) + CAP2 ('66')
+      FIN_SI
+      CAP3 ('66') := TOTAL ('66')
+      #TOTAL ( '66' ) := CAP2 ('66')
+   FIN_SI
+][
+[] ('DEDU') ;; #
+   TOTAL ('DEDU') := TOTAL_DEDUCCIONES
+   SI ( _afectar = 1 )
+      CAP3 ('DEDU'):= TOTAL ('DEDU')
+   FIN_SI
+][
+[] ('TOTA') ;; #
+   TOTAL ('TOTA') := TOTAL ('PERC') - TOTAL ('DEDU')
+   SI ( _afectar = 1 )
+      CAP3 ('TOTA'):= TOTAL ('TOTA')
+   FIN_SI
+   DECIMALES := 2
+][

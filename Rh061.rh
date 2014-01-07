@@ -1,0 +1,377 @@
+#FICHA TECNICA
+#VERSION 1.0
+#USUARIO =*
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_FEC  ( 'FECHA VIGENCIA', '', _fecha )
+NUEVO_PARAMETRO_CHEQ ( 'INDIVIDUAL', '', _individual )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+$clave := ''
+SI ( _individual = 1 )
+  NUEVO_PARAMETRO  ( 'EMPLEADO', '', $clave )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+FIN_SI
+
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+SALIDA := $salida
+
+INCLUYE GRAFICO.DAT
+
+# VARIABLES GLOBALES DEL REPORTE
+$genero    := ''
+$papa      := ''
+$mama      := ''
+_npapa     := 0
+_nmama     := 0
+$conyuge   := ''
+_hijos     := 0
+
+SUB_RUTINA formato_trabajador
+   imprime_marco
+
+   SI ( 'EMPPRIN':'FOTO' <> '' )
+     IMPRIME_IMAGEN ( 'EMPPRIN':'FOTO', 1600, 150, 300, 300 )
+   FIN_SI
+
+   _y_act := 200
+
+   $titulo := 'No. de Empleado :'
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_campo_salto
+
+   $titulo := 'Nombre :'
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_campo_salto
+
+   _pos_ancho := 18
+   $titulo := 'Clave CURP :'
+   $valor := 'EMPPRIN':'CURP'
+   imprime_campo_salto
+
+   $titulo := 'No. IMSS :'
+   $valor := FORMATO( 'EMPPRIN':'AFILIACION', 'XXXXXXXXXX-X' )
+   imprime_campo_salto
+
+   $titulo := 'FECHA NACIMIENTO :'
+   FORMATO_FECHA := 5
+   $valor := FECHA( 'EMPRH':'FECHA_NACIMIENTO' )
+   imprime_campo
+
+   _x_act := 1000
+   $titulo := 'Edad :'
+   DECIMALES := 0
+   $valor := .( TRUNCAR( (FECHA_HOY - 'EMPRH':'FECHA_NACIMIENTO' ) / 365 ) )
+   $valor := $valor + ' Años'
+   imprime_campo
+
+   $valor := ''
+   $titulo := 'Sexo :'
+   _x_act := 1350
+   SI ( 'EMPRH':'SEXO' = 'M' )
+     $valor := 'MASCULINO'
+   FIN_SI
+   SI ( 'EMPRH':'SEXO' = 'F' )
+     $valor := 'FEMENIMO'
+   FIN_SI
+   imprime_campo_salto
+
+   $titulo := 'Lugar de Nacimiento :'
+   $valor := 'EMPRH':'LUGAR_NACIMIENTO'
+   imprime_campo_salto
+
+   _pos_ancho := 20
+   $titulo := 'Escolaridad :'
+   $valor := ''
+   SI ( TRAE_REGISTRO( 'ESCOLAR', 'EMPRH':'ESCOLARIDAD' ) )
+     $valor := 'ESCOLAR':'DESCRIPCION'
+   FIN_SI
+   imprime_campo
+
+   _x_act := 1000
+   $valor := ''
+   $titulo := 'Estado Civil :'
+   $genero := 'O'
+   SI ( 'EMPRH':'SEXO' = 'F' )
+     $genero := 'A'
+   FIN_SI
+   SI ( 'EMPRH':'ESTADO_CIVIL' = 'SOL' )
+     $valor := 'SOLTER' + $genero
+   FIN_SI
+   SI ( 'EMPRH':'ESTADO_CIVIL' = 'CAS' )
+     $valor := 'CASAD' + $genero
+   FIN_SI
+   SI ( 'EMPRH':'ESTADO_CIVIL' = 'DIV' )
+     $valor := 'DIVORCIAD' + $genero
+   FIN_SI
+   SI ( 'EMPRH':'ESTADO_CIVIL' = 'VIU' )
+     $valor := 'VIUD' + $genero
+   FIN_SI
+   SI ( 'EMPRH':'ESTADO_CIVIL' = 'ULI' )
+     $valor := 'UNION LIBRE'
+   FIN_SI
+   imprime_campo_salto
+
+   $papa := ''
+   $mama := ''
+   _npapa := 0
+   _nmama := 0
+   _hijos := 0
+   $conyuge := ''
+   PRIMER_REGISTRO( 'EMPFAM' )
+   MIENTRAS( FIN_BASE( 'EMPFAM' ) = FALSO )
+     SI ( 'EMPFAM':'PARENTESCO' = 'PADRE' )
+       SI ( 'EMPFAM':'SEXO' = 'M' )
+         $papa := 'EMPFAM':'NOMBRE'
+         _npapa := 'EMPFAM':'NACIMIENTO'
+       SI_NO
+         $mama  := 'EMPFAM':'NOMBRE'
+         _nmama := 'EMPFAM':'NACIMIENTO'
+       FIN_SI
+     FIN_SI
+     SI ( 'EMPFAM':'PARENTESCO' = 'CONYUGE' )
+       $conyuge := 'EMPFAM':'NOMBRE'
+     FIN_SI
+     SI ( 'EMPFAM':'PARENTESCO' = 'HIJO' )
+       _hijos := _hijos + 1
+     FIN_SI
+     SIGUIENTE_REGISTRO( 'EMPFAM' )
+   FIN_MIENTRAS
+
+   SI ( 'EMPRH':'ESTADO_CIVIL' = 'CAS' )
+     _pos_ancho := 40
+     $titulo := 'Nombre del Conyuge :'
+     $valor := $conyuge
+     imprime_campo_salto
+   FIN_SI
+
+   _pos_ancho := 50
+   $titulo := 'Domicilio :'
+   $valor := 'EMPRH':'CALLE' + ' ' + 'EMPRH':'NUMERO' + ' ' + 'EMPRH':'INTERIOR'
+   imprime_campo_salto
+
+   _pos_ancho := 30
+   $titulo := 'Ciudad :'
+   $valor := 'EMPRH':'MUNICIPIO'
+   imprime_campo
+
+   _x_act := 1000
+   _pos_ancho := 5
+   $titulo := 'C. P. :'
+   $valor := 'EMPRH':'CP'
+   SI ( $valor = '0' )
+     $valor := ''
+   FIN_SI
+   imprime_campo_salto
+
+   _pos_ancho := 15
+   $titulo := 'Teléfono 1 :'
+   $valor := 'EMPRH':'TELEFONO_1'
+   imprime_campo
+
+   _x_act := 1000
+   _pos_ancho := 15
+   $titulo := 'Teléfono 2 :'
+   $valor := 'EMPRH':'TELEFONO_2'
+   imprime_campo_salto
+
+   $titulo := 'Nombre y fecha Nacimiento de los padres '
+   $valor := ':'
+   imprime_campo_salto
+   
+   _pos_ancho := 30
+   _x_act := 100
+   $titulo := 'Padre : '
+   $valor := $papa
+   imprime_campo
+
+   _x_act := 1000
+   _pos_ancho := 15
+   $titulo := 'Fecha Nac : '   
+   $valor := ''
+   SI ( _npapa > 0 )
+     $valor := FECHA( _npapa )
+   FIN_SI
+   imprime_campo_salto
+
+   _pos_ancho := 30
+   _x_act := 100
+   $titulo := 'Madre : '
+   $valor := $mama
+   imprime_campo
+
+   _x_act := 1000
+   _pos_ancho := 15
+   $titulo := 'Fecha Nac : '   
+   $valor := ''
+   SI ( _nmama > 0 )
+     $valor := FECHA( _nmama )
+   FIN_SI
+   imprime_campo_salto
+
+   DECIMALES := 0
+   $titulo := 'Número de Hijos : '
+   $valor := .( _hijos )
+   imprime_campo_salto
+
+   $titulo := 'Nombre, Sexo, Fecha de Nacimiento de hijos '
+   $valor := ':'
+   imprime_campo_salto
+
+   SI ( _hijos = 0 )
+     _pos_ancho := 70
+     $titulo := ' '
+     $valor := ''
+     imprime_campo_salto
+
+     _pos_ancho := 70
+     $titulo := ' '
+     $valor := ''
+     imprime_campo_salto
+   SI_NO
+     PRIMER_REGISTRO( 'EMPFAM' )
+     MIENTRAS( FIN_BASE( 'EMPFAM' ) = FALSO )
+       SI ( 'EMPFAM':'PARENTESCO' = 'HIJO' )
+         _x_act := 100
+         $titulo := 'Nombre :'
+         $valor := 'EMPFAM':'NOMBRE'
+         imprime_campo
+
+         _x_act := 1000
+         $titulo := 'Sexo :'
+         $valor := 'EMPFAM':'SEXO'
+         imprime_campo
+
+         _x_act := 1200
+         $titulo := 'F. Nac :'
+         $valor := FECHA( 'EMPFAM':'NACIMIENTO' )
+         imprime_campo_salto
+
+       FIN_SI
+       SIGUIENTE_REGISTRO( 'EMPFAM' )
+     FIN_MIENTRAS    
+   FIN_SI
+
+   _pos_ancho := 2
+   $titulo := 'Crédito Infonavit : '
+   $valor := 'NO'
+   SI ( 'EMPPRIN':'CREDITO_INFONAVIT' <> '' )
+     $valor := 'SI'
+   FIN_SI
+   imprime_campo
+
+   _pos_ancho := 15
+   _x_act := 550
+   $titulo := 'Fecha : '
+   $valor := ''
+   SI ( 'EMPPRIN':'CREDITO_INFONAVIT' <> '' )
+     $valor := FECHA( 'EMPPRIN':'INICIO DESCUENTO INF' )
+   FIN_SI
+   imprime_campo
+
+   _pos_ancho := 10
+   _x_act := 1200
+   $titulo := 'Descuento : '
+   $valor := ''
+   SI ( 'EMPPRIN':'CREDITO_INFONAVIT' <> '' )
+     SI ( 'EMPPRIN':'TIPO DESCUENTO' = '1' )
+       DECIMALES := 0
+       $valor := .( 'EMPPRIN':'VALOR DESCUENTO' ) + ' %'
+     FIN_SI
+     SI ( 'EMPPRIN':'TIPO DESCUENTO' = '2' )
+       DECIMALES := 2
+       $valor := '$ ' + $( 'EMPPRIN':'VALOR DESCUENTO' )
+     FIN_SI
+     SI ( 'EMPPRIN':'TIPO DESCUENTO' = '3' )
+       DECIMALES := 4
+       $valor := .( 'EMPPRIN':'VALOR DESCUENTO' ) + ' SM'
+     FIN_SI
+   FIN_SI
+   imprime_campo_salto
+
+   $titulo := 'Fecha Ingreso : '
+   $valor := FECHA( 'EMPPRIN':'INGRESO' )
+   imprime_campo_salto
+
+   $titulo := 'Puesto : '
+   $valor := ''
+   SI ( TRAE_REGISTRO( 'PUESTO', 'EMPPRIN':'PUE_CLAVE' ) )
+     $valor := 'PUESTO':'CLAVE' + ' ' + 'PUESTO':'DESCRIPCION'
+   FIN_SI
+   imprime_campo
+
+   _x_act := 1000
+   $titulo := 'Linea : '
+   $valor := ''
+   SI ( TRAE_REGISTRO( 'CENTROC', 'EMPPRIN':'DEP_CLAVE' ) )
+     $valor := 'CENTROC':'CLAVE' + ' ' + 'CENTROC':'DESCRIPCION'
+   FIN_SI
+   imprime_campo_salto
+
+   $titulo := 'Departamento : '
+   $valor := ''
+   SI ( TRAE_REGISTRO( 'CENTROC', 'EMPPRIN':'DEP_CLAVE' ) )
+     SI ( TRAE_REGISTRO( 'DEPTO', 'CENTROC':'DEPARTAMENTO' ) )
+       $valor := 'DEPTO':'CLAVE' + ' ' + 'DEPTO':'DESCRIPCION'
+     FIN_SI
+   FIN_SI
+   imprime_campo
+
+   _x_act := 1000
+   $titulo := 'Turno : '
+   $valor := ''
+   SI ( TRAE_REGISTRO( 'TURNO1', 'EMPPRIN':'TURNO' ) )
+     $valor := 'TURNO1':'CLAVE' + ' ' + 'TURNO1':'DESCRIPCION'
+   FIN_SI
+   imprime_campo_salto
+
+   DECIMALES := 2
+   $titulo := 'Salario Diario : '
+   $valor := $( SUELDO_ACTUAL( _fecha, _fecha ) )
+   imprime_campo_salto
+
+   $titulo := 'Salario Integrado : '
+   $valor := $( INT_IMSS_ACTUAL( _fecha, _fecha ) )
+   imprime_campo
+
+   avanza_hoja
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+
+_incluir_pue := 1
+_incluir_dep := 1
+
+SI ( _individual = 0 )
+  lee_parametros_seleccion
+  lee_parametros_indices
+FIN_SI
+$campos_extras := 'E. CURP, E. AFILIACION, E. FOTO, E. CREDITO_INFONAVIT, E. "INICIO DESCUENTO INF", E. "TIPO DESCUENTO", E. "VALOR DESCUENTO"'
+SI ( _individual = 1 )
+  $condiciones_extras := 'E. CLAVE = "' + $clave + '"'
+FIN_SI
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPRH', 'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPEXT', 'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPFAM', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+  SI ( ES_VIGENTE( _fecha ) )
+    datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

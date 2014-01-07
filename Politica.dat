@@ -1,0 +1,26 @@
+#VARIABLES DE POLITICAS
+$clave_falta     := 'F'
+$clave_he        := '10'
+$clave_mf        := 'M'
+$clave_prim      := '16'   #Prima dominical
+$clave_fest      := '08'   #Dias festivos
+$clave_fest_trab := '14'   #Festivo laborado
+$clave_bd        := '32'   #Bono Dominical
+_tolerancia      := VALOR( LEE_INI( 'RELOJ', 'MINUTOS TOLERANCIA', '0' ) ) * _fm
+#TIEMPO PARA CONSIDERAR TIEMPO EXTRA ANTES Y DESPUES. DESPUES O ANTES DE ESTE TIEMPO SE CONSIDERA TIEMPO EXTRA
+_tiempo_he_ent := 60 * _fm
+_tiempo_he_sal := 60 * _fm
+_tiempo_comida := 30 * _fm
+
+_desc_com_di   := 1  #DESCONTAR COMEDOR EN DIAS INHABILES
+
+#FILTROS GENERALES PARA DETERMINAR QUE EMPLEADOS NO CHECAN
+$quien_checa_fil := '"D","I","N"'
+_quien_checa_col := 11
+_quien_checa_ren := 4
+
+_checar_te     := 1   #CHECAR TIEMPO EXTRA EN LA ENTRADA
+_validar_te    := 1   #VALIDAR EL TIEMPO EXTRA
+
+
+

@@ -1,0 +1,80 @@
+#PAGO SANTANDER 1 LB
+#FORMATO DE NOMINA SANTANDER TIPO 1 GORH
+#FORMATO DE NOMINA SANTANDER TIPO 1
+#FORMATO DE NOMINA SANTANDER
+#FORMATO DE NOMINA PREPAGO
+#FORMATO PAGO DE NOMINA IB
+#FORMATO PAGO DE NOMINA IB
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte de pago santander
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'EXCEL', $salida)
+NUEVO_PARAMETRO_RUTA ( 'RUTA' , '' , $ruta ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+$cuenta := LEE_INI ( 'MACRO PAGO' , 'CUENTA' , '' ) 
+
+NUEVO_PARAMETRO  ( 'CUENTA CARGO' , $cuenta , $cuenta ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+ESCRIBE_INI ( 'MACRO PAGO' , 'CUENTA' , $cuenta )
+
+
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , $ruta ) 
+
+
+_filaexcel := 8
+
+$empleado := '' ;; $apaterno := '' ;; $amaterno := '' ;; $nombre := '' ;; $cuenta := '' ;; $importe := ''
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+$c := SUBSTR ( '''' , 1 , 1 ) 
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+
+   EXCEL ( 'PON_VALOR' , 3 , _filaexcel , $c + 'EMPPRIN':'CLAVE'  ) 
+   EXCEL ( 'PON_VALOR' , 4 , _filaexcel , 'EMPPRIN':'NOMBREP'  ) 
+   EXCEL ( 'PON_VALOR' , 5 , _filaexcel , 'EMPPRIN':'NOMBREM') 
+   EXCEL ( 'PON_VALOR' , 6 , _filaexcel , 'EMPPRIN':'NOMBREN'  ) 
+   EXCEL ( 'PON_VALOR' , 7 , _filaexcel , 'EMPPRIN':'CTA_TARJETA'  ) 
+   
+   DECIMALES:= 2
+   EXCEL ( 'PON_VALOR' , 8 , _filaexcel , .(TOTAL('TOTA')  ) )
+   _filaexcel := ( _filaexcel + 1 ) 
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina:= 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. RFC,E.CTA_TARJETA,E.NOMBREP,E.NOMBREM,E.NOMBREN'
+base_trabajadores
+
+
+FORMATO_FECHA := 3
+EXCEL ( 'PON_VALOR' , 6 , 3 ,  $cuenta ) 
+EXCEL ( 'PON_VALOR' , 6 , 4 ,  FECHA ( FECHA_HOY )  ) 
+
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT' , 'CLAVE' )
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ( TOTAL ( 'TOTA' ) <> 0  )  AND ( 'EMPPRIN':'CTA_TARJETA' <> '' )  AND  ( 'EMPEXT':'BANCO'  = '1' ) )
+          formato_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+TERMINA_REPORTE

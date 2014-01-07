@@ -1,0 +1,167 @@
+#IMPORACION DE ACUMULADOS DESDE EXCEL
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.6
+#EXCEL
+#DESCRIPCION
+#REPORTE PARA LA IMPORTACION DE ACUMULADOS
+#CLAVE
+#CONCEPTO
+#ENE
+#FEB
+#MAR
+#ABR
+#MAY
+#JUN
+#JUL
+#AGO
+#SEP
+#OCT
+#NOV
+#DIC
+#CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/EXCEL/DISCO' , $salida  )
+NUEVO_PARAMETRO_RUTA( 'SALIDA' , 'C:\ACUM.XLS'                    , $archivo )
+NUEVO_PARAMETRO_SEL ( 'TIPO'   , 'REEMPLAZAR/SUMAR' , _seleccion )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$clave    := ''
+$concepto := ''
+_ene      := 0
+_feb      := 0
+_mar      := 0
+_abr      := 0
+_may      := 0
+_jun      := 0
+_jul      := 0
+_ago      := 0
+_sep      := 0
+_oct      := 0
+_nov      := 0
+_dic      := 0
+_agui     := 0
+_fini     := 0
+_esp      := 0
+
+EXCEL( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , $archivo )
+
+ABRE_BASE('EMPPRIN')
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPACUM' , 'CLAVE' )
+
+_ren := 2
+
+REPITE
+
+   DECIMALES := 2
+
+   EXCEL( 'TRAE_VALOR' , 1   , _ren , $clave    )
+   EXCEL( 'TRAE_VALOR' , 2   , _ren , $concepto )
+   EXCEL( 'TRAE_VALOR' , 3   , _ren , _ene      )
+   EXCEL( 'TRAE_VALOR' , 4   , _ren , _feb      )
+   EXCEL( 'TRAE_VALOR' , 5   , _ren , _mar      )
+   EXCEL( 'TRAE_VALOR' , 6   , _ren , _abr      )
+   EXCEL( 'TRAE_VALOR' , 7   , _ren , _may      )
+   EXCEL( 'TRAE_VALOR' , 8   , _ren , _jun      )
+   EXCEL( 'TRAE_VALOR' , 9   , _ren , _jul      )
+   EXCEL( 'TRAE_VALOR' , 10  , _ren , _ago      )
+   EXCEL( 'TRAE_VALOR' , 11  , _ren , _sep      )
+   EXCEL( 'TRAE_VALOR' , 12  , _ren , _oct      )
+   EXCEL( 'TRAE_VALOR' , 13  , _ren , _nov      )
+   EXCEL( 'TRAE_VALOR' , 14  , _ren , _dic      )
+   EXCEL( 'TRAE_VALOR' , 15  , _ren , _agui     )
+   EXCEL( 'TRAE_VALOR' , 16  , _ren , _fini     )
+   EXCEL( 'TRAE_VALOR' , 17  , _ren , _esp      )
+
+SI ( TRAE_REGISTRO ('EMPPRIN' , $clave ) = VERDADERO )
+   SI( TRAE_REGISTRO( 'EMPACUM' , $clave , $concepto ) = VERDADERO )
+
+          SI ( _seleccion = 1)
+
+            'EMPACUM':'ENE'      := 'EMPACUM':'ENE' + _ene
+            'EMPACUM':'FEB'      := 'EMPACUM':'FEB' + _feb
+            'EMPACUM':'MAR'      := 'EMPACUM':'MAR' + _mar
+            'EMPACUM':'ABR'      := 'EMPACUM':'ABR' + _abr
+            'EMPACUM':'MAY'      := 'EMPACUM':'MAY' + _may
+            'EMPACUM':'JUN'      := 'EMPACUM':'JUN' + _jun
+            'EMPACUM':'JUL'      := 'EMPACUM':'JUL' + _jul
+            'EMPACUM':'AGO'      := 'EMPACUM':'AGO' + _ago
+            'EMPACUM':'SEP'      := 'EMPACUM':'SEP' + _sep
+            'EMPACUM':'OCT'      := 'EMPACUM':'OCT' + _oct
+            'EMPACUM':'NOV'      := 'EMPACUM':'NOV' + _nov
+            'EMPACUM':'DIC'      := 'EMPACUM':'DIC' + _dic
+            'EMPACUM':'AGUINALDO':= 'EMPACUM':'AGUINALDO' + _agui
+            'EMPACUM':'FINIQUITO':= 'EMPACUM':'FINIQUITO' + _fini
+            'EMPACUM':'ESPECIAL' := 'EMPACUM':'ESPECIAL'  + _esp
+
+           SI_NO
+
+            'EMPACUM':'ENE'      := _ene
+            'EMPACUM':'FEB'      := _feb
+            'EMPACUM':'MAR'      := _mar
+            'EMPACUM':'ABR'      := _abr
+            'EMPACUM':'MAY'      := _may
+            'EMPACUM':'JUN'      := _jun
+            'EMPACUM':'JUL'      := _jul
+            'EMPACUM':'AGO'      := _ago
+            'EMPACUM':'SEP'      := _sep
+            'EMPACUM':'OCT'      := _oct
+            'EMPACUM':'NOV'      := _nov
+            'EMPACUM':'DIC'      := _dic
+            'EMPACUM':'AGUINALDO':= _agui
+            'EMPACUM':'FINIQUITO':= _fini
+            'EMPACUM':'ESPECIAL' := _esp
+
+          FIN_SI
+
+
+            $valor := $clave
+            imprime_columna
+
+            GRABA_BASE( 'EMPACUM' )
+
+      SI_NO
+
+            AGREGA_REGISTRO( 'EMPACUM' )
+
+            'EMPACUM':'CLAVE'    := $clave
+            'EMPACUM':'CONCEPTO' := $concepto
+            'EMPACUM':'ENE'      := _ene
+            'EMPACUM':'FEB'      := _feb
+            'EMPACUM':'MAR'      := _mar
+            'EMPACUM':'ABR'      := _abr
+            'EMPACUM':'MAY'      := _may
+            'EMPACUM':'JUN'      := _jun
+            'EMPACUM':'JUL'      := _jul
+            'EMPACUM':'AGO'      := _ago
+            'EMPACUM':'SEP'      := _sep
+            'EMPACUM':'OCT'      := _oct
+            'EMPACUM':'NOV'      := _nov
+            'EMPACUM':'DIC'      := _dic
+            'EMPACUM':'AGUINALDO':= _agui
+            'EMPACUM':'FINIQUITO':= _fini
+            'EMPACUM':'ESPECIAL' := _esp
+
+            $valor := $clave
+            imprime_columna
+            GRABA_BASE( 'EMPACUM' )
+   FIN_SI
+imprime_renglon
+FIN_SI
+
+_ren := _ren + 1
+HASTA ( $clave = '' )

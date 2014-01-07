@@ -1,0 +1,62 @@
+#ARREGLA SUELDOS, DEPTOS, SUCURSALES Y PUESTOS
+#NO EDITAR
+#USUARIO =*
+#DESCRIPCION
+#Utileria para el arreglo en kárdex de sueldos y localización dsp
+#El proceso arregla las Fechas de Salida de cada movimiento dentro de los kárdex históricos de empleados (Sueldos y Localización DSP).
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+NUEVO_PARAMETRO_CHEQ ( 'SUELDOS', '', _sueldos )
+NUEVO_PARAMETRO_CHEQ ( 'DEPTOS', '', _deptos )
+NUEVO_PARAMETRO_CHEQ ( 'SUCURSALES', '', _sucursales )
+NUEVO_PARAMETRO_CHEQ ( 'PUESTOS', '', _puestos )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+ABRE_BASE ( 'EMPPRIN' )
+SI ( _sueldos = 1 )
+  USA_ARCHIVO( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+FIN_SI
+SI ( _deptos = 1 )
+  USA_ARCHIVO( 'EMPPRIN', 'EMPDEP', 'CLAVE' )
+FIN_SI
+SI ( _sucursales = 1 )
+  USA_ARCHIVO( 'EMPPRIN', 'EMPSUC', 'CLAVE' )
+FIN_SI
+SI ( _puestos = 1 )
+  USA_ARCHIVO( 'EMPPRIN', 'EMPPUES', 'CLAVE' )
+FIN_SI
+
+MUESTRA_AVANCE ( 'EMPPRIN', 'PROCESANDO...')
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE( 'EMPPRIN' ) = FALSO )
+  SI ( _sueldos = 1 )
+    PRIMER_REGISTRO ( 'EMPSDO' )
+    'EMPSDO':'TIPO' := 'A'
+    GRABA_BASE ( 'EMPSDO' )
+  FIN_SI
+
+  SI ( _sucursales = 1 )
+    PRIMER_REGISTRO ( 'EMPSUC' )
+    'EMPSUC':'CLAVE' := 'EMPPRIN':'CLAVE'
+    GRABA_BASE ( 'EMPSUC' )
+  FIN_SI
+
+  SI ( _deptos = 1 )
+    PRIMER_REGISTRO ( 'EMPDEP' )
+    'EMPDEP':'CLAVE' := 'EMPPRIN':'CLAVE'
+    GRABA_BASE ( 'EMPDEP' )
+  FIN_SI
+
+  SI ( _puestos = 1 )
+    PRIMER_REGISTRO ( 'EMPPUES' )
+    'EMPPUES':'CLAVE' := 'EMPPRIN':'CLAVE'
+    GRABA_BASE ( 'EMPPUES' )
+  FIN_SI
+
+  SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS

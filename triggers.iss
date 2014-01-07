@@ -1,0 +1,2674 @@
+--VERSION 1.19
+--22/Ene/2013 : Eduardo Padilla
+--Se elimina la tabla EMP_AUXSUP del triggers del delete de EMPPRIN
+--VERSION 1.18
+--14/oct/2011 : Eduardo Padilla
+--Se agrega trigger para eliminar relacion de EMPFINIQUITO con DET_FINI
+--VERSION 1.17
+--05/AGO/2008 Eduardo Padilla
+--En el trigger de EMPPRIN_DELETE en la busqueda de tipos de nomina con el _ se cambio por [_] ya que el _ es comodin de una letra.
+--28/FEB/2007 Eduardo Padilla
+-- Se agregaron los procedimientos restantes de empleados. Trae_faltas, Incapacidades, etc.
+--VERSION 1.10
+--16/ENE/2007 Eduardo Padilla
+-- Se modifico los triggers de EMPDSP y EMPSDO para tambien validar que se dispare al modificar la fecha de captura para poder mediante una consulta ajustar los movimientos.
+--VERSION 1.09
+--04/DIC/2006 Eduardo Padilla
+--Se modifico los trigers de saldos de prestamo para que cuando el monto de prestamo se 0 ( Aportacion ) sume el monto del descuento al saldo en lugar de descontarlo.
+--13/OCT/2006 EDUARDO PADILLA
+--Se modificaron los triggers de actualizacion de fechas de salida ya que cuando la modificacion era masiva habia errores. Se creo tabla temporal con valores unicos.
+--01/JUNC/2006 Eduardo Padilla
+--Se modifico el trigger de insert y update del emppres para que cuando calcule
+--el monto del prestamo y sume el presta+ interes. si el interes es nulo que lo
+--asigne en 0.
+--15/ENE/2009 Eduardo Padilla
+--Se modifico los triggers EMPTURNO y EMPTIPONOM tanto el update como el delete porque no se consideraba el antes = clave y no funcionaba correctamente.
+--29/ENE/2009 Eduardo Padilla
+--El trigger de Insert de la tabla EMPABO estaba haciendo referencia a la tabla de DELETED en lugar de INSERTED
+--10/JUL/2010 Eduardo Padilla Mejia
+--El trigger de borrar prestamos no tenia el Supervisor_giro en los abonos.
+--29/AGO/2011
+--Se elimina el trigger o contrain para el turno ya que causa conflictos cuando no se tiene el turno o se tiene vacio
+
+-- ELIMINAR TODOS LOS CONSTRAINTS
+    DECLARE @tabla CHAR(40)
+    DECLARE @regla CHAR(40)
+    DECLARE @id INTEGER
+    DECLARE CONST CURSOR FOR
+    SELECT name, parent_obj
+    FROM SYSOBJECTS
+    WHERE TYPE = 'F'
+
+    OPEN CONST
+
+    FETCH NEXT FROM CONST
+    INTO @regla, @id
+
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      SELECT @tabla = name
+      FROM SYSOBJECTS
+      WHERE ID = @id      
+
+      PRINT 'CONST : ' + @regla + ' TABLA : ' + @tabla
+      EXECUTE ( 'ALTER TABLE Supervisor_giro.' + @tabla + ' DROP CONSTRAINT ' + @regla )
+
+      FETCH NEXT FROM CONST
+      INTO @regla, @id
+      END
+
+    CLOSE CONST
+    DEALLOCATE CONST
+GO
+
+-- ELIMINAR TODOS LOS TRIGGERS
+    DECLARE @tabla CHAR(40)
+    DECLARE TRIG CURSOR FOR
+    SELECT name
+    FROM SYSOBJECTS
+    WHERE TYPE = 'TR'
+
+    OPEN TRIG
+
+    FETCH NEXT FROM TRIG
+    INTO @tabla
+
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      EXECUTE ( 'DROP TRIGGER Supervisor_giro.' + @tabla )
+        PRINT 'TRIGGER ' + @tabla
+
+      FETCH NEXT FROM TRIG
+      INTO @tabla
+      END
+
+    CLOSE TRIG
+    DEALLOCATE TRIG
+GO
+
+-- ELIMINAR TODOS LOS STORED PROCEDURES
+    DECLARE @tabla CHAR(40)
+    DECLARE TRIG CURSOR FOR
+    SELECT name
+    FROM SYSOBJECTS
+    WHERE TYPE = 'P' AND BASE_SCHEMA_VER = 0
+
+    OPEN TRIG
+
+    FETCH NEXT FROM TRIG
+    INTO @tabla
+
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      EXECUTE ( 'DROP PROCEDURE Supervisor_giro.' + @tabla )
+        PRINT 'PROCEDURE ' + @tabla
+
+      FETCH NEXT FROM TRIG
+      INTO @tabla
+      END
+
+    CLOSE TRIG
+    DEALLOCATE TRIG
+GO
+
+-- INTEGRIDAD PARA LA TABLA SUCURSAL CON EL CAMPO REGISTRO_PATRONAL.
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_SUCURSAL_REGISTRO_PATRONAL'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. SUCURSAL
+  DROP CONSTRAINT FK_SUCURSAL_REGISTRO_PATRONAL  
+GO
+
+ALTER TABLE Supervisor_giro. SUCURSAL
+WITH NOCHECK
+ADD CONSTRAINT FK_SUCURSAL_REGISTRO_PATRONAL
+    FOREIGN KEY ( REGISTRO_PATRONAL )
+    REFERENCES Supervisor_giro. PATRONAL( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPSUC CON EL CAMPO CATALOGO
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPSUC_CATALOGO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPSUC
+  DROP CONSTRAINT FK_EMPSUC_CATALOGO
+GO
+
+ALTER TABLE Supervisor_giro. EMPSUC
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPSUC_CATALOGO
+    FOREIGN KEY ( CATALOGO )
+    REFERENCES Supervisor_giro. SUCURSAL( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPSUC CON EL CAMPO CLAVE
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPSUC_CLAVE'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPSUC
+  DROP CONSTRAINT FK_EMPSUC_CLAVE
+GO
+
+ALTER TABLE Supervisor_giro. EMPSUC
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPSUC_CLAVE
+    FOREIGN KEY ( CLAVE )
+    REFERENCES Supervisor_giro. EMPPRIN( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+GO
+
+-- INTEGRIDAD PARA LA TABLA DEPARTAMENTO CENTRO DE COSTO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_CENTROC_DEPTO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. CENTROC
+  DROP CONSTRAINT FK_CENTROC_DEPTO
+GO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_DEPTO_CENTROC'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. DEPTO
+  DROP CONSTRAINT FK_DEPTO_CENTROC
+GO
+
+IF EXISTS ( SELECT c.* FROM dbo.sysobjects as o, dbo.syscolumns c 
+	    WHERE o.name = 'CENTROC' AND o.xtype = 'U' AND c.id = o.id AND c.name = 'DEPARTAMENTO' )
+  ALTER TABLE Supervisor_giro. CENTROC
+  WITH NOCHECK
+  ADD CONSTRAINT FK_CENTROC_DEPTO
+      FOREIGN KEY ( DEPARTAMENTO )
+      REFERENCES Supervisor_giro. DEPTO( CLAVE )
+      ON UPDATE CASCADE
+      ON DELETE NO ACTION
+GO
+
+IF EXISTS ( SELECT c.* FROM dbo.sysobjects as o, dbo.syscolumns c 
+	    WHERE o.name = 'DEPTO' AND o.xtype = 'U' AND c.id = o.id AND c.name = 'CENTRO_COSTO' )
+  ALTER TABLE Supervisor_giro. DEPTO
+  WITH NOCHECK
+  ADD CONSTRAINT FK_DEPTO_CENTROC
+      FOREIGN KEY ( CENTRO_COSTO )
+      REFERENCES Supervisor_giro. CENTROC( CLAVE )
+      ON UPDATE CASCADE
+      ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPDEP CON EL CAMPO CATALOGO
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPDEP_CATALOGO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPDEP
+  DROP CONSTRAINT FK_EMPDEP_CATALOGO
+GO
+
+IF EXISTS ( SELECT c.* FROM dbo.sysobjects as o, dbo.syscolumns c 
+	    WHERE o.name = 'CENTROC' AND o.xtype = 'U' AND c.id = o.id AND c.name = 'DEPARTAMENTO' )
+  ALTER TABLE Supervisor_giro. EMPDEP
+  WITH NOCHECK
+  ADD CONSTRAINT FK_EMPDEP_CATALOGO
+      FOREIGN KEY ( CATALOGO )
+      REFERENCES Supervisor_giro. CENTROC( CLAVE )
+      ON UPDATE CASCADE
+      ON DELETE NO ACTION
+GO
+
+IF EXISTS ( SELECT c.* FROM dbo.sysobjects as o, dbo.syscolumns c 
+	    WHERE o.name = 'DEPTO' AND o.xtype = 'U' AND c.id = o.id AND c.name = 'CENTRO_COSTO' )
+  ALTER TABLE Supervisor_giro. EMPDEP
+  WITH NOCHECK
+  ADD CONSTRAINT FK_EMPDEP_CATALOGO
+      FOREIGN KEY ( CATALOGO )
+      REFERENCES Supervisor_giro. DEPTO( CLAVE )
+      ON UPDATE CASCADE
+      ON DELETE NO ACTION
+GO
+
+
+-- INTEGRIDAD PARA LA TABLA EMPDEP CON EL CAMPO CLAVE
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPDEP_CLAVE'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPDEP
+  DROP CONSTRAINT FK_EMPDEP_CLAVE
+GO
+
+ALTER TABLE Supervisor_giro. EMPDEP
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPDEP_CLAVE
+    FOREIGN KEY ( CLAVE )
+    REFERENCES Supervisor_giro. EMPPRIN( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+GO
+
+-- INTEGRIDAD PARA LA TABLA PUESTO CON EL CAMPO TIPO_EMPLEADO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_PUESTO_TIPO_EMPLEADO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. PUESTO
+  DROP CONSTRAINT FK_PUESTO_TIPO_EMPLEADO
+GO
+
+ALTER TABLE Supervisor_giro. PUESTO
+WITH NOCHECK
+ADD CONSTRAINT FK_PUESTO_TIPO_EMPLEADO
+    FOREIGN KEY ( TIPO_EMPLEADO )
+    REFERENCES Supervisor_giro. TIPOEMP( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA FACTOR CON EL CAMPO CLAVE
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_FACTOR_CLAVE'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. FACTOR
+  DROP CONSTRAINT FK_FACTOR_CLAVE
+GO
+
+ALTER TABLE Supervisor_giro. FACTOR
+WITH NOCHECK
+ADD CONSTRAINT FK_FACTOR_CLAVE
+    FOREIGN KEY ( CLAVE )
+    REFERENCES Supervisor_giro. TIPOEMP( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPPUES CON EL CAMPO CATALOGO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPPUES_CATALOGO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPPUES
+  DROP CONSTRAINT FK_EMPPUES_CATALOGO
+GO
+
+ALTER TABLE Supervisor_giro. EMPPUES
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPPUES_CATALOGO
+    FOREIGN KEY ( CATALOGO )
+    REFERENCES Supervisor_giro. PUESTO( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPPUES CON EL CAMPO CLAVE
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPPUES_CLAVE'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPPUES
+  DROP CONSTRAINT FK_EMPPUES_CLAVE
+GO
+
+ALTER TABLE Supervisor_giro. EMPPUES
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPPUES_CLAVE
+    FOREIGN KEY ( CLAVE )
+    REFERENCES Supervisor_giro. EMPPRIN( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+GO
+
+-- INTEGRIDAD PARA LA TABLA PUESTO CON EL CAMPO CALENDARIO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_PUESTO_CALENDARIO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. PUESTO
+  DROP CONSTRAINT FK_PUESTO_CALENDARIO
+GO
+
+ALTER TABLE Supervisor_giro. PUESTO
+WITH NOCHECK
+ADD CONSTRAINT FK_PUESTO_CALENDARIO
+    FOREIGN KEY ( CALENDARIO )
+    REFERENCES Supervisor_giro. CALENDAR( CLAVE )
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA DIASINHA CON EL CAMPO CLAVE
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_DIASINHA_CLAVE'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. DIASINHA
+  DROP CONSTRAINT FK_DIASINHA_CLAVE
+GO
+
+ALTER TABLE Supervisor_giro. DIASINHA
+WITH NOCHECK
+ADD CONSTRAINT FK_DIASINHA_CLAVE
+    FOREIGN KEY ( CLAVE )
+    REFERENCES Supervisor_giro. CALENDAR( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPAUS CON EL CAMPO TIPO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPAUS_TIPO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPAUS
+  DROP CONSTRAINT FK_EMPAUS_TIPO
+GO
+
+ALTER TABLE Supervisor_giro. EMPAUS
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPAUS_TIPO
+    FOREIGN KEY ( TIPO )
+    REFERENCES Supervisor_giro. FALTA( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- TRIGER PARA PREVENIR EL BORRADO EN BAJA
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'BAJA_DELETE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. BAJA_DELETE
+GO
+
+CREATE TRIGGER BAJA_DELETE
+ON Supervisor_giro. BAJA
+FOR DELETE
+AS
+  IF ( SELECT COUNT(*)
+       FROM Supervisor_giro. EMPSDO S, DELETED T
+       WHERE S. CAUSA_BAJA = T. CLAVE ) > 0
+    BEGIN
+      RAISERROR ( 'NO ES POSIBLE BORRAR EL REGISTRO AUN HAY REGISTROS RELACIONADOS.', 10, 1 )
+      ROLLBACK TRANSACTION
+    END
+GO
+
+-- TRIGER PARA ACUALIZAR EN CASCADA
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'BAJA_UPDATE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. BAJA_UPDATE
+GO
+
+CREATE TRIGGER BAJA_UPDATE
+ON Supervisor_giro. BAJA
+FOR UPDATE
+AS
+  IF UPDATE( CLAVE )
+  BEGIN
+    DECLARE @viejo CHARACTER(10)
+    DECLARE @nuevo CHARACTER(10)
+
+    DECLARE NUEVO CURSOR FOR
+    SELECT INSERTED. CLAVE
+    FROM INSERTED
+
+    DECLARE VIEJO CURSOR FOR
+    SELECT DELETED. CLAVE
+    FROM DELETED
+
+    OPEN NUEVO
+
+    FETCH NEXT FROM NUEVO
+    INTO @nuevo
+
+    OPEN VIEJO
+
+    FETCH NEXT FROM VIEJO
+    INTO @viejo
+
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      -- ACCION A REALIZAR POR CADA REGISTRO ACTUALIZADO.
+
+      UPDATE Supervisor_giro. EMPSDO
+      SET Supervisor_giro. EMPSDO. CAUSA_BAJA = @nuevo
+      WHERE Supervisor_giro. EMPSDO. CAUSA_BAJA = @viejo
+     
+      FETCH NEXT FROM VIEJO
+      INTO @viejo
+      FETCH NEXT FROM NUEVO
+      INTO @nuevo
+      END
+    CLOSE VIEJO
+    DEALLOCATE VIEJO
+    CLOSE NUEVO
+    DEALLOCATE NUEVO
+  END
+GO
+
+
+-- INTEGRIDAD PARA LA TABLA PERIODO CON EL CAMPO TIPONOM
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_PERIODO_TIPONOM'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. PERIODO
+  DROP CONSTRAINT FK_PERIODO_TIPONOM
+GO
+
+ALTER TABLE Supervisor_giro. PERIODO
+WITH NOCHECK
+ADD CONSTRAINT FK_PERIODO_TIPONOM
+    FOREIGN KEY ( TIPONOM )
+    REFERENCES Supervisor_giro. TIPONOM( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPPRIN CON EL CAMPO TIPO_NOM
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPPRIN_TIPO_NOM'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPPRIN
+  DROP CONSTRAINT FK_EMPPRIN_TIPO_NOM
+GO
+
+ALTER TABLE Supervisor_giro. EMPPRIN
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPPRIN_TIPO_NOM
+    FOREIGN KEY ( TIPO_NOM )
+    REFERENCES Supervisor_giro. TIPONOM( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPRH CON EL CAMPO ESCOLARIDAD
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPRH_ESCOLARIDAD'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPRH
+  DROP CONSTRAINT FK_EMPRH_ESCOLARIDAD
+GO
+
+ALTER TABLE Supervisor_giro. EMPRH
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPRH_ESCOLARIDAD
+    FOREIGN KEY ( ESCOLARIDAD )
+    REFERENCES Supervisor_giro. ESCOLAR( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPIDIOM CON EL CAMPO IDIOMA
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPIDIOM_IDIOMA'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPIDIOM
+  DROP CONSTRAINT FK_EMPIDIOM_IDIOMA
+GO
+
+ALTER TABLE Supervisor_giro. EMPIDIOM
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPIDIOM_IDIOMA
+    FOREIGN KEY ( IDIOMA )
+    REFERENCES Supervisor_giro. IDIOMA( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA CURSOPRO CON EL CAMPO INSTRUCTOR
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_CURSOPRO_INSTRUCTOR'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. CURSOPRO
+  DROP CONSTRAINT FK_CURSOPRO_INSTRUCTOR
+GO
+
+ALTER TABLE Supervisor_giro. CURSOPRO
+WITH NOCHECK
+ADD CONSTRAINT FK_CURSOPRO_INSTRUCTOR
+    FOREIGN KEY ( INSTRUCTOR )
+    REFERENCES Supervisor_giro. INSTRUCT( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA CURSOPRO CON EL CAMPO CLAVE_CURSO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_CURSOPRO_CLAVE_CURSO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. CURSOPRO
+  DROP CONSTRAINT FK_CURSOPRO_CLAVE_CURSO
+GO
+
+ALTER TABLE Supervisor_giro. CURSOPRO
+WITH NOCHECK
+ADD CONSTRAINT FK_CURSOPRO_CLAVE_CURSO
+    FOREIGN KEY ( CLAVE_CURSO )
+    REFERENCES Supervisor_giro. CURSO( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA CURSOPUE CON EL CAMPO CLAVE_CURSO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_CURSOPUE_CLAVE_CURSO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. CURSOPUE
+  DROP CONSTRAINT FK_CURSOPUE_CLAVE_CURSO
+GO
+
+ALTER TABLE Supervisor_giro. CURSOPUE
+WITH NOCHECK
+ADD CONSTRAINT FK_CURSOPUE_CLAVE_CURSO
+    FOREIGN KEY ( CLAVE_CURSO )
+    REFERENCES Supervisor_giro. CURSO( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA CURSOPUE CON EL CAMPO CLAVE_PUESTO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_CURSOPUE_CLAVE_PUESTO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. CURSOPUE
+  DROP CONSTRAINT FK_CURSOPUE_CLAVE_PUESTO
+GO
+
+ALTER TABLE Supervisor_giro. CURSOPUE
+WITH NOCHECK
+ADD CONSTRAINT FK_CURSOPUE_CLAVE_PUESTO
+    FOREIGN KEY ( CLAVE_PUESTO )
+    REFERENCES Supervisor_giro. PUESTO( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPCURSO CON EL CAMPO CURSO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPCURSO_CURSO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPCURSO
+  DROP CONSTRAINT FK_EMPCURSO_CURSO
+GO
+
+ALTER TABLE Supervisor_giro. EMPCURSO
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPCURSO_CURSO
+    FOREIGN KEY ( CURSO )
+    REFERENCES Supervisor_giro. CURSO( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPCURSO CON EL CAMPO INSTRUCTOR
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPCURSO_INSTRUCTOR'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPCURSO
+  DROP CONSTRAINT FK_EMPCURSO_INSTRUCTOR
+GO
+
+ALTER TABLE Supervisor_giro. EMPCURSO
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPCURSO_INSTRUCTOR
+    FOREIGN KEY ( INSTRUCTOR )
+    REFERENCES Supervisor_giro. INSTRUCT( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPCAPAC CON EL CAMPO CURSO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPCAPAC_CURSO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPCAPAC
+  DROP CONSTRAINT FK_EMPCAPAC_CURSO
+GO
+
+ALTER TABLE Supervisor_giro. EMPCAPAC
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPCAPAC_CURSO
+    FOREIGN KEY ( CURSO )
+    REFERENCES Supervisor_giro. CURSO( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPNOTA CON EL CAMPO TIPO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPNOTA_TIPO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPNOTA
+  DROP CONSTRAINT FK_EMPNOTA_TIPO
+GO
+
+ALTER TABLE Supervisor_giro. EMPNOTA
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPNOTA_TIPO
+    FOREIGN KEY ( TIPO )
+    REFERENCES Supervisor_giro. NOTA( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPABO CON EL CAMPO PRESTAMO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPPRES_DELETE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPPRES_DELETE
+GO
+
+CREATE TRIGGER EMPPRES_DELETE
+ON Supervisor_giro. EMPPRES
+FOR DELETE
+AS
+    DECLARE @viejo INTEGER
+
+    DECLARE VIEJO CURSOR FOR
+    SELECT DELETED. ID
+    FROM DELETED
+
+    OPEN VIEJO
+
+    FETCH NEXT FROM VIEJO
+    INTO @viejo
+
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      -- ACCION A REALIZAR POR CADA REGISTRO ACTUALIZADO.
+      DELETE FROM SUPERVISOR_GIRO.EMPABO
+      WHERE PRESTAMO = @viejo
+     
+      FETCH NEXT FROM VIEJO
+      INTO @viejo
+      END
+
+    CLOSE VIEJO
+    DEALLOCATE VIEJO
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPENT CON EL CAMPO ENTRENAMIENTO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPENT_ENTRENAMIENTO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPENT
+  DROP CONSTRAINT FK_EMPENT_ENTRENAMIENTO
+GO
+
+ALTER TABLE Supervisor_giro. EMPENT
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPENT_ENTRENAMIENTO
+    FOREIGN KEY ( ENTRENAMIENTO )
+    REFERENCES Supervisor_giro. TABENT( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA EMPENT CON EL CAMPO INSTRUCTOR
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_EMPENT_INSTRUCTOR'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. EMPENT
+  DROP CONSTRAINT FK_EMPENT_INSTRUCTOR
+GO
+
+ALTER TABLE Supervisor_giro. EMPENT
+WITH NOCHECK
+ADD CONSTRAINT FK_EMPENT_INSTRUCTOR
+    FOREIGN KEY ( INSTRUCTOR )
+    REFERENCES Supervisor_giro. INSTRUCT( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA RELENT CON EL CAMPO ENTRENAMIENTO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_RELENT_ENTRENAMIENTO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. RELENT
+  DROP CONSTRAINT FK_RELENT_ENTRENAMIENTO
+GO
+
+ALTER TABLE Supervisor_giro. RELENT
+WITH NOCHECK
+ADD CONSTRAINT FK_RELENT_ENTRENAMIENTO
+    FOREIGN KEY ( ENTRENAMIENTO )
+    REFERENCES Supervisor_giro. TABENT( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- TRIGER PARA ACTUALIZAR FECHAS FINALES DE EMPSDO
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPSDO_UPDATE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPSDO_UPDATE
+GO
+
+CREATE TRIGGER Supervisor_giro. EMPSDO_UPDATE
+ON Supervisor_giro. EMPSDO
+FOR INSERT, UPDATE
+AS
+  IF ( UPDATE( FECHA ) ) OR ( UPDATE(FECHA_CAPTURA) )
+    BEGIN
+    DECLARE @empleado VARCHAR(10)
+    DECLARE @clave VARCHAR(10)
+    DECLARE @fecha_entrada DATETIME
+    DECLARE @fecha_salida DATETIME
+    DECLARE @fecha_auxiliar DATETIME
+    DECLARE @id INTEGER
+    DECLARE @antes VARCHAR(10)
+
+    CREATE TABLE #emp ( CLAVE    VARCHAR(10) collate SQL_Latin1_General_CP1_CI_AS NOT NULL )
+
+    INSERT INTO #emp
+    SELECT DISTINCT( CLAVE )
+    FROM INSERTED
+
+    DECLARE VALIDA_TABLA CURSOR FOR
+    SELECT S.CLAVE, S.FECHA, S.FECHA_SALIDA, S.ID
+    FROM Supervisor_giro. EMPSDO S, #emp E
+    WHERE S.CLAVE = E. CLAVE
+    ORDER BY S. CLAVE, S.FECHA DESC, S. ID DESC
+    OPEN VALIDA_TABLA
+    FETCH NEXT FROM VALIDA_TABLA
+    INTO @clave, @fecha_entrada, @fecha_salida, @id
+    SET @antes = ''
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      IF @antes <> @clave
+        BEGIN
+        SELECT @fecha_auxiliar = CAST( '01/01/2099' AS DATETIME )
+        END
+      UPDATE Supervisor_giro. EMPSDO
+      SET FECHA_SALIDA = @fecha_auxiliar
+      WHERE CLAVE = @clave AND ID = @id
+      SELECT @fecha_auxiliar = @fecha_entrada - 1
+      SET @antes = @clave
+      FETCH NEXT FROM VALIDA_TABLA
+      INTO @clave, @fecha_entrada, @fecha_salida, @id
+      END
+    CLOSE VALIDA_TABLA
+    DROP TABLE #emp
+    DEALLOCATE VALIDA_TABLA
+    END
+GO
+
+-- TRIGER PARA ACTUALIZAR FECHAS FINALES DE EMPSDO DESPUES DE BORRAR
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPSDO_DELETE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPSDO_DELETE
+GO
+
+CREATE TRIGGER Supervisor_giro. EMPSDO_DELETE
+ON Supervisor_giro. EMPSDO
+FOR DELETE
+AS
+  DECLARE @empleado VARCHAR(10)
+  DECLARE @clave VARCHAR(10)
+  DECLARE @fecha_entrada DATETIME
+  DECLARE @fecha_salida DATETIME
+  DECLARE @fecha_auxiliar DATETIME
+  DECLARE @id INTEGER
+  DECLARE @antes VARCHAR(10)
+
+  CREATE TABLE #emp ( CLAVE    VARCHAR(10) collate SQL_Latin1_General_CP1_CI_AS NOT NULL )
+
+  INSERT INTO #emp
+  SELECT DISTINCT( CLAVE )
+  FROM DELETED
+
+  DECLARE VALIDA_TABLA CURSOR FOR
+  SELECT S.CLAVE, S.FECHA, S.FECHA_SALIDA, S.ID
+  FROM Supervisor_giro. EMPSDO S, #emp E
+  WHERE S.CLAVE = E. CLAVE
+  ORDER BY S. CLAVE, S.FECHA DESC
+
+  OPEN VALIDA_TABLA
+
+  FETCH NEXT FROM VALIDA_TABLA
+  INTO @clave, @fecha_entrada, @fecha_salida, @id
+
+  SET @antes = ''
+  WHILE (@@FETCH_STATUS = 0)
+    BEGIN
+    IF @antes <> @clave
+      BEGIN
+      SELECT @fecha_auxiliar = CAST( '01/01/2099' AS DATETIME )
+      END
+    UPDATE Supervisor_giro. EMPSDO
+    SET FECHA_SALIDA = @fecha_auxiliar
+    WHERE CLAVE = @clave AND ID = @id
+    SELECT @fecha_auxiliar = @fecha_entrada - 1
+    SET @antes = @clave
+    FETCH NEXT FROM VALIDA_TABLA
+    INTO @clave, @fecha_entrada, @fecha_salida, @id
+    END
+
+  CLOSE VALIDA_TABLA
+  DROP TABLE #emp
+  DEALLOCATE VALIDA_TABLA
+GO
+
+-- TRIGER PARA ACTUALIZAR FECHAS FINALES DE EMPDEP ACTUALIZAR
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPDEP_UPDATE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPDEP_UPDATE
+GO
+
+
+CREATE TRIGGER Supervisor_giro. EMPDEP_UPDATE
+ON Supervisor_giro. EMPDEP
+FOR INSERT, UPDATE
+AS
+  IF ( UPDATE( FECHA_ENTRADA ) ) OR ( UPDATE(FECHA_CAPTURA) )
+    BEGIN
+    DECLARE @empleado VARCHAR(10)
+    DECLARE @clave VARCHAR(10)
+    DECLARE @fecha_entrada DATETIME
+    DECLARE @fecha_salida DATETIME
+    DECLARE @fecha_auxiliar DATETIME
+    DECLARE @antes VARCHAR(10)
+
+    CREATE TABLE #emp ( CLAVE    VARCHAR(10) collate SQL_Latin1_General_CP1_CI_AS NOT NULL )
+
+    INSERT INTO #emp
+    SELECT DISTINCT( CLAVE )
+    FROM INSERTED
+
+    DECLARE VALIDA_TABLA CURSOR FOR
+    SELECT S.CLAVE, S.FECHA_ENTRADA, S.FECHA_SALIDA
+    FROM Supervisor_giro. EMPDEP S, #emp E
+    WHERE S.CLAVE = E. CLAVE
+    ORDER BY S. CLAVE, S.FECHA_ENTRADA DESC
+
+    OPEN VALIDA_TABLA
+
+    FETCH NEXT FROM VALIDA_TABLA
+    INTO @clave, @fecha_entrada, @fecha_salida
+
+    SET @antes = ''
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      IF @antes <> @clave
+        BEGIN
+        SELECT @fecha_auxiliar = CAST( '01/01/2099' AS DATETIME )
+        END
+      UPDATE Supervisor_giro. EMPDEP
+      SET FECHA_SALIDA = @fecha_auxiliar
+      WHERE CLAVE = @clave AND FECHA_ENTRADA = @fecha_entrada
+      SELECT @fecha_auxiliar = @fecha_entrada - 1
+      SET @antes = @clave
+      FETCH NEXT FROM VALIDA_TABLA
+      INTO @clave, @fecha_entrada, @fecha_salida
+      END
+
+    CLOSE VALIDA_TABLA
+    DROP TABLE #emp
+    DEALLOCATE VALIDA_TABLA
+    END
+GO
+
+-- TRIGER PARA ACTUALIZAR FECHAS FINALES DE EMPDEP AL BORRAR
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPDEP_DELETE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPDEP_DELETE
+GO
+
+
+CREATE TRIGGER Supervisor_giro. EMPDEP_DELETE
+ON Supervisor_giro. EMPDEP
+FOR DELETE
+AS
+  DECLARE @empleado VARCHAR(10)
+  DECLARE @clave VARCHAR(10)
+  DECLARE @fecha_entrada DATETIME
+  DECLARE @fecha_salida DATETIME
+  DECLARE @fecha_auxiliar DATETIME
+  DECLARE @antes VARCHAR(10)
+
+  CREATE TABLE #emp ( CLAVE    VARCHAR(10) collate SQL_Latin1_General_CP1_CI_AS NOT NULL )
+
+  INSERT INTO #emp
+  SELECT DISTINCT( CLAVE )
+  FROM DELETED
+
+  DECLARE VALIDA_TABLA CURSOR FOR
+  SELECT S.CLAVE, S.FECHA_ENTRADA, S.FECHA_SALIDA
+  FROM Supervisor_giro. EMPDEP S, #emp E
+  WHERE S.CLAVE = E. CLAVE
+  ORDER BY S. CLAVE, S.FECHA_ENTRADA DESC
+
+  OPEN VALIDA_TABLA
+
+  FETCH NEXT FROM VALIDA_TABLA
+  INTO @clave, @fecha_entrada, @fecha_salida
+
+  SET @antes = ''
+  WHILE (@@FETCH_STATUS = 0)
+    BEGIN
+    IF @antes <> @clave
+      BEGIN
+      SELECT @fecha_auxiliar = CAST( '01/01/2099' AS DATETIME )
+      END
+    UPDATE Supervisor_giro. EMPDEP
+    SET FECHA_SALIDA = @fecha_auxiliar
+    WHERE CLAVE = @clave AND FECHA_ENTRADA = @fecha_entrada
+    SELECT @fecha_auxiliar = @fecha_entrada - 1
+    SET @antes = @clave
+    FETCH NEXT FROM VALIDA_TABLA
+    INTO @clave, @fecha_entrada, @fecha_salida
+    END
+
+  CLOSE VALIDA_TABLA
+  DROP TABLE #emp
+  DEALLOCATE VALIDA_TABLA
+GO
+
+-- TRIGER PARA ACTUALIZAR FECHAS FINALES DE EMPPUES ACTUALIZAR
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPPUES_UPDATE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPPUES_UPDATE
+GO
+
+
+CREATE TRIGGER Supervisor_giro. EMPPUES_UPDATE
+ON Supervisor_giro. EMPPUES
+FOR INSERT, UPDATE
+AS
+  IF ( UPDATE( FECHA_ENTRADA ) ) OR ( UPDATE(FECHA_CAPTURA) )
+    BEGIN
+    DECLARE @empleado VARCHAR(10)
+    DECLARE @clave VARCHAR(10)
+    DECLARE @fecha_entrada DATETIME
+    DECLARE @fecha_salida DATETIME
+    DECLARE @fecha_auxiliar DATETIME
+    DECLARE @antes VARCHAR(10)
+
+    CREATE TABLE #emp ( CLAVE    VARCHAR(10) collate SQL_Latin1_General_CP1_CI_AS NOT NULL )
+
+    INSERT INTO #emp
+    SELECT DISTINCT( CLAVE )
+    FROM INSERTED
+
+    DECLARE VALIDA_TABLA CURSOR FOR
+    SELECT S.CLAVE, S.FECHA_ENTRADA, S.FECHA_SALIDA
+    FROM Supervisor_giro. EMPPUES S, #emp E
+    WHERE S.CLAVE = E. CLAVE
+    ORDER BY S. CLAVE, S.FECHA_ENTRADA DESC
+
+    OPEN VALIDA_TABLA
+
+    FETCH NEXT FROM VALIDA_TABLA
+    INTO @clave, @fecha_entrada, @fecha_salida
+
+    SET @antes = ''
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      IF @antes <> @clave
+        BEGIN
+        SELECT @fecha_auxiliar = CAST( '01/01/2099' AS DATETIME )
+        END
+      UPDATE Supervisor_giro. EMPPUES
+      SET FECHA_SALIDA = @fecha_auxiliar
+      WHERE CLAVE = @clave AND FECHA_ENTRADA = @fecha_entrada
+      SELECT @fecha_auxiliar = @fecha_entrada - 1
+      SET @antes = @clave
+      FETCH NEXT FROM VALIDA_TABLA
+      INTO @clave, @fecha_entrada, @fecha_salida
+      END
+
+    CLOSE VALIDA_TABLA
+    DROP TABLE #emp
+    DEALLOCATE VALIDA_TABLA
+    END
+GO
+
+-- TRIGER PARA ACTUALIZAR FECHAS FINALES DE EMPPUES AL BORRAR
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPPUES_DELETE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPPUES_DELETE
+GO
+
+
+CREATE TRIGGER Supervisor_giro. EMPPUES_DELETE
+ON Supervisor_giro. EMPPUES
+FOR DELETE
+AS
+  DECLARE @empleado VARCHAR(10)
+  DECLARE @clave VARCHAR(10)
+  DECLARE @fecha_entrada DATETIME
+  DECLARE @fecha_salida DATETIME
+  DECLARE @fecha_auxiliar DATETIME
+  DECLARE @antes VARCHAR(10)
+
+  CREATE TABLE #emp ( CLAVE    VARCHAR(10) collate SQL_Latin1_General_CP1_CI_AS NOT NULL )
+
+  INSERT INTO #emp
+  SELECT DISTINCT( CLAVE )
+  FROM DELETED
+
+  DECLARE VALIDA_TABLA CURSOR FOR
+  SELECT S.CLAVE, S.FECHA_ENTRADA, S.FECHA_SALIDA
+  FROM Supervisor_giro. EMPPUES S, #emp E
+  WHERE S.CLAVE = E. CLAVE
+  ORDER BY S. CLAVE, S.FECHA_ENTRADA DESC
+
+  OPEN VALIDA_TABLA
+
+  FETCH NEXT FROM VALIDA_TABLA
+  INTO @clave, @fecha_entrada, @fecha_salida
+
+  SET @antes = ''
+  WHILE (@@FETCH_STATUS = 0)
+    BEGIN
+    IF @antes <> @clave
+      BEGIN
+      SELECT @fecha_auxiliar = CAST( '01/01/2099' AS DATETIME )
+      END
+    UPDATE Supervisor_giro. EMPPUES
+    SET FECHA_SALIDA = @fecha_auxiliar
+    WHERE CLAVE = @clave AND FECHA_ENTRADA = @fecha_entrada
+    SELECT @fecha_auxiliar = @fecha_entrada - 1
+    SET @antes = @clave
+    FETCH NEXT FROM VALIDA_TABLA
+    INTO @clave, @fecha_entrada, @fecha_salida
+    END
+
+  CLOSE VALIDA_TABLA
+  DROP TABLE #emp
+  DEALLOCATE VALIDA_TABLA
+GO
+
+-- TRIGER PARA ACTUALIZAR FECHAS FINALES DE EMPSUC ACTUALIZAR
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPSUC_UPDATE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPSUC_UPDATE
+GO
+
+
+CREATE TRIGGER Supervisor_giro. EMPSUC_UPDATE
+ON Supervisor_giro. EMPSUC
+FOR INSERT, UPDATE
+AS
+  IF ( UPDATE( FECHA_ENTRADA ) ) OR ( UPDATE(FECHA_CAPTURA) )
+    BEGIN
+    DECLARE @empleado VARCHAR(10)
+    DECLARE @clave VARCHAR(10)
+    DECLARE @fecha_entrada DATETIME
+    DECLARE @fecha_salida DATETIME
+    DECLARE @fecha_auxiliar DATETIME
+    DECLARE @antes VARCHAR(10)
+
+    CREATE TABLE #emp ( CLAVE    VARCHAR(10) collate SQL_Latin1_General_CP1_CI_AS NOT NULL )
+
+    INSERT INTO #emp
+    SELECT DISTINCT( CLAVE )
+    FROM INSERTED
+
+    DECLARE VALIDA_TABLA CURSOR FOR
+    SELECT S.CLAVE, S.FECHA_ENTRADA, S.FECHA_SALIDA
+    FROM Supervisor_giro. EMPSUC S, #emp E
+    WHERE S.CLAVE = E. CLAVE
+    ORDER BY S. CLAVE, S.FECHA_ENTRADA DESC
+
+    OPEN VALIDA_TABLA
+
+    FETCH NEXT FROM VALIDA_TABLA
+    INTO @clave, @fecha_entrada, @fecha_salida
+
+    SET @antes = ''
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      IF @antes <> @clave
+        BEGIN
+        SELECT @fecha_auxiliar = CAST( '01/01/2099' AS DATETIME )
+        END
+      UPDATE Supervisor_giro. EMPSUC
+      SET FECHA_SALIDA = @fecha_auxiliar
+      WHERE CLAVE = @clave AND FECHA_ENTRADA = @fecha_entrada
+      SELECT @fecha_auxiliar = @fecha_entrada - 1
+      SET @antes = @clave
+      FETCH NEXT FROM VALIDA_TABLA
+      INTO @clave, @fecha_entrada, @fecha_salida
+      END
+
+    CLOSE VALIDA_TABLA
+    DROP TABLE #emp
+    DEALLOCATE VALIDA_TABLA
+    END
+GO
+
+-- TRIGER PARA ACTUALIZAR FECHAS FINALES DE EMPSUC AL BORRAR
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPSUC_DELETE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPSUC_DELETE
+GO
+
+
+CREATE TRIGGER Supervisor_giro. EMPSUC_DELETE
+ON Supervisor_giro. EMPSUC
+FOR DELETE
+AS
+  DECLARE @empleado VARCHAR(10)
+  DECLARE @clave VARCHAR(10)
+  DECLARE @fecha_entrada DATETIME
+  DECLARE @fecha_salida DATETIME
+  DECLARE @fecha_auxiliar DATETIME
+  DECLARE @antes VARCHAR(10)
+
+  CREATE TABLE #emp ( CLAVE    VARCHAR(10) collate SQL_Latin1_General_CP1_CI_AS NOT NULL )
+  INSERT INTO #emp
+  SELECT DISTINCT( CLAVE )
+  FROM DELETED
+
+  DECLARE VALIDA_TABLA CURSOR FOR
+  SELECT S.CLAVE, S.FECHA_ENTRADA, S.FECHA_SALIDA
+  FROM Supervisor_giro. EMPSUC S, #emp E
+  WHERE S.CLAVE = E. CLAVE
+  ORDER BY S. CLAVE, S.FECHA_ENTRADA DESC
+
+  OPEN VALIDA_TABLA
+
+  FETCH NEXT FROM VALIDA_TABLA
+  INTO @clave, @fecha_entrada, @fecha_salida
+
+  SET @antes = ''
+  WHILE (@@FETCH_STATUS = 0)
+    BEGIN
+    IF @antes <> @clave
+      BEGIN
+      SELECT @fecha_auxiliar = CAST( '01/01/2099' AS DATETIME )
+      END
+    UPDATE Supervisor_giro. EMPSUC
+    SET FECHA_SALIDA = @fecha_auxiliar
+    WHERE CLAVE = @clave AND FECHA_ENTRADA = @fecha_entrada
+    SELECT @fecha_auxiliar = @fecha_entrada - 1
+    SET @antes = @clave
+    FETCH NEXT FROM VALIDA_TABLA
+    INTO @clave, @fecha_entrada, @fecha_salida
+    END
+
+  CLOSE VALIDA_TABLA
+  DROP TABLE #emp
+  DEALLOCATE VALIDA_TABLA
+GO
+
+-- TRIGER PARA ACTUALIZAR FECHAS FINALES DE EMPTURNO ACTUALIZAR
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPTURNO_UPDATE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPTURNO_UPDATE
+GO
+
+CREATE TRIGGER Supervisor_giro. EMPTURNO_UPDATE
+ON Supervisor_giro. EMPTURNO
+FOR INSERT, UPDATE
+AS
+  IF ( UPDATE( FECHA_ENTRADA ) )
+    BEGIN
+    DECLARE @empleado VARCHAR(10)
+    DECLARE @clave VARCHAR(10)
+    DECLARE @fecha_entrada DATETIME
+    DECLARE @fecha_salida DATETIME
+    DECLARE @fecha_auxiliar DATETIME
+    DECLARE @antes VARCHAR(10)
+
+    CREATE TABLE #emp ( CLAVE    VARCHAR(10) collate SQL_Latin1_General_CP1_CI_AS NOT NULL )
+
+    INSERT INTO #emp
+    SELECT DISTINCT( CLAVE )
+    FROM INSERTED
+
+    DECLARE VALIDA_TABLA CURSOR FOR
+    SELECT S.CLAVE, S.FECHA_ENTRADA, S.FECHA_SALIDA
+    FROM Supervisor_giro. EMPTURNO S, #emp E
+    WHERE S.CLAVE = E. CLAVE
+    ORDER BY S. CLAVE, S.FECHA_ENTRADA DESC
+
+    OPEN VALIDA_TABLA
+
+    FETCH NEXT FROM VALIDA_TABLA
+    INTO @clave, @fecha_entrada, @fecha_salida
+
+    SET @antes = ''
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      IF ( @antes <> @clave )
+        SELECT @fecha_auxiliar = CAST( '01/01/2099' AS DATETIME )
+      UPDATE Supervisor_giro. EMPTURNO
+      SET FECHA_SALIDA = @fecha_auxiliar
+      WHERE CLAVE = @clave AND FECHA_ENTRADA = @fecha_entrada
+      SELECT @fecha_auxiliar = @fecha_entrada - 1
+      SET @antes = @clave
+      FETCH NEXT FROM VALIDA_TABLA
+      INTO @clave, @fecha_entrada, @fecha_salida
+      END
+
+    CLOSE VALIDA_TABLA
+    DROP TABLE #emp
+    DEALLOCATE VALIDA_TABLA
+    END
+GO
+
+
+-- TRIGER PARA ACTUALIZAR FECHAS FINALES DE EMPTURNO AL BORRAR
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPTURNO_DELETE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPTURNO_DELETE
+GO
+
+
+CREATE TRIGGER Supervisor_giro. EMPTURNO_DELETE
+ON Supervisor_giro. EMPTURNO
+FOR DELETE
+AS
+  DECLARE @empleado VARCHAR(10)
+  DECLARE @clave VARCHAR(10)
+  DECLARE @fecha_entrada DATETIME
+  DECLARE @fecha_salida DATETIME
+  DECLARE @fecha_auxiliar DATETIME
+
+  DECLARE @antes VARCHAR(10)
+
+  CREATE TABLE #emp ( CLAVE    VARCHAR(10) collate SQL_Latin1_General_CP1_CI_AS NOT NULL )
+
+  INSERT INTO #emp
+  SELECT DISTINCT( CLAVE )
+  FROM DELETED
+
+  DECLARE VALIDA_TABLA CURSOR FOR
+  SELECT S.CLAVE, S.FECHA_ENTRADA, S.FECHA_SALIDA
+  FROM Supervisor_giro. EMPTURNO S, #emp E
+  WHERE S.CLAVE = E. CLAVE
+  ORDER BY S.FECHA_ENTRADA DESC
+
+  OPEN VALIDA_TABLA
+
+  FETCH NEXT FROM VALIDA_TABLA
+  INTO @clave, @fecha_entrada, @fecha_salida
+
+  SET @antes = ''
+  WHILE (@@FETCH_STATUS = 0)
+    BEGIN
+    IF ( @antes <> @clave )
+     SELECT @fecha_auxiliar = CAST( '01/01/2099' AS DATETIME )
+    UPDATE Supervisor_giro. EMPTURNO
+    SET FECHA_SALIDA = @fecha_auxiliar
+    WHERE CLAVE = @clave AND FECHA_ENTRADA = @fecha_entrada
+    SELECT @fecha_auxiliar = @fecha_entrada - 1
+    SET @antes = @clave
+    FETCH NEXT FROM VALIDA_TABLA
+    INTO @clave, @fecha_entrada, @fecha_salida
+    END
+
+  CLOSE VALIDA_TABLA
+  DROP TABLE #emp
+  DEALLOCATE VALIDA_TABLA
+GO
+
+-- TRIGER PARA ACTUALIZAR FECHAS FINALES DE EMPTIPONOM ACTUALIZAR
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPTIPONOM_UPDATE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPTIPONOM_UPDATE
+GO
+
+CREATE TRIGGER Supervisor_giro. EMPTIPONOM_UPDATE
+ON Supervisor_giro. EMPTIPONOM
+FOR INSERT, UPDATE
+AS
+  IF ( UPDATE( FECHA_ENTRADA ) )
+    BEGIN
+    DECLARE @empleado VARCHAR(10)
+    DECLARE @clave VARCHAR(10)
+    DECLARE @fecha_entrada DATETIME
+    DECLARE @fecha_salida DATETIME
+    DECLARE @fecha_auxiliar DATETIME
+
+    DECLARE @antes VARCHAR(10)
+  
+    CREATE TABLE #emp ( CLAVE    VARCHAR(10) collate SQL_Latin1_General_CP1_CI_AS NOT NULL )
+
+    INSERT INTO #emp
+    SELECT DISTINCT( CLAVE )
+    FROM INSERTED
+
+    DECLARE VALIDA_TABLA CURSOR FOR
+    SELECT S.CLAVE, S.FECHA_ENTRADA, S.FECHA_SALIDA
+    FROM Supervisor_giro. EMPTIPONOM S, #emp E
+    WHERE S.CLAVE = E. CLAVE
+    ORDER BY S.FECHA_ENTRADA DESC
+
+    OPEN VALIDA_TABLA
+
+    FETCH NEXT FROM VALIDA_TABLA
+    INTO @clave, @fecha_entrada, @fecha_salida
+
+    SET @antes = ''
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      IF ( @antes <> @clave )
+        SELECT @fecha_auxiliar = CAST( '01/01/2099' AS DATETIME )
+      UPDATE Supervisor_giro. EMPTIPONOM
+      SET FECHA_SALIDA = @fecha_auxiliar
+      WHERE CLAVE = @clave AND FECHA_ENTRADA = @fecha_entrada
+      SELECT @fecha_auxiliar = @fecha_entrada - 1
+      SET @antes = @clave
+      FETCH NEXT FROM VALIDA_TABLA
+      INTO @clave, @fecha_entrada, @fecha_salida
+      END
+
+    CLOSE VALIDA_TABLA
+    DROP TABLE #emp
+    DEALLOCATE VALIDA_TABLA
+    END
+GO
+
+
+-- TRIGER PARA ACTUALIZAR FECHAS FINALES DE EMPTIPONOM AL BORRAR
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPTIPONOM_DELETE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPTIPONOM_DELETE
+GO
+
+
+CREATE TRIGGER Supervisor_giro. EMPTIPONOM_DELETE
+ON Supervisor_giro. EMPTIPONOM
+FOR DELETE
+AS
+  DECLARE @empleado VARCHAR(10)
+  DECLARE @clave VARCHAR(10)
+  DECLARE @fecha_entrada DATETIME
+  DECLARE @fecha_salida DATETIME
+  DECLARE @fecha_auxiliar DATETIME
+
+  DECLARE @antes VARCHAR(10)
+
+  CREATE TABLE #emp ( CLAVE    VARCHAR(10) collate SQL_Latin1_General_CP1_CI_AS NOT NULL )
+
+  INSERT INTO #emp
+  SELECT DISTINCT( CLAVE )
+  FROM DELETED
+
+  DECLARE VALIDA_TABLA CURSOR FOR
+  SELECT S.CLAVE, S.FECHA_ENTRADA, S.FECHA_SALIDA
+  FROM Supervisor_giro. EMPTIPONOM S, #emp E
+  WHERE S.CLAVE = E. CLAVE
+  ORDER BY S.FECHA_ENTRADA DESC
+
+  OPEN VALIDA_TABLA
+
+  FETCH NEXT FROM VALIDA_TABLA
+  INTO @clave, @fecha_entrada, @fecha_salida
+
+  SET @antes = ''
+  WHILE (@@FETCH_STATUS = 0)
+    BEGIN
+    IF ( @antes <> @clave )
+      SELECT @fecha_auxiliar = CAST( '01/01/2099' AS DATETIME )
+    UPDATE Supervisor_giro. EMPTIPONOM
+    SET FECHA_SALIDA = @fecha_auxiliar
+    WHERE CLAVE = @clave AND FECHA_ENTRADA = @fecha_entrada
+    SELECT @fecha_auxiliar = @fecha_entrada - 1
+    SET @antes = @clave
+    FETCH NEXT FROM VALIDA_TABLA
+    INTO @clave, @fecha_entrada, @fecha_salida
+    END
+
+  CLOSE VALIDA_TABLA
+  DROP TABLE #emp
+  DEALLOCATE VALIDA_TABLA
+GO
+
+-- TRIGER PARA BORRAR EN CASCADA
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPPRIN_DELETE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPPRIN_DELETE
+GO
+
+CREATE TRIGGER Supervisor_giro. EMPPRIN_DELETE
+ON Supervisor_giro. EMPPRIN
+FOR DELETE
+AS
+  DECLARE @clave_empleado VARCHAR(10)
+  DECLARE EMPLEADOS CURSOR FOR
+  SELECT DELETED. CLAVE
+  FROM DELETED
+  OPEN EMPLEADOS
+  FETCH NEXT FROM EMPLEADOS
+  INTO @clave_empleado
+  WHILE (@@FETCH_STATUS = 0)
+    BEGIN
+    PRINT '*** EMPLEADO ' + @clave_empleado
+    DECLARE @tabla VARCHAR(50)
+    DECLARE KARDEX_EMPLEADO CURSOR FOR
+    SELECT name
+    FROM SYSOBJECTS
+    WHERE TYPE = 'U' AND UPPER( NAME ) LIKE 'EMP%'
+    OPEN KARDEX_EMPLEADO
+    FETCH NEXT FROM KARDEX_EMPLEADO
+    INTO @tabla
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      IF ( @tabla <> 'EMPPRIN' ) AND ( @tabla <> 'EMPABO' ) AND ( @tabla <> 'EMP_AUXSUP' )
+        BEGIN
+        PRINT 'BORRAR TABLA ' + @tabla
+        EXECUTE ( 'DELETE FROM Supervisor_giro.' + @tabla +
+                  ' WHERE CLAVE = ''' + @clave_empleado + '''' )
+        END
+      FETCH NEXT FROM KARDEX_EMPLEADO
+      INTO @tabla
+      END
+    CLOSE KARDEX_EMPLEADO
+    DEALLOCATE KARDEX_EMPLEADO
+    /*ESTA SECCION CREA UNA CONSULTA DE LOS TIPOS DE NOMINA */
+    DECLARE @tabla_nomina VARCHAR(10)
+    DECLARE @tiponom VARCHAR(10)
+    DECLARE TIPOS_NOMINA CURSOR FOR
+    SELECT CLAVE
+    FROM Supervisor_giro. TIPONOM
+    OPEN TIPOS_NOMINA
+    FETCH NEXT FROM TIPOS_NOMINA
+    INTO @tiponom
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      
+      /*CONSULTA PARA TRAER TODAS LAS TABLAS DEL TIPO DE NOMINA*/
+      DECLARE TABLAS_NOMINA CURSOR FOR
+      SELECT NAME
+      FROM SYSOBJECTS
+      WHERE NAME LIKE RTRIM( @tiponom ) + '[_]%'
+      OPEN TABLAS_NOMINA
+      FETCH NEXT FROM TABLAS_NOMINA
+      INTO @tabla_nomina
+      WHILE (@@FETCH_STATUS = 0)
+        BEGIN
+        PRINT 'BORRAR TABLA NOMINA ' + @tabla_nomina
+        EXECUTE ( 'DELETE FROM Supervisor_giro.' + @tabla_nomina +
+                  ' WHERE CLAVE = ''' + @clave_empleado + '''' )
+        FETCH NEXT FROM TABLAS_NOMINA
+        INTO @tabla_nomina
+        END
+      CLOSE TABLAS_NOMINA
+      DEALLOCATE TABLAS_NOMINA
+      FETCH NEXT FROM TIPOS_NOMINA
+      INTO @tiponom
+      END
+    CLOSE TIPOS_NOMINA
+    DEALLOCATE TIPOS_NOMINA
+
+    FETCH NEXT FROM EMPLEADOS
+    INTO @clave_empleado
+
+    END
+  CLOSE EMPLEADOS
+  DEALLOCATE EMPLEADOS
+
+GO
+
+-- TRIGER PARA ACTUALIZAR SALDO EN PRESTAMOS AL INGRESAR UN ABONO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPABO_INSERT' 
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPABO_INSERT
+GO
+
+CREATE TRIGGER EMPABO_INSERT
+ON Supervisor_giro. EMPABO
+FOR INSERT, UPDATE
+AS
+  DECLARE @prestamo INTEGER
+  DECLARE @abonos MONEY
+  DECLARE @monto  MONEY
+  DECLARE ABONOS CURSOR FOR
+  SELECT PRESTAMO
+  FROM INSERTED
+
+  OPEN ABONOS
+
+  FETCH NEXT FROM ABONOS
+  INTO @prestamo
+  WHILE (@@FETCH_STATUS = 0)
+    BEGIN
+    SET @abonos = ( SELECT SUM(MONTO)
+   	            FROM Supervisor_giro. EmpAbo
+                    WHERE PRESTAMO = @prestamo )
+    SET @monto = ( SELECT MONTO
+   	            FROM Supervisor_giro. Emppres
+                    WHERE ID = @prestamo )
+
+    IF ( @abonos IS NULL )
+      SET @abonos = 0;
+    IF ( @monto > 0 )
+      UPDATE Supervisor_giro. EMPPRES
+      SET SALDO = MONTO - @abonos
+      WHERE ID = @prestamo
+    ELSE
+      UPDATE Supervisor_giro. EMPPRES
+      SET SALDO = MONTO + @abonos
+      WHERE ID = @prestamo
+
+    FETCH NEXT FROM ABONOS
+    INTO @prestamo
+    END
+  CLOSE ABONOS
+  DEALLOCATE ABONOS
+GO
+
+-- TRIGER PARA ACTUALIZAR SALDO EN PRESTAMOS AL BORRAR UN ABONO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPABO_DELETE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPABO_DELETE
+GO
+
+CREATE TRIGGER EMPABO_DELETE
+ON Supervisor_giro. EMPABO
+FOR DELETE
+AS
+  DECLARE @prestamo INTEGER
+  DECLARE @abonos MONEY
+  DECLARE @monto MONEY
+  DECLARE ABONOS CURSOR FOR
+  SELECT PRESTAMO
+  FROM DELETED
+
+  OPEN ABONOS
+
+  FETCH NEXT FROM ABONOS
+  INTO @prestamo
+  WHILE (@@FETCH_STATUS = 0)
+    BEGIN
+    SET @abonos = ( SELECT SUM(MONTO)
+   	            FROM Supervisor_giro. EmpAbo
+                    WHERE PRESTAMO = @prestamo )
+    SET @monto = ( SELECT MONTO
+   	            FROM Supervisor_giro. Emppres
+                    WHERE ID = @prestamo )
+
+    IF ( @abonos IS NULL )
+      SET @abonos = 0;
+    IF ( @monto > 0 )
+      UPDATE Supervisor_giro. EMPPRES
+      SET SALDO = MONTO - @abonos
+      WHERE ID = @prestamo
+    ELSE
+      UPDATE Supervisor_giro. EMPPRES
+      SET SALDO = MONTO + @abonos
+      WHERE ID = @prestamo
+
+    FETCH NEXT FROM ABONOS
+    INTO @prestamo
+    END
+  CLOSE ABONOS
+  DEALLOCATE ABONOS
+GO
+
+-- TRIGER PARA ACTUALIZAR SALDO DE PRESTAMOS
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPPRES_UPDATE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPPRES_UPDATE
+GO
+
+CREATE TRIGGER EMPPRES_UPDATE
+ON Supervisor_giro. EMPPRES
+FOR INSERT, UPDATE
+AS
+  DECLARE @id INTEGER
+  DECLARE @abonos MONEY
+  DECLARE @monto MONEY
+  DECLARE @interes MONEY
+  DECLARE PRESTAMOS CURSOR FOR
+  SELECT ID
+  FROM INSERTED
+
+  OPEN PRESTAMOS
+
+  FETCH NEXT FROM PRESTAMOS
+  INTO @id
+  WHILE (@@FETCH_STATUS = 0)
+    BEGIN
+    SET @abonos = ( SELECT SUM(MONTO)
+	            FROM Supervisor_giro. EmpAbo
+                    WHERE PRESTAMO = @id )
+    SET @monto = ( SELECT MONTO
+	            FROM Supervisor_giro. Emppres
+                    WHERE ID = @id )
+
+    IF ( @abonos IS NULL )
+      SET @abonos = 0;
+
+    SET @interes = ( SELECT INTERES
+                     FROM Supervisor_giro. EmpPres
+                     WHERE ID = @id )
+    IF ( @interes IS NULL )
+      SET @interes = 0;
+
+    UPDATE Supervisor_giro. EMPPRES
+    SET MONTO = PRESTAMO + @interes
+    WHERE ID = @id
+
+    IF ( @monto > 0 )
+      UPDATE Supervisor_giro. EMPPRES
+      SET SALDO = MONTO - @abonos
+      WHERE ID = @id
+    ELSE
+      UPDATE Supervisor_giro. EMPPRES
+      SET SALDO = MONTO + @abonos
+      WHERE ID = @id
+
+    FETCH NEXT FROM PRESTAMOS
+    INTO @id
+    END
+  CLOSE PRESTAMOS
+  DEALLOCATE PRESTAMOS
+GO
+
+-- TRIGER PARA ACTUALIZAR EN CASCADA EL LA ACTUALIZACION DE UN EMPLEADO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPPRIN_UPDATE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPPRIN_UPDATE
+GO
+
+CREATE TRIGGER EMPPRIN_UPDATE
+ON Supervisor_giro. EMPPRIN
+FOR UPDATE
+AS
+  IF ( UPDATE( CLAVE ) )
+    BEGIN
+    DECLARE @clave_antes VARCHAR(10)
+    DECLARE @clave_despues VARCHAR(10)
+    SELECT @clave_antes = DELETED. CLAVE
+    FROM DELETED
+    SELECT @clave_despues = INSERTED. CLAVE
+    FROM INSERTED
+    DECLARE @tabla VARCHAR(50)
+    DECLARE KARDEX_EMPLEADO CURSOR FOR
+    SELECT name
+    FROM SYSOBJECTS
+    WHERE TYPE = 'U' AND NAME LIKE 'EMP%'
+
+    OPEN KARDEX_EMPLEADO
+
+    FETCH NEXT FROM KARDEX_EMPLEADO
+    INTO @tabla
+
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      IF ( @tabla <> 'EMPPRIN' ) AND ( @tabla <> 'EMPABO' )
+        BEGIN
+        EXECUTE ( 'UPDATE Supervisor_giro.' + @tabla +
+                  ' SET CLAVE = ''' + @clave_despues + '''' +
+                  ' WHERE CLAVE = ''' + @clave_antes + '''' )
+        /*PRINT 'ACTUALIZAR TABLA ' + @tabla*/
+        END
+
+      FETCH NEXT FROM KARDEX_EMPLEADO
+      INTO @tabla
+      END
+
+    CLOSE KARDEX_EMPLEADO
+    DEALLOCATE KARDEX_EMPLEADO
+
+    /*ESTA SECCION CREA UNA CONSULTA DE LOS TIPOS DE NOMINA */
+    DECLARE @tabla_nomina VARCHAR(10)
+    DECLARE @tiponom VARCHAR(10)
+    DECLARE TIPOS_NOMINA CURSOR FOR
+    SELECT CLAVE
+    FROM Supervisor_giro. TIPONOM
+
+    OPEN TIPOS_NOMINA
+
+    FETCH NEXT FROM TIPOS_NOMINA
+    INTO @tiponom
+
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+    
+      /*CONSULTA PARA TRAER TODAS LAS TABLAS DEL TIPO DE NOMINA*/
+      DECLARE TABLAS_NOMINA CURSOR FOR
+      SELECT NAME
+      FROM SYSOBJECTS
+      WHERE NAME LIKE RTRIM( @tiponom ) + '_%'
+      OPEN TABLAS_NOMINA
+
+      FETCH NEXT FROM TABLAS_NOMINA
+      INTO @tabla_nomina
+
+      WHILE (@@FETCH_STATUS = 0)
+        BEGIN
+        EXECUTE ( 'UPDATE Supervisor_giro.' + @tabla_nomina +
+                  ' SET CLAVE = ''' + @clave_despues + '''' +
+                  ' WHERE CLAVE = ''' + @clave_antes + '''' )
+        /*PRINT 'ACTUALIZAR TABLA NOMINA' + @tabla_nomina*/
+        FETCH NEXT FROM TABLAS_NOMINA
+        INTO @tabla_nomina
+        END
+      CLOSE TABLAS_NOMINA
+      DEALLOCATE TABLAS_NOMINA
+
+      FETCH NEXT FROM TIPOS_NOMINA
+      INTO @tiponom
+      END
+
+    CLOSE TIPOS_NOMINA
+    DEALLOCATE TIPOS_NOMINA
+    END
+GO
+
+-- INTEGRIDAD PARA MODULO DE BOLSA DE TRABAJO
+
+-- INTEGRIDAD PARA LA TABLA B_CCONOC CON EL CAMPO CONOCIMIENTO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_B_CCONOC_CONOCIMIENTO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. B_CCONOC
+  DROP CONSTRAINT FK_B_CCONOC_CONOCIMIENTO
+GO
+
+ALTER TABLE Supervisor_giro. B_CCONOC
+WITH NOCHECK
+ADD CONSTRAINT FK_B_CCONOC_CONOCIMIENTO
+    FOREIGN KEY ( CONOCIMIENTO )
+    REFERENCES Supervisor_giro. B_CONOCI( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA B_CCONOC CON EL CAMPO CLAVE
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_B_CCONOC_CLAVE'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. B_CCONOC
+  DROP CONSTRAINT FK_B_CCONOC_CLAVE
+GO
+
+ALTER TABLE Supervisor_giro. B_CCONOC
+WITH NOCHECK
+ADD CONSTRAINT FK_B_CCONOC_CLAVE
+    FOREIGN KEY ( CLAVE )
+    REFERENCES Supervisor_giro. B_CANDI( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+GO
+
+-- INTEGRIDAD PARA LA TABLA B_CIDIOM CON EL CAMPO IDIOMA
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_B_CIDIOM_IDIOMA'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. B_CIDIOM
+  DROP CONSTRAINT FK_B_CIDIOM_IDIOMA
+GO
+
+ALTER TABLE Supervisor_giro. B_CIDIOM
+WITH NOCHECK
+ADD CONSTRAINT FK_B_CIDIOM_IDIOMA
+    FOREIGN KEY ( IDIOMA )
+    REFERENCES Supervisor_giro. B_IDIOMA( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA B_CIDIOM CON EL CAMPO CLAVE
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_B_CIDIOM_CLAVE'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. B_CIDIOM
+  DROP CONSTRAINT FK_B_CIDIOM_CLAVE
+GO
+
+ALTER TABLE Supervisor_giro. B_CIDIOM
+WITH NOCHECK
+ADD CONSTRAINT FK_B_CIDIOM_CLAVE
+    FOREIGN KEY ( CLAVE )
+    REFERENCES Supervisor_giro. B_CANDI( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+GO
+
+-- INTEGRIDAD PARA LA TABLA B_PCONOC CON EL CAMPO CONOCIMIENTO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_B_PCONOC_CONOCIMIENTO'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. B_PCONOC
+  DROP CONSTRAINT FK_B_PCONOC_CONOCIMIENTO
+GO
+
+ALTER TABLE Supervisor_giro. B_PCONOC
+WITH NOCHECK
+ADD CONSTRAINT FK_B_PCONOC_CONOCIMIENTO
+    FOREIGN KEY ( CONOCIMIENTO )
+    REFERENCES Supervisor_giro. B_CONOCI( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA B_PCONOC CON EL CAMPO CLAVE
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_B_PCONOC_CLAVE'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. B_PCONOC
+  DROP CONSTRAINT FK_B_PCONOC_CLAVE
+GO
+
+ALTER TABLE Supervisor_giro. B_PCONOC
+WITH NOCHECK
+ADD CONSTRAINT FK_B_PCONOC_CLAVE
+    FOREIGN KEY ( CLAVE )
+    REFERENCES Supervisor_giro. B_PUESTO( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+GO
+
+-- INTEGRIDAD PARA LA TABLA B_PIDIOM CON EL CAMPO IDIOMA
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_B_PIDIOM_IDIOMA'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. B_PIDIOM
+  DROP CONSTRAINT FK_B_PIDIOM_IDIOMA
+GO
+
+ALTER TABLE Supervisor_giro. B_PIDIOM
+WITH NOCHECK
+ADD CONSTRAINT FK_B_PIDIOM_IDIOMA
+    FOREIGN KEY ( IDIOMA )
+    REFERENCES Supervisor_giro. B_IDIOMA( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- INTEGRIDAD PARA LA TABLA B_PIDIOM CON EL CAMPO CLAVE
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_B_PIDIOM_CLAVE'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. B_PIDIOM
+  DROP CONSTRAINT FK_B_PIDIOM_CLAVE
+GO
+
+ALTER TABLE Supervisor_giro. B_PIDIOM
+WITH NOCHECK
+ADD CONSTRAINT FK_B_PIDIOM_CLAVE
+    FOREIGN KEY ( CLAVE )
+    REFERENCES Supervisor_giro. B_PUESTO( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+GO
+
+-- INTEGRIDAD PARA LA TABLA B_PUESTO CON EL CAMPO PROFESION
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'FK_B_PUESTO_PROFESION'
+	   AND 	  type = 'F')
+  ALTER TABLE Supervisor_giro. B_PUESTO
+  DROP CONSTRAINT FK_B_PUESTO_PROFESION
+GO
+
+ALTER TABLE Supervisor_giro. B_PUESTO
+WITH NOCHECK
+ADD CONSTRAINT FK_B_PUESTO_PROFESION
+    FOREIGN KEY ( PROFESION )
+    REFERENCES Supervisor_giro. B_PROF( CLAVE )
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+GO
+
+-- PROCEDIMIENTO DE VIGENCIA DEL EMPLEADO
+IF EXISTS (SELECT name
+           FROM   sysobjects
+           WHERE  name = 'ES_VIGENTE'
+           AND    type = 'P')
+  DROP PROCEDURE Supervisor_giro. ES_VIGENTE
+GO
+
+CREATE PROCEDURE Supervisor_giro.ES_VIGENTE
+  @fecha  DATETIME = NULL
+AS
+  IF @fecha IS NULL
+    BEGIN
+    set @fecha = GETDATE()
+    END
+  SELECT E. CLAVE
+  FROM EMPPRIN E, EMPSDO S
+  WHERE E. CLAVE = S. CLAVE AND S. FECHA <= @fecha AND S. FECHA_SALIDA >= @fecha AND TIPO <> 'B'
+
+GO
+
+-- PROCEDIMIENTO DE VIGENCIA DEL EMPLEADO
+IF EXISTS (SELECT name
+           FROM   sysobjects
+           WHERE  name = 'FUE_VIGENTE'
+           AND    type = 'P')
+  DROP PROCEDURE Supervisor_giro. FUE_VIGENTE
+GO
+
+CREATE PROCEDURE Supervisor_giro.FUE_VIGENTE
+  @fecha_inicial  DATETIME = NULL,
+  @fecha_final    DATETIME = NULL
+AS
+  IF @fecha_inicial IS NULL
+    BEGIN
+    SET @fecha_inicial = GETDATE()
+    END
+  IF @fecha_final IS NULL
+    BEGIN
+    SET @fecha_final = GETDATE()
+    END
+
+  DECLARE @SQL  nvarchar(600)
+
+  CREATE TABLE #empprin ( CLAVE VARCHAR(10) NOT NULL,
+                          DIAS INTEGER NOT NULL )
+
+  --Variables globales
+  DECLARE @fi      DATETIME
+  DECLARE @ff      DATETIME
+  DECLARE @antes   VARCHAR(10)
+  DECLARE @dias    INTEGER
+  --Variables del Cursor
+  DECLARE @clave   VARCHAR(10)
+  DECLARE @entrada DATETIME
+  DECLARE @salida  DATETIME
+  DECLARE @tipo    VARCHAR(1)
+--  DECLARE @alta    INTEGER
+  DECLARE sdo CURSOR FOR
+     SELECT e. clave, s. fecha, s. fecha_salida, s. tipo
+     FROM Supervisor_giro. empprin e, Supervisor_giro. empsdo s
+     WHERE s. clave = e. clave and s. fecha_salida >= @fecha_inicial and s. fecha <= @fecha_final
+  OPEN sdo
+  FETCH sdo INTO @clave, @entrada, @salida, @tipo
+  
+  --Inicializa variables del ciclo
+  SET @dias  = 0
+  SET @antes = ''
+--  SET @alta  = 0
+  WHILE @@fetch_status >= 0
+  BEGIN
+  IF @clave <> @antes
+    BEGIN
+    IF @dias > 0 --AND @alta = 1
+      BEGIN
+      SELECT @SQL = 'insert into #empprin
+		   select ''' + @antes + ''', ' + CAST( @dias AS VARCHAR(5) )
+
+      EXECUTE (@SQL)
+      END
+--    SET @alta = 0
+    SET @antes = @clave
+    --Inicializa Variables del empleado
+    SET @dias = 0
+    END
+--  IF @tipo = 'A'
+--    SET @alta = 1
+  SET @fi = @entrada
+  IF @fi < @fecha_inicial
+    SET @fi = @fecha_inicial
+  SET @ff = @salida
+  IF @ff > @fecha_final
+    SET @ff = @fecha_final
+  IF @tipo <> 'B'
+    SET @dias = @dias + ( CAST( @ff AS INTEGER ) - CAST ( @fi AS INTEGER ) ) + 1
+  ELSE
+    BEGIN
+    IF @entrada >= @fecha_inicial AND @entrada <= @fecha_final
+      SET @dias = @dias + 1
+    END
+  FETCH sdo INTO @clave, @entrada, @salida, @tipo     
+  END
+  SELECT @SQL = 'insert into #empprin
+	   select ''' + @antes + ''', ' + CAST( @dias AS VARCHAR(5) )
+
+  EXECUTE (@SQL)
+
+  
+  DEALLOCATE sdo
+  SELECT CLAVE, DIAS
+  FROM #empprin
+  ORDER BY 1
+
+GO
+
+-- PROCEDIMIENTO DE SUELDO ACTUAL
+IF EXISTS (SELECT name
+           FROM   sysobjects
+           WHERE  name = 'SUELDO_ACTUAL'
+           AND    type = 'P')
+  DROP PROCEDURE Supervisor_giro. SUELDO_ACTUAL
+GO
+
+CREATE PROCEDURE Supervisor_giro.SUELDO_ACTUAL
+  @tipo           INTEGER = NULL,
+  @fecha_inicial  DATETIME = NULL,
+  @fecha_final    DATETIME = NULL
+AS
+  IF @tipo IS NULL
+    SET @tipo = 1
+  IF @fecha_inicial IS NULL
+    SET @fecha_inicial = GETDATE()
+  IF @fecha_final IS NULL
+    SET @fecha_final = GETDATE()
+
+  DECLARE @SQL  nvarchar(600)
+
+  CREATE TABLE #empprin ( CLAVE VARCHAR(10) NOT NULL,
+                          SUELDO MONEY NOT NULL )
+
+  --Variables globales
+  DECLARE @fi      DATETIME
+  DECLARE @ff      DATETIME
+  DECLARE @antes   VARCHAR(10)
+  DECLARE @dias    INTEGER
+  DECLARE @periodo INTEGER
+  DECLARE @sueldo  MONEY
+
+  --Variables del Cursor
+  DECLARE @clave   VARCHAR(10)
+  DECLARE @entrada DATETIME
+  DECLARE @salida  DATETIME
+  DECLARE @sdo1    MONEY
+  DECLARE @sdo2    MONEY
+  DECLARE @sdo3    MONEY
+  DECLARE @sdo4    MONEY
+  DECLARE @sdo5    MONEY
+
+  DECLARE sdo CURSOR FOR
+     SELECT e. clave, s. fecha, s. fecha_salida, s. sdo1, s. sdo2, s. sdo3, s. sdo4, s. sdo5
+     FROM Supervisor_giro. empprin e, Supervisor_giro. empsdo s
+     WHERE s. clave = e. clave and s. fecha_salida >= @fecha_inicial and s. fecha <= @fecha_final and s. tipo <> 'B'
+  OPEN sdo
+  FETCH sdo INTO @clave, @entrada, @salida, @sdo1, @sdo2, @sdo3, @sdo4, @sdo5
+  
+  --Inicializa variables del ciclo
+  SET @sueldo  = 0
+  SET @antes = ''
+  WHILE @@fetch_status >= 0
+  BEGIN
+  IF @clave <> @antes
+    BEGIN
+    IF @sueldo <> 0
+      BEGIN
+      SET @sueldo = @sueldo / @dias
+      SELECT @SQL = 'insert into #empprin
+		   select ''' + @antes + ''', ' + CAST( @sueldo AS VARCHAR(12) )
+
+      EXECUTE (@SQL)
+      END
+
+    SET @antes = @clave
+    --Inicializa Variables del empleado
+    SET @dias   = 0
+    SET @sueldo = 0
+    END
+  SET @fi = @entrada
+  IF @fi < @fecha_inicial
+    SET @fi = @fecha_inicial
+  SET @ff = @salida
+  IF @ff > @fecha_final
+    SET @ff = @fecha_final
+  
+  SET @periodo = ( CAST( @ff AS INTEGER ) - CAST ( @fi AS INTEGER ) ) + 1
+  SET @dias = @dias + @periodo
+  IF @tipo = 1
+    SET @sueldo = @sueldo + ( @sdo1 * @periodo )
+  IF @tipo = 2
+    SET @sueldo = @sueldo + ( @sdo2 * @periodo )
+  IF @tipo = 3
+    SET @sueldo = @sueldo + ( @sdo3 * @periodo )
+  IF @tipo = 4
+    SET @sueldo = @sueldo + ( @sdo4 * @periodo )
+  IF @tipo = 5
+    SET @sueldo = @sueldo + ( @sdo5 * @periodo )
+
+  
+  FETCH sdo INTO @clave, @entrada, @salida, @sdo1, @sdo2, @sdo3, @sdo4, @sdo5
+  END
+  IF @sueldo <> 0
+    BEGIN
+    SET @sueldo = @sueldo / @dias
+    SELECT @SQL = 'insert into #empprin
+	     select ''' + @antes + ''', ' + CAST( @sueldo AS VARCHAR(12) )
+
+    EXECUTE (@SQL)
+    END
+  
+  DEALLOCATE sdo
+  SELECT CLAVE, SUELDO
+  FROM #empprin
+  ORDER BY 1
+
+GO
+
+-- PROCEDIMIENTO DE KARDEX DE AUSENTISMO
+IF EXISTS (SELECT name
+           FROM   sysobjects
+           WHERE  name = 'KARDEX_AUSENTISMO'
+           AND    type = 'P')
+  DROP PROCEDURE Supervisor_giro. KARDEX_AUSENTISMO
+GO
+
+CREATE PROCEDURE Supervisor_giro.KARDEX_AUSENTISMO
+  @fecha_inicial  DATETIME = NULL,
+  @fecha_final    DATETIME = NULL
+AS  
+  IF @fecha_inicial IS NULL
+    SET @fecha_inicial = GETDATE()
+  IF @fecha_final IS NULL
+    SET @fecha_final = GETDATE()
+
+  -- VARIABLES GLOBALES
+  DECLARE @SQL   nvarchar(600)
+  DECLARE @clave VARCHAR(10)
+  DECLARE @dias  INTEGER
+
+  CREATE TABLE #empprin ( CLAVE    VARCHAR(10) NOT NULL,
+                          DIAS     INTEGER NOT NULL,
+			  FALTAS   INTEGER DEFAULT 0 )
+
+  INSERT #empprin (CLAVE, DIAS)
+  EXEC SUPERVISOR_GIRO.FUE_VIGENTE @fecha_inicial, @fecha_final
+
+  CREATE TABLE #empaus ( CLAVE    VARCHAR(10) NOT NULL,
+                         DIAS     INTEGER NOT NULL )
+  INSERT INTO #empaus
+  EXEC SUPERVISOR_GIRO.TOTAL_FALTAS @fecha_inicial, @fecha_final, '*'
+
+  DECLARE empaus CURSOR FOR
+     SELECT CLAVE, DIAS
+     FROM #empaus
+  OPEN empaus
+  FETCH empaus INTO @clave, @dias
+  WHILE @@fetch_status >= 0
+  BEGIN
+    SELECT @SQL = 'UPDATE #empprin
+		   SET FALTAS = ' + CAST ( @dias AS VARCHAR(10)) + '
+                   WHERE CLAVE = ''' + RTRIM(@clave) + ''''
+    EXECUTE (@SQL)
+    FETCH empaus INTO @clave, @dias
+  END
+  DEALLOCATE empaus
+ 
+  DROP TABLE #empaus
+
+  --UPDATE #empprin
+  --SET FALTAS = 1
+
+  SELECT *
+  FROM #empprin
+  ORDER BY 1
+
+GO
+
+-- PROCEDIMIENTO DE TOTAL FALTAS
+IF EXISTS (SELECT name
+           FROM   sysobjects
+           WHERE  name = 'TOTAL_FALTAS'
+           AND    type = 'P')
+  DROP PROCEDURE Supervisor_giro. TOTAL_FALTAS
+GO
+
+CREATE PROCEDURE Supervisor_giro.TOTAL_FALTAS
+  @fecha_inicial  DATETIME = NULL,
+  @fecha_final    DATETIME = NULL,
+  @tipos          VARCHAR(20) = NULL
+AS
+  IF @fecha_inicial IS NULL
+    SET @fecha_inicial = GETDATE()
+  IF @fecha_final IS NULL
+    SET @fecha_final = GETDATE()
+  IF @tipos IS NULL
+    SET @tipos = '*'
+  IF @tipos = 'S'
+    SET @tipos = '0'
+  IF @tipos = 'G'
+    SET @tipos = '1'
+
+  DECLARE @SQL  nvarchar(600)
+
+  CREATE TABLE #empaus ( CLAVE VARCHAR(10) NOT NULL,
+                         FALTAS INTEGER NOT NULL )
+
+  --Variables globales
+  DECLARE @antes   VARCHAR(10)
+  DECLARE @dias    INTEGER
+  DECLARE @fi      DATETIME
+  DECLARE @ff      DATETIME
+  --Variables del Cursor
+  DECLARE @clave   VARCHAR(10)
+  DECLARE @entrada DATETIME
+  DECLARE @salida  DATETIME
+  DECLARE @tipo    VARCHAR(1)
+  DECLARE @goce    VARCHAR(1)
+
+  DECLARE aus CURSOR FOR
+     SELECT a. clave, a. fechai, a. fechaf, a. tipo, f. goce
+     FROM Supervisor_giro. empaus a left join falta f on f. clave = a. tipo
+     WHERE fechaf >= @fecha_inicial and fechaf <= @fecha_final
+  OPEN aus
+  FETCH aus INTO @clave, @entrada, @salida, @tipo, @goce
+  
+  --Inicializa variables del ciclo
+  SET @dias  = 0
+  SET @antes = ''
+
+  WHILE @@fetch_status >= 0
+  BEGIN
+  IF @clave <> @antes
+    BEGIN
+    IF @dias > 0
+      BEGIN
+      SELECT @SQL = 'insert into #empaus
+		   select ''' + @antes + ''', ' + CAST( @dias AS VARCHAR(5) )
+
+      EXECUTE (@SQL)
+      END
+    SET @antes = @clave
+    --Inicializa Variables del empleado
+    SET @dias = 0
+    END
+  SET @fi = @entrada
+  IF @fi < @fecha_inicial
+    SET @fi = @fecha_inicial
+  SET @ff = @salida
+  IF @ff > @fecha_final
+    SET @ff = @fecha_final
+  IF @tipos = '*'
+    SET @dias = @dias + ( CAST( @ff AS INTEGER ) - CAST ( @fi AS INTEGER ) ) + 1
+  ELSE
+    BEGIN
+    IF @tipos = @goce
+      SET @dias = @dias + ( CAST( @ff AS INTEGER ) - CAST ( @fi AS INTEGER ) ) + 1
+    END
+  FETCH aus INTO @clave, @entrada, @salida, @tipo, @goce
+  END
+  IF @dias > 0
+    BEGIN
+    SELECT @SQL = 'insert into #empaus
+	     select ''' + @antes + ''', ' + CAST( @dias AS VARCHAR(5) )
+
+    EXECUTE (@SQL)
+    END
+  
+  DEALLOCATE aus
+  SELECT CLAVE, FALTAS
+  FROM #empaus
+  ORDER BY 1
+GO
+
+-- PROCEDIMIENTO DE TRAE DSP
+IF EXISTS (SELECT name
+           FROM   sysobjects
+           WHERE  name = 'TRAE_DSP'
+           AND    type = 'P')
+  DROP PROCEDURE Supervisor_giro. TRAE_DSP
+GO
+
+CREATE PROCEDURE Supervisor_giro.TRAE_DSP
+  @tipo   VARCHAR(1),
+  @fecha  DATETIME = NULL
+AS
+  IF @fecha IS NULL
+    BEGIN
+    set @fecha = GETDATE()
+    END
+
+  DECLARE @SQL   nvarchar(600)
+  DECLARE @tabla VARCHAR(10)
+
+  IF @tipo = 'D'
+    SET @tabla = 'EMPDEP'
+  IF @tipo = 'P'
+    SET @tabla = 'EMPPUES'
+  IF @tipo = 'S'
+    SET @tabla = 'EMPSUC'
+
+  SELECT @SQL = 'SELECT E. CLAVE, DSP. CATALOGO
+		 FROM Supervisor_giro. EMPPRIN E, Supervisor_giro. EMPSDO S, Supervisor_giro. ' + @tabla + ' DSP
+                 WHERE S. CLAVE = E. CLAVE AND S. FECHA <= ''' + CAST( @fecha AS VARCHAR(20) ) + ''' and S. FECHA_SALIDA >= ''' + CAST( @fecha AS VARCHAR(20) ) + ''' AND TIPO <> ''B'' and
+                       E. CLAVE = DSP. CLAVE AND DSP. FECHA_ENTRADA <= ''' + CAST( @fecha AS VARCHAR(20) ) + ''' AND DSP. FECHA_SALIDA >= ''' + CAST( @fecha AS VARCHAR(20) ) + ''''
+  EXECUTE (@SQL)
+
+GO
+
+-- PROCEDIMIENTO DE TRAE FALTAS
+IF EXISTS (SELECT name
+           FROM   sysobjects
+           WHERE  name = 'TRAE_FALTAS'
+           AND    type = 'P')
+  DROP PROCEDURE Supervisor_giro. TRAE_FALTAS
+GO
+
+CREATE PROCEDURE Supervisor_giro.TRAE_FALTAS
+  @fecha_inicial  DATETIME = NULL,
+  @fecha_final    DATETIME = NULL,
+  @tipos          VARCHAR(20) = NULL
+AS
+  IF @fecha_inicial IS NULL
+    SET @fecha_inicial = GETDATE()
+  IF @fecha_final IS NULL
+    SET @fecha_final = GETDATE()
+  IF @tipos IS NULL
+    SET @tipos = '*'
+
+  DECLARE @SQL  nvarchar(600)
+
+  CREATE TABLE #empaus ( CLAVE VARCHAR(10) NOT NULL,
+                         FALTAS INTEGER NOT NULL )
+
+  --Variables globales
+  DECLARE @antes   VARCHAR(10)
+  DECLARE @dias    INTEGER
+  DECLARE @fi      DATETIME
+  DECLARE @ff      DATETIME
+  --Variables del Cursor
+  DECLARE @clave   VARCHAR(10)
+  DECLARE @entrada DATETIME
+  DECLARE @salida  DATETIME
+  DECLARE @tipo    VARCHAR(1)
+
+  DECLARE aus CURSOR FOR
+     SELECT a. clave, a. fechai, a. fechaf, a. tipo
+     FROM Supervisor_giro. empaus a
+     WHERE fechaf >= @fecha_inicial and fechaf <= @fecha_final
+  OPEN aus
+  FETCH aus INTO @clave, @entrada, @salida, @tipo
+  
+  --Inicializa variables del ciclo
+  SET @dias  = 0
+  SET @antes = ''
+
+  WHILE @@fetch_status >= 0
+  BEGIN
+  IF @clave <> @antes
+    BEGIN
+    IF @dias > 0
+      BEGIN
+      SELECT @SQL = 'insert into #empaus
+		   select ''' + @antes + ''', ' + CAST( @dias AS VARCHAR(5) )
+
+      EXECUTE (@SQL)
+      END
+    SET @antes = @clave
+    --Inicializa Variables del empleado
+    SET @dias = 0
+    END
+  SET @fi = @entrada
+  IF @fi < @fecha_inicial
+    SET @fi = @fecha_inicial
+  SET @ff = @salida
+  IF @ff > @fecha_final
+    SET @ff = @fecha_final
+  IF @tipos = '*'
+    SET @dias = @dias + ( CAST( @ff AS INTEGER ) - CAST ( @fi AS INTEGER ) ) + 1
+  ELSE
+    BEGIN
+    IF CHARINDEX ( @tipo, @tipos ) > 0
+      SET @dias = @dias + ( CAST( @ff AS INTEGER ) - CAST ( @fi AS INTEGER ) ) + 1
+    END
+  FETCH aus INTO @clave, @entrada, @salida, @tipo
+  END
+  IF @dias > 0
+    BEGIN
+    SELECT @SQL = 'insert into #empaus
+	     select ''' + @antes + ''', ' + CAST( @dias AS VARCHAR(5) )
+
+    EXECUTE (@SQL)
+    END
+  
+  DEALLOCATE aus
+  SELECT CLAVE, FALTAS
+  FROM #empaus
+  ORDER BY 1
+GO
+
+-- PROCEDIMIENTO DE TRAE INCAPACIDADES
+IF EXISTS (SELECT name
+           FROM   sysobjects
+           WHERE  name = 'TRAE_INCAPACIDADES'
+           AND    type = 'P')
+  DROP PROCEDURE Supervisor_giro. TRAE_INCAPACIDADES
+GO
+
+CREATE    PROCEDURE Supervisor_giro.TRAE_INCAPACIDADES
+  @fecha_inicial  DATETIME = NULL,
+  @fecha_final    DATETIME = NULL,
+  @tipos          VARCHAR(20) = NULL
+AS
+  IF @fecha_inicial IS NULL
+    SET @fecha_inicial = GETDATE()
+  IF @fecha_final IS NULL
+    SET @fecha_final = GETDATE()
+  IF @tipos IS NULL
+    SET @tipos = '*'
+  DECLARE @tipo2 VARCHAR(10)
+  DECLARE @tipo3 VARCHAR(2)
+  SET @tipo2 = @tipos
+  SET @tipos  = ''
+  WHILE ( LEN( @tipo2 ) > 0 )
+    BEGIN
+    IF ( CHARINDEX( ',', @tipo2 ) > 0 )
+      BEGIN
+      SET @tipo3 = SUBSTRING( @tipo2, 1, CHARINDEX( ',', @tipo2 ) - 1 )
+      SET @tipos = @tipos + '''' + @tipo3 + ''', '
+      SET @tipo2 = RIGHT( @tipo2, LEN( @tipo2 ) - CHARINDEX( ',', @tipo2 ) )
+      END
+    ELSE
+      BEGIN
+      SET @tipos = @tipos + '''' + @tipo2 + ''''
+      SET @tipo2 = ''
+      END
+    END
+
+  DECLARE @SQL  nvarchar(600)
+
+  CREATE TABLE #empinc ( CLAVE VARCHAR(10) NOT NULL,
+                         INCAPACIDADES INTEGER NOT NULL )
+
+  --Variables globales
+  DECLARE @antes   VARCHAR(10)
+  DECLARE @dias    INTEGER
+  DECLARE @fi      DATETIME
+  DECLARE @ff      DATETIME
+  DECLARE @ultimo  DATETIME
+  --Variables del Cursor
+  DECLARE @clave   VARCHAR(10)
+  DECLARE @entrada DATETIME
+  DECLARE @salida  DATETIME
+  DECLARE @tipo    VARCHAR(2)
+
+  DECLARE inc CURSOR FOR
+     SELECT i. clave, i. fecha, i. fecha + i. duracion - 1, i. tipo
+     FROM Supervisor_giro. empinc i
+     WHERE i. fecha + i. duracion - 1 >= @fecha_inicial and fecha <= @fecha_final and i. tipo in ( @tipos )
+     ORDER BY i. clave, i. fecha
+  OPEN inc
+  FETCH inc INTO @clave, @entrada, @salida, @tipo
+  
+  --Inicializa variables del ciclo
+  SET @dias  = 0
+  SET @antes = ''
+
+  WHILE @@fetch_status >= 0
+  BEGIN
+  IF @clave <> @antes
+    BEGIN
+    IF @dias > 0
+      BEGIN
+      SELECT @SQL = 'insert into #empinc
+		   select ''' + @antes + ''', ' + CAST( @dias AS VARCHAR(5) )
+
+      EXECUTE (@SQL)
+      END
+    SET @antes = @clave
+    --Inicializa Variables del empleado
+    SET @dias = 0
+    SET @ultimo = @fecha_inicial
+    END
+  SET @fi = @entrada
+  IF @fi < @fecha_inicial
+    SET @fi = @fecha_inicial
+  IF @fi < @ultimo
+    SET @fi = @ultimo
+  SET @ff = @salida
+  IF @ff > @fecha_final
+    SET @ff = @fecha_final
+  SET @ultimo = @ff + 1
+  SET @dias = @dias + ( CAST( @ff AS INTEGER ) - CAST ( @fi AS INTEGER ) ) + 1
+  FETCH inc INTO @clave, @entrada, @salida, @tipo
+  END
+  IF @dias > 0
+    BEGIN
+    SELECT @SQL = 'insert into #empinc
+	     select ''' + @antes + ''', ' + CAST( @dias AS VARCHAR(5) )
+
+    EXECUTE (@SQL)
+    END
+  
+  DEALLOCATE inc
+  SELECT CLAVE, INCAPACIDADES
+  FROM #empinc
+  ORDER BY 1
+GO
+
+-- INTEGRIDAD PARA LA TABLA DET_FINI CON EL CAMPO ID_FINIQUITO
+
+IF EXISTS (SELECT name 
+	   FROM   sysobjects 
+	   WHERE  name = 'EMPFINIQUITO_DELETE'
+	   AND 	  type = 'TR')
+    DROP TRIGGER Supervisor_giro. EMPFINIQUITO_DELETE
+GO
+
+CREATE TRIGGER EMPFINIQUITO_DELETE
+ON Supervisor_giro. EMPFINIQUITO
+FOR DELETE
+AS
+    DECLARE @viejo INTEGER
+
+    DECLARE VIEJO CURSOR FOR
+    SELECT DELETED. ID
+    FROM DELETED
+
+    OPEN VIEJO
+
+    FETCH NEXT FROM VIEJO
+    INTO @viejo
+
+    WHILE (@@FETCH_STATUS = 0)
+      BEGIN
+      -- ACCION A REALIZAR POR CADA REGISTRO ACTUALIZADO.
+      DELETE FROM SUPERVISOR_GIRO.DET_FINI
+      WHERE ID_FINIQUITO = @viejo
+     
+      FETCH NEXT FROM VIEJO
+      INTO @viejo
+      END
+
+    CLOSE VIEJO
+    DEALLOCATE VIEJO
+GO

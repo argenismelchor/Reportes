@@ -1,0 +1,1639 @@
+#COMUN SUB RUTINA GENERALES INTEGRADAS AL COMUN PARA SIMPLIFICAR EL CAMBIO DE DATOS
+#ELABORADO POR: JAVIER FLORES
+#FECHA: 07/05/2011
+_aux:= 0
+_descuento:= 0
+# VARIABLES PRINCIPALES y parametros
+VAR_N ( _proy_ispt )        ;; VAR_N ( _base_gravable )    ;; VAR_N ( _minimo )
+VAR_N ( _prop_7_dia )       ;; VAR_N ( _exento )
+
+# VARIABLES AUXILIARES
+VAR_N ( _aux1   )           ;; VAR_N ( _aux2 )             ;; VAR_A ( $concepto )
+VAR_N ( _ant2   )           ;; VAR_N ( _monto_hrs )        ;; VAR_N ( _dif )                 ;; VAR_N ( _f_hrs    )
+VAR_N ( _ant )              ;; VAR_N ( _cont )             ;; VAR_A ( $campo )               ;; VAR_N ( _hrs_fin  )
+VAR_A ( $mes )              ;; VAR_N ( _fini_reporte )     ;; VAR_N ( _negativo )            ;; VAR_N ( _fmes     ) 
+VAR_N ( _fecha_fin )        ;; VAR_N ( _es_vigente   )     ;; VAR_N ( _actualizar_activos )  ;; VAR_N ( _existe_campo_omitir )  
+VAR_N ( _dia_nom )          ;; VAR_N ( _omitir_anual )     ;; VAR_N ( _indice_campo       )  ;; VAR_N ( _indice ) 
+VAR_A ( $indice  )          ;; VAR_N ( _dias_pago    )     ;; VAR_N ( _dias_bim           )  ;; VAR_N ( _factor_infonavit )  
+VAR_N ( _dias_info )        ;; VAR_N ( _pii          )     ;; VAR_N ( _sv_info            )  ;; VAR_N ( _fibim ) 
+VAR_N ( _ffbim     )        ;; VAR_A ( $bimestre     )     ;; VAR_A ( 
+$aux1               )  ;; VAR_A ( $conceptos_vales ) 
+VAR_A ( $aux_tmp    )        ;; VAR_A ( $concepto_vale )    ;; VAR_N ( _sueldo_bolsa       ) ;; VAR_N ( _faltas_premio )
+VAR_A ( $tipo_falta )       ;; VAR_N ( _bolsa_mensual )    ;;  VAR_A ( $conc_imp_est      )  ;; VAR_N ( _pos ) 
+VAR_N ( _vales_minimo )     ;; VAR_N ( _imprime_empleados ) ;; VAR_A ( $empresa  ) 
+ 
+_seguro_vivienda := 15
+_descuento := 0 
+_TOPE := 0 
+
+# VALES
+VAR_N ( _topi   )           ;; VAR_N ( _maxd )             ;; VAR_N ( _tope )
+
+# HORAS EXTRAS
+VAR_N ( _maxc   )           ;; VAR_N ( _hexe )             ;; VAR_N ( _hegr )           ;; VAR_N ( _nogr )
+VAR_T ( &he     )           ;; VAR_N ( _ind_he    )        ;; VAR_N ( _auxh )
+
+# VACACIONES
+VAR_A ( $pv_automatica  )   ;; VAR_A ( $vac_automatica )   ;; VAR_N ( _acumpv )         ;; VAR_N ( _dias_vac  )
+VAR_N ( _vac_adela      )   ;; VAR_N ( _septimo_vac  )     ;; VAR_N ( _saldo_dias_ant ) ;; VAR_N ( _vac_ultimo_año )
+VAR_N ( _fv_dias        )
+
+# FINIQUITO
+VAR_N ( _f_agdo         )   ;; VAR_N ( _f_vaca )           ;; VAR_N ( _f_pvac )         ;; VAR_N ( _fecha_baja      )
+VAR_N ( _f_pant         )   ;; VAR_N ( _desc_prest_fini)   ;; VAR_N ( _sep_fini  )      ;; VAR_N ( _pgra_indem     )
+
+# VARIABLES DE EMPLEADO
+VAR_A ( $suc )              ;; VAR_A ( $depto )            ;; VAR_A ( $puesto )         ;; VAR_N ( _fpvac )  
+VAR_N ( _baja_periodo )     ;; VAR_N ( _alta_periodo )     ;; VAR_N ( _vigente )        ;; VAR_N ( _fagdo ) 
+VAR_N ( _faltas )           ;; VAR_N ( _incapacidades )    ;; VAR_N ( _vacaciones )     ;; VAR_N ( _vac_pag )
+VAR_N ( _sueldo_int )       ;; VAR_N ( _retardos )         ;; VAR_N ( _sueldo_prom )    ;; VAR_A ( $tipo_emp )
+VAR_N ( _sdo_hrs  )         ;; VAR_N ( _septimo_hrs    )   ;; VAR_N ( _faltas_imss )    ;; VAR_N ( _dias_imss_eg   )
+VAR_N ( _hrs_lab_dia  )     ;; VAR_N ( _dias_imss  )       ;; VAR_N ( _es_finiquito )   ;; VAR_N ( _dias_imss_prov )
+VAR_N ( _medias_faltas )    ;; VAR_N ( _septimo_extra )    ;; VAR_N ( _septimo_extra_hrs )  
+
+# IMSS
+VAR_N ( _rt )               ;; VAR_N ( _guard )            ;; VAR_N ( _sspat )          ;; VAR_N ( _f_in3m         )
+VAR_N ( _cvpat )            ;; VAR_N ( _3mindf )           ;; VAR_N ( _faño )           ;; VAR_N ( _f_in20         )
+VAR_N ( _intesm )           ;; VAR_N ( _pdinfo )           ;; VAR_N ( _cuota_rt )               
+
+# ISPT
+VAR_N ( _inicio_mes )       ;; VAR_A ( $ajuste_anual )     ;; VAR_A ( $ajuste_mensual ) ;; VAR_N ( _inicio_año )
+VAR_N ( _dias_ispt    )
+
+# PARAMETROS
+VAR_N ( _cuota_sindical% )  ;; VAR_N ( _prev_soc )         ;; VAR_N ( _factor )
+VAR_N ( _dias )             ;; VAR_N ( _tot_emp )          ;; VAR_N ( _total_neg )
+VAR_N ( _factor_sa )        ;; VAR_N ( _factor_co )        
+VAR_A ( $concepto_exen  )   ;; VAR_N ( _aux_hrs )          
+VAR_N ( _dias_subs )        ;; VAR_N ( _vac_antes_7mo ) 
+
+# VARIABLES PRIMA AUTOMATICA
+
+VAR_N (_pi)                 ;; VAR_N ( _pf )               ;; VAR_N ( _dia_fin_mes ) ;; VAR_N ( _fiprima ) 
+VAR_N (_pag_retro)          ;; VAR_N ( _dias_retro )       ;; VAR_N ( _prima_ant   ) ;; VAR_N ( _ffprima ) 
+VAR_N (_f_ingreso )         ;; VAR_N ( _dia_ing    )       ;; VAR_N ( _mes_ing     ) ;; VAR_N ( _ano_ing ) 
+VAR_N (_fecha_prima ) 
+
+# VARIABLES AUXILIARES DE CALCULO
+
+VAR_T ( &tabla_sql  )
+VAR_T ( &empleado   )
+VAR_T ( &indice     ) 
+
+# TABLAS DE IMPUESTOS MENSUALES
+   $ispt        := 'ISPTN'
+   $subs        := 'SUBSN'
+   $ajuste_mensual := 'S'
+# TABLAS DE IMPUESTOS ANUALES
+   $ispta       := 'ISPTA'
+# ESPESIFICA SI APLICAN AJUSTES MENSUALES EN LA NOMINA
+   $ajuste_anual    := 'S'
+# CREDITO INFONAVIT ( 1 = TRADICIONAL   2 = NUEVA FORMULA )
+   _infonavit := 2
+# TOTALES DE NOMINA
+   _totales := 1
+# PARAMETROS DEL CALCULO CONSTANTES
+   _actualizar_activos := 0
+   $pv_automatica      := 'N'
+   $seg_vivienda       := 'S' 
+   $hrsturn            := '0'
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# ESTAS VARIABLES SON SOLO PARA LA DECLARACION, LOS PARAMETROS SON ESTABLECIDOS EN LA SECCION PARAMETROS DE CADA NOMINA
+
+   _puntualidad          := 0  _asistencia           := 0  _comida               := 0  _pago_fondo           := 0  _fondo_ahorro         := 0  _pago_vales           := 0
+   _vales                := 0  _pago_puntualidad     := 0  _retardos_puntualidad := 0  _faltas_puntualidad   := 0  _incap_puntualidad    := 0  _vacac_puntualidad    := 0   
+   _incap_asistencia     := 0  _vacac_asistencia     := 0  _prima_dominical      := 0  _cuota_sindical%      := 0  _proy_ispt            := 0  _pago_asistencia      := 0    
+   _faltas_asistencia    := 0  _ajuste               := 0  _impuest              := 0  _impuesto             := 0      
+   _calc_empleado        := 0  _totales              := 0
+
+   $sueldo               := ''  $septimo_dia         := ''  $retroactivo         := ''   $vacaciones         := '' $extra1               := '' $extra2               := ''   
+   $extra3               := ''  $sueldo_val          := ''  $septimo_dia_val     := ''   $retroactivo_val    := '' $vacaciones_val       := '' $extra1_val           := ''   
+   $extra2_val           := ''  $extra3_val          := ''  $vac_automatica      := ''   $pv_automatica      := '' $sem_ing              := '' $sueldo               := '' 
+   $septimo_dia          := ''  $retroactivo         := ''  $vacaciones          := ''   $extra1             := '' $extra2               := '' $extra3               := ''
+   $sueldo_val           := ''  $septimo_dia_val     := ''  $retroactivo_val     := ''   $vacaciones_val     := '' $extra1_val           := '' $extra2_val           := '' 
+   $extra3_val           := ''  $sucursal            := '' 
+ 
+CREA_KARDEX ('TOTAL'            )
+$kardex_indice     := 'SUCURSAL'    ;; CREA_KARDEX ($kardex_indice     )  ;; _cont_emp_indice := 0 
+$kardex_finiquito  := 'FINIQUITOS'  ;;CREA_KARDEX ($kardex_finiquito   )  ;; _cont_emp_fini   := 0 
+
+ENCABEZADO
+   COLOR ( 'NEGRO') 
+   FORMATO_FECHA := 5
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL (1) , 'Rep. ' , CLAVE_REPORTE , ' ' , NOMBRE_REPORTE , COL (50) , VERSION_GIRO ) ;; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ('Cálculo de Nómina') ) ;; IMPRIME
+   IMP ( CENTRA ( 'Del ' + FECHA ('PERIODO':'FECHA INICIAL') + ' al ' + FECHA ('PERIODO':'FECHA FINAL') ) ) ;; IMPRIME
+   IMP ( CENTRA ( 'Incidencias del ' + FECHA (_pi) + ' al ' + FECHA (_pf) ) ) ;; IMPRIME
+   IMP ( REPITETXT ( '=' , 90 ) ) ;; IMPRIME
+   SI ( _totales = 0 )
+     IMP ( COL (1) , 'CLAVE' , COL (11) , 'NOMBRE' , COL (50) , 'AUS', COL(55), 'INC', COL(60), 'VAC', COL(65), 'RET' ,COL (70), DER ( 'S. DIARIO' , 10 ) ) ;; IMPRIME
+   SI_NO
+     IMP ( COL (3) , 'CLAVE' , COL (10) , 'CONCEPTO' , COL (60) , DER( 'PERC.', 10), COL (70) , DER( 'DEDU.', 10), COL (80) , DER( 'CONC.' , 10) ) ;; IMPRIME
+   FIN_SI
+   IMP ( REPITETXT ( '-' , 90 ) ) ;; IMPRIME
+   LETRA ( 'LETRA 1' )
+   IMPRIME
+   FORMATO_FECHA := 2
+FIN_ENCABEZADO
+
+PIE
+   COLOR ( 'NEGRO') 
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL (1) , 'Fecha : ' , FECHA (FECHA_HOY) , '    ' , 'Hora : ' , HORA (HORA_ACTUAL) , COL (65) , 'Pagina : ', PAGINA ) ;; IMPRIME
+   LETRA ( 'LETRA 1' ) ;; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+     
+SUB_RUTINA imprime_empleado   
+   LETRA ( 'LETRA 1' ) 
+   COLOR ( 'NEGRO' ) ;; IMPRIME_SIN_SALTO
+   SI (( _es_finiquito = 1 ) OR ( _fini_reporte = 1 )) ;;  COLOR( 'AZUL' ) IMPRIME_SIN_SALTO ;; FIN_SI   
+   SI (( _negativo     = 1 )                         ) ;;  COLOR( 'ROJO' ) IMPRIME_SIN_SALTO ;; FIN_SI   
+   SI (( _es_vigente   = 0 )                         ) ;;  COLOR( 'ROJO' ) IMPRIME_SIN_SALTO ;; FIN_SI   
+   DECIMALES := 0   
+   IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (12) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 35 )  )
+   IMP ( COL (57), DER ( _faltas, 3 ), COL(62), DER ( _incapacidades, 3 ) ) 
+   IMP ( COL (67), DER ( _vacaciones, 3 ), COL(73), DER ( _retardos, 3 ) ) 
+   DECIMALES := 2
+   IMP ( COL (80) , DER ( $ (_sueldo_prom), 10 ) ) ;; IMPRIME
+   _tot_emp       := _tot_emp + 1
+   COLOR ( 'NEGRO' ) ;; IMPRIME_SIN_SALTO 
+FIN_SUB_RUTINA
+
+SUB_RUTINA validaciones_de_calculo
+SI ( TRAE_REGISTRO ( 'TIPONOM' , $tipo_nomina ) = 0 )
+  IMP ( 'NO SE HA ENCONTRADO EL TIPO DE NOMINA SELECCIONADO' ) ;; IMPRIME
+  TERMINA_REPORTE
+FIN_SI
+SI ( TRAE_REGISTRO ( 'PERIODO' , $tipo_nomina , 'TIPONOM':'ACTUAL' ) = 0 )
+  IMP ( 'NO SE HA ENCONTRADO EL PERIODO ACTUAL DEL TIPO DE NOMINA SELECCIONADO' ) ;; IMPRIME
+  TERMINA_REPORTE
+ SI_NO
+  SI ( 'PERIODO':'DIAS DE PAGO' <= 7 )
+   SI (( $sem_ing = 'N' ) AND ( 'PERIODO':'DIA DESCUENTO 1' = 0 ) AND ( 'PERIODO':'DIA DESCUENTO 2' = 0 ))
+         'PERIODO':'DIA DESCUENTO 1' := 7
+         GRABA_BASE ('PERIODO') 
+    SI_NO
+     SI ( $sem_ing = 'S') 
+         'PERIODO':'DIA DESCUENTO 1' := 6
+         'PERIODO':'DIA DESCUENTO 1' := 7
+          GRABA_BASE ('PERIODO') 
+     FIN_SI
+   FIN_SI
+  FIN_SI
+FIN_SI
+SI ( TRAE_REGISTRO_VIG ( 'MINIMO' , 'PERIODO':'FECHA INICIAL' ) = 0 )
+  IMP ( 'NO SE HA ENCONTRADO EL SUELDO MINIMO PARA EL PERIODO ACTUAL DEL TIPO DE NOMINA SELECCIONADO' ) ;; IMPRIME
+  TERMINA_REPORTE
+FIN_SI
+SI ( TRAE_REGISTRO_VIG ( 'PAGOIMSS' , 'PERIODO':'FECHA INICIAL' ) = 0 )
+  IMP ( 'NO SE HAN ENCONTRADO LOS PORCENTAJES DE PAGO AL IMSS PARA EL PERIODO ACTUAL DEL TIPO DE NOMINA SELECCIONADO' ) ;; IMPRIME
+  TERMINA_REPORTE
+FIN_SI
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA parametros
+
+   NUEVO_PARAMETRO_TAB  ( 'EMPLEADO'      , 'EMPPRIN/CLAVE/EMPLEADOS' , &empleado )
+   NUEVO_PARAMETRO_CHEQ ( 'IMP EMPLEADOS' , '' , _imprime_empleados )
+   LEE_PARAMETROS
+
+FIN_SUB_RUTINA
+
+$empleado := ''
+
+SUB_RUTINA no_activo 
+_actualizar_activos := 0 
+ SI ( _actualizar_activos = 1) 
+   FORMATO_FECHA := 1
+   AGREGA_VALOR_COL ( &tabla_sql , 0 , 'Update empprin  '   ) 
+   AGREGA_VALOR_COL ( &tabla_sql , 0 , 'set no_activo = 0 ' ) 
+   AGREGA_VALOR_COL ( &tabla_sql , 0 , 'where clave not in ( '  ) 
+   AGREGA_VALOR_COL ( &tabla_sql , 0 , 'select e.clave from empprin e, empsdo s' ) 
+   AGREGA_VALOR_COL ( &tabla_sql , 0 , 'where e.clave = s.clave and s.fecha <= "' + FECHA( 'PERIODO':'FECHA INICIAL' - 30 ) + '" and s.fecha_salida >= "' + FECHA('PERIODO':'FECHA INICIAL' + 10 ) + '"')
+   AGREGA_VALOR_COL ( &tabla_sql , 0 , ' and s.tipo = "B" and e.tipo_nom = "'  + $tipo_nomina + '")'  ) 
+   #IMPRIME_TABLA    ( &tabla_sql , 1 )
+   #TERMINA_REPORTE
+   EJECUTA_CONSULTA ( &tabla_sql ) 
+   FORMATO_FECHA := 1
+   LIMPIA_TABLA     ( &tabla_sql ) 
+   AGREGA_VALOR_COL ( &tabla_sql , 0 , 'Update empprin  '   ) 
+   AGREGA_VALOR_COL ( &tabla_sql , 0 , 'set no_activo = 1 ' ) 
+   AGREGA_VALOR_COL ( &tabla_sql , 0 , 'where clave in ( '  ) 
+   AGREGA_VALOR_COL ( &tabla_sql , 0 , 'select e.clave from empprin e, empsdo s' ) 
+   AGREGA_VALOR_COL ( &tabla_sql , 0 , 'where e.clave = s.clave and s.fecha <= "' + FECHA( 'PERIODO':'FECHA INICIAL' - 30 ) + '" and s.fecha_salida >= "' + FECHA( 'PERIODO':'FECHA INICIAL' + 10 ) + '"')
+   AGREGA_VALOR_COL ( &tabla_sql , 0 , ' and s.tipo = "B" and e.tipo_nom = "'  + $tipo_nomina + '")'  ) 
+#  IMPRIME_TABLA    ( &tabla_sql , 1 )
+#  TERMINA_REPORTE
+   EJECUTA_CONSULTA ( &tabla_sql ) 
+ FIN_SI
+FIN_SUB_RUTINA 
+
+SUB_RUTINA consulta_de_empleados
+
+_pi := 'PERIODO':'FECHA FINAL'
+
+no_activo  # Esta subrutina es mandada a llamar para aplicar un estatus de no activo a todo el personal que tenga una baja sin reingreso a mas de 30 dias del dia del calculo
+           # para no ejecutar este proceso basta con apagar en el parametro la bandera _actualizar_activos, por default esta activa
+
+$empleado := ''
+
+LIMPIA_TABLA     ( &tabla_sql ) 
+AGREGA_VALOR_COL ( &tabla_sql , 0 , 'SELECT E.CLAVE, E.NOMBREP || " " || E.NOMBREM || " " || E.NOMBREN AS NOMBRE, E.*, S.*' )
+AGREGA_VALOR_COL ( &tabla_sql , 0 , 'FROM EMPPRIN E , EMPSUC S' )
+AGREGA_VALOR_COL ( &tabla_sql , 0 , 'WHERE E.CLAVE = S.CLAVE  AND S. "FECHA ENTRADA" <= :FIP AND S. "FECHA SALIDA" >= :FIP  AND E.TIPO_NOM = :tipo_nomina' )
+SI ( TRAE_VALOR_TABLA ( &empleado , 0 , 0 ) <> '*' )
+   $empleado := TRAE_SELECCION (  &empleado )
+   AGREGA_VALOR_COL   ( &tabla_sql , 0 , '      AND E.CLAVE IN (' + MAYUSCULAS( $empleado) + ')' )
+FIN_SI
+#AGREGA_VALOR_COL   ( &tabla_sql , 0 , 'AND (NO_ACTIVO = FALSE' )
+#AGREGA_VALOR_COL   ( &tabla_sql , 0 , ' OR NO_ACTIVO = "" )'  )
+AGREGA_VALOR_COL   ( &tabla_sql , 0 , ' ORDER BY S.CATALOGO, E.CLAVE '  )
+#IMPRIME_TABLA (&tabla_sql, 10)
+#TERMINA_REPORTE
+CREA_CONSULTA      ( 'EMPPRIN' , &tabla_sql )
+PARAMETRO_SQL      ( 'EMPPRIN' , 'tipo_nomina' , $tipo_nomina )
+PARAMETRO_SQL      ( 'EMPPRIN' , 'FIP'         , _pi )
+
+#IMPRIME_TABLA    ( &tabla_sql , 1 )
+#TERMINA_REPORTE
+
+PRIMER_REGISTRO ('EMPPRIN') 
+MIENTRAS ( FIN_BASE  ('EMPPRIN')  = FALSO ) 
+   SIGUIENTE_REGISTRO ('EMPPRIN') 
+FIN_MIENTRAS
+
+DECIMALES := 2
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA apertura_de_tablas
+
+ABRE_BASE ( 'PUESTO'   )
+ABRE_BASE ( 'FACTOR'   )
+ABRE_BASE ( 'SUCURSAL')
+
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPAUS'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPINC'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPACUM' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPPRES' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPNOM'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPVACA' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSUC' , 'CLAVE' )
+#USA_ARCHIVO ( 'EMPPRIN' , 'Turno1' , 'CLAVE' ) esta linea esta incorrecta, relacionaste la tabla turno1 con la empprin, como para que?
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA auxiliares_de_calculo
+
+   _fmes          := MES ( 'PERIODO':'FECHA INICIAL' )
+   _faño          := AÑO ( 'PERIODO':'FECHA INICIAL' )
+   _inicio_mes    := CALCULA_FECHA ( _faño , _fmes , 01 )
+   _inicio_año    := CALCULA_FECHA ( _faño ,   01  , 01 )
+   $mes           :='PERIODO':'MES DE ACUMULACION'
+
+   MIENTRAS( NOMBRE_CAMPO( 'EMPEXT', _indice_campo ) <> '' )
+     SI ( NOMBRE_CAMPO( 'EMPEXT', _indice_campo ) = 'OMITIR_CALCULO_ANUAL' )
+       _existe_campo_omitir := 1
+     FIN_SI
+     _indice_campo := _indice_campo + 1
+   FIN_MIENTRAS
+
+   SI ( FRAC ( MES ( _pi )  / 2 ) > 0 )
+      _dias_bim :=  CALCULA_FECHA ( AÑO ( _pi ) , MES ( _pi ) + 1 , 31 ) - CALCULA_FECHA ( AÑO ( _pi ) , MES ( _pi )     , 1 )  + 1
+      _fibim    :=  CALCULA_FECHA ( AÑO ( _pi ) , MES ( _pi )     , 1 )  
+      _ffbim    :=  CALCULA_FECHA ( AÑO ( _pi ) , MES ( _pi ) + 1 , 31 )
+    SI_NO
+      _dias_bim :=  CALCULA_FECHA ( AÑO ( _pi ) , MES ( _pi )     , 31 ) - CALCULA_FECHA ( AÑO ( _pi ) , MES ( _pi ) - 1 , 1 ) + 1 
+      _fibim    :=  CALCULA_FECHA ( AÑO ( _pi ) , MES ( _pi ) - 1 , 1 )  
+      _ffbim    :=  CALCULA_FECHA ( AÑO ( _pi ) , MES ( _pi )     , 31 )
+   FIN_SI
+   
+   SI ( MES ( _fibim ) = 1  ) ;; $bimestre := 'BIMESTRE1' ;; FIN_SI 
+   SI ( MES ( _fibim ) = 3  ) ;; $bimestre := 'BIMESTRE2' ;; FIN_SI 
+   SI ( MES ( _fibim ) = 5  ) ;; $bimestre := 'BIMESTRE 3' ;; FIN_SI 
+   SI ( MES ( _fibim ) = 7  ) ;; $bimestre := 'BIMESTRE4' ;; FIN_SI 
+   SI ( MES ( _fibim ) = 9  ) ;; $bimestre := 'BIMESTRE5' ;; FIN_SI 
+   SI ( MES ( _fibim ) = 11 ) ;; $bimestre := 'BIMESTRE6' ;; FIN_SI 
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA calcula_dias
+
+   _pii  := 'PERIODO':'FECHA INICIAL'
+   SI ( 'EMPPRIN':'INICIO DESCUENTO INF' > _pii  ) 
+     _pii := 'EMPPRIN':'INICIO DESCUENTO INF'
+   FIN_SI   
+###########   
+  
+   SI ( 'EMPPRIN':'INGRESO' > _pi  ) 
+     _dias_pago      := FUE_VIGENTE ( _pi  , _pf )
+   SI_NO
+      _dias_pago      := FUE_VIGENTE ( _pi  , _pi + 'PERIODO':'DIAS DE PAGO' )
+   FIN_SI
+
+   _dias_pago      := FUE_VIGENTE ( 'PERIODO':'FECHA INICIAL'  , 'PERIODO':'FECHA FINAL' )
+
+
+   SI (( _dias_pago < 30 ) OR  ( _dias_pago > 30 ) AND ( 'TIPONOM':'CLAVE'  = 'MEN' )  )
+
+      _dias_pago := 30
+
+   FIN_SI
+
+
+   SI (( _dias_pago > 15  ) AND ( 'TIPONOM':'CLAVE'  <>'MEN' )  )
+
+      _dias_pago := 15
+
+   FIN_SI
+
+############# ARGENIS
+
+   DECIMALES := 2
+
+
+
+   _dias_info      := FUE_VIGENTE ( _pii , 'PERIODO':'FECHA FINAL' ) - ( TRAE_FALTAS ( _pii , _pf , '*' ) + TRAE_INCAPACIDADES ( _pii , _pf , '*' ))
+   _dias_imss      := FUE_VIGENTE ( _pi  , _pf ) - ( _faltas  + _incapacidades )+ 1
+   _dias_imss_eg   := FUE_VIGENTE ( _pi  , _pf )
+   _dias_imss_prov := FUE_VIGENTE ( _pi  , _pf ) 
+
+   SI ('PERIODO':'DIAS DE PAGO' <= 7 )
+      _dias_pago := VIGENTE_PERIODO
+   FIN_SI
+
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA valida_retro 
+   _dias_retro := 0
+   SI ( ( 'EMPPRIN':'INGRESO' > _pi ) AND ( 'EMPPRIN':'INGRESO' < ( 'PERIODO':'FECHA INICIAL' - 1 ) ) )
+      _pag_retro := 1
+      _dias_retro := 'PERIODO':'FECHA INICIAL' - 'EMPPRIN':'INGRESO' 
+      CAPTURA_CONCEPTO ('04')
+      CAP1 ('04') := _dias_retro
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA calcula_vacaciones
+   _saldo_dias_ant := SDO_VACACIONAL_X_PAGAR (_fecha_baja) 
+   SI ( TRAE_REGISTRO ( 'PUESTO' , TRAE_DSP ('P' , _fecha_baja )))
+    SI ( TRAE_FACTOR ( _fecha_baja , 'PUESTO':'TIPO EMPLEADO' , _ant ))##################ARGENIS
+      _vac_ultimo_año := 'FACTOR':'DIAS DE VACACIONES'
+    FIN_SI
+     SI (  CALCULA_FECHA ( AÑO (_fecha_baja ), MES ('EMPPRIN':'INGRESO' ) , DIA ('EMPPRIN':'INGRESO')) > _fecha_baja )
+      _fv_dias := _fecha_baja - CALCULA_FECHA ( AÑO (_fecha_baja ) - 1, MES ('EMPPRIN':'INGRESO' ) , DIA ('EMPPRIN':'INGRESO')) + 1
+      SI_NO
+      _fv_dias := _fecha_baja - CALCULA_FECHA ( AÑO (_fecha_baja )    , MES ('EMPPRIN':'INGRESO' ) , DIA ('EMPPRIN':'INGRESO')) + 1
+     FIN_SI
+       DECIMALES := 8
+      _vac_ultimo_año := ('FACTOR':'DIAS DE VACACIONES' / 365 ) * _fv_dias
+       DECIMALES := 2
+   FIN_SI
+FIN_SUB_RUTINA
+
+# Formula de calculo de conceptos con saldos acumulativos y aportaciones
+$ctmp := ''
+$pc  := ''
+$pc1 := ''
+$pc2 := ''
+$pc3 := ''
+$pct := ''
+SUB_RUTINA FORMULA_PRESTAMO
+   $pc := 'NOMINA':'CLAVE'
+   SI ( CAP3 ( $pc ) >  CAP2 ( $pc )) 
+      TOTAL ( $pc ) := CAP2 ( $pc ) 
+    SI_NO
+      TOTAL ( $pc ) := CAP3 ( $pc ) 
+   FIN_SI
+   SI (( CAP1 ( $pc )  <> 0 ) AND ( CAP2 ( $pc )= 0 ) AND ( CAP3 ( $pc ) = 0 )) # Integracion de las aportaciones
+      TOTAL ( $pc ) := CAP1 ( $pc ) 
+   FIN_SI
+   SI ( TOTAL_NEGATIVO )
+      TOTAL ( $pc )  := 0
+   FIN_SI 
+FIN_SUB_RUTINA
+
+# Seleccion del salario minimo para calculos
+SUB_RUTINA carga_minimo
+  SI ( TRAE_REGISTRO ( 'SUCURSAL' , $suc ) )
+     SI ( TRAE_REGISTRO ( 'PATRONAL' , 'SUCURSAL':'REGISTRO PATRONAL' ) )
+        SI ( 'PATRONAL':'ZONA ECONOMICA' = 'A' )
+           _minimo := 'MINIMO':'MINIMO A'
+        FIN_SI
+        SI ( 'PATRONAL':'ZONA ECONOMICA' = 'B' )
+           _minimo := 'MINIMO':'MINIMO B'
+        FIN_SI
+        SI ( 'PATRONAL':'ZONA ECONOMICA' = 'C' )
+           _minimo := 'MINIMO':'MINIMO C'
+        FIN_SI
+        _cuota_rt := 'PATRONAL':'RT'
+        SI ( _cuota_rt = 0 )
+           IMP ( 'CUOTA DE RIESGO DE TRABAJO INVALIDO ', 'SUCURSAL':'REGISTRO PATRONAL' ) ;; IMPRIME
+           TERMINA_REPORTE
+        FIN_SI
+     SI_NO
+        IMP ( 'REGISTRO PATRONAL INVÁLIDO DE LA SUCURSAL ', 'SUCURSAL':'CLAVE' ) ;; IMPRIME
+        TERMINA_REPORTE
+     FIN_SI
+  SI_NO
+     IMP ( 'SUCURSAL INVÁLIDA DE TRABAJADOR ', 'EMPPRIN':'CLAVE', ' ', 'EMPPRIN':'NOMBRE' ) ;; IMPRIME
+     TERMINA_REPORTE
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA valida_prima
+   
+     DECIMALES := 2     
+
+     _f_ingreso     := 'EMPPRIN':'INGRESO'
+     _dia_ing       := DIA ( 'EMPPRIN':'INGRESO' )
+     _mes_ing       := MES ( 'EMPPRIN':'INGRESO' )
+     _ano_ing       := AÑO ( FECHA_HOY )
+     _fecha_prima   := CALCULA_FECHA ( _ano_ing , _mes_ing , _dia_ing )
+        
+     SI (( _fecha_prima >= 'PERIODO':'FECHA INICIAL' ) AND ( _fecha_prima <= 'PERIODO':'FECHA FINAL' ))
+        SI ( _f_ingreso < 'PERIODO':'FECHA INICIAL'  )
+           _ant := ( ( 'PERIODO':'FECHA FINAL' - 'EMPPRIN':'INGRESO' ) + 1 ) / 365
+           _ant := TRUNCAR ( _ant )
+           _aux1 := 0
+           SI ( _ant > 0 )
+              SI ( TRAE_FACTOR ( 'PERIODO':'FECHA FINAL', '', _ant ) )
+                _aux1 := 'FACTOR':'PRIMA VACACIONAL'
+                CAPTURA_CONCEPTO ('13') 
+                TOTAL ('13') := _aux1 * _sueldo_prom
+              FIN_SI      
+           FIN_SI         
+        FIN_SI
+     FIN_SI
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA FORMULA_ISPT
+
+# Calculo de Impuestos ( Art. 113 LISR )
+
+   DECIMALES   := 8	
+   CAP3 ('51') := 0
+   SI ( CAP1 ('51') <> 0 )
+      TOTAL ('51') := CAP1 ('51')
+   SI_NO
+      _base_gravable := TOTAL_PERCEPCIONES - ( _exento + _nogr )
+      SI (( $ajuste_mensual = 'S' ) AND ( 'PERIODO':'FIN DE MES' = 1 ) AND ( 'EMPPRIN':'INGRESO' <= _inicio_mes ) AND ( TOTAL_PERCEPCIONES > 0 ))
+         _base_gravable := _base_gravable + ACUM_MENSUAL ( $mes , 'PGRA' )
+         SI ( TRAE_REGISTRO ( 'TABISPT' , $ispt ) ) ;; FIN_SI
+         TOTAL ('51')   := CALCULA_ISPT ( _base_gravable )
+         _aux1 := TOTAL ('51') 
+         TOTAL ('IMPS') := CALCULA_ISPT ( _base_gravable ) - ACUM_MENSUAL ( $mes , 'IMPS' )
+         SI ( TRAE_REGISTRO ( 'TABISPT' , $subs ) ) ;; FIN_SI
+         TOTAL ('51')   := TOTAL ('51') - CALCULA_ISPT ( _base_gravable )
+         _aux1 := TOTAL ('51') 
+         TOTAL ('CRED') := CALCULA_ISPT ( _base_gravable ) - ACUM_MENSUAL ( $mes , 'CRED' )
+         SI ( TOTAL ('51') < 0 )
+            CAP3  ('51') := TOTAL ('51') - ACUM_MENSUAL ( $mes , '51A' )
+            TOTAL ('51') := ACUM_MENSUAL ( $mes , '51' ) * -1
+            SI ( CAP3 ('51') > 0 )
+               TOTAL ('51') := TOTAL ('51') + CAP3 ('51')
+	       CAP3  ('51') := 0
+	    FIN_SI		
+         SI_NO
+            TOTAL ('51') := TOTAL ('51') - ACUM_MENSUAL ( $mes , '51' )
+            TOTAL ('51') := TOTAL ('51') + ( ACUM_MENSUAL ( $mes , '51A' ) * -1 )
+         FIN_SI
+      SI_NO
+         _base_gravable := ( _base_gravable / TOTAL ('DIAS') ) * _proy_ispt
+         SI ( TRAE_REGISTRO ( 'TABISPT' , $ispt ) ) ;; FIN_SI
+         TOTAL ('51')   := CALCULA_ISPT ( _base_gravable )
+         TOTAL ('IMPS') := CALCULA_ISPT ( _base_gravable )
+         SI ( TRAE_REGISTRO ( 'TABISPT' , $subs ) ) 
+            TOTAL ('51')   := TOTAL ('51') - CALCULA_ISPT ( _base_gravable )
+         FIN_SI
+         _aux1 := TOTAL('51')
+         TOTAL ('CRED') := CALCULA_ISPT (_base_gravable)
+         SI ( TOTAL ('51') < 0 )
+            CAP3  ('51') := TOTAL ('51')
+            TOTAL ('51') := 0
+         FIN_SI
+         TOTAL ('51')   := ( TOTAL ('51')   / _proy_ispt ) * TOTAL ('DIAS')
+         CAP3  ('51')   := ( CAP3  ('51')   / _proy_ispt ) * TOTAL ('DIAS')
+         TOTAL ('IMPS') := ( TOTAL ('IMPS') / _proy_ispt ) * TOTAL ('DIAS')
+         TOTAL ('SUBS') := ( TOTAL ('SUBS') / _proy_ispt ) * TOTAL ('DIAS')
+         TOTAL ('SUBN') := ( TOTAL ('SUBN') / _proy_ispt ) * TOTAL ('DIAS')
+         TOTAL ('CRED') := ( TOTAL ('CRED') / _proy_ispt ) * TOTAL ('DIAS')
+      FIN_SI
+
+# Ajuste Anual de Impuestos ( Art. 116 LISR )
+
+      SI (( $ajuste_anual = 'S' ) AND ( 'PERIODO':'FIN DE AÑO' = 1 ) AND ( 'EMPPRIN':'INGRESO' <= _inicio_año ))
+	SI ((( TOTAL_PERCEPCIONES - _exento ) + ACUM_ANUAL ('PGRA') ) < 399999 )
+         SI (_existe_campo_omitir = 1) 
+            _omitir_anual := 'EMPEX':'OMITIR_CALCULO_ANUAL' 
+         FIN_SI
+         SI ( _omitir_anual = 0 ) 
+          _base_gravable := ( TOTAL_PERCEPCIONES - ( _exento + _nogr ) ) + ACUM_ANUAL ('PGRA')
+          SI ( TRAE_REGISTRO ( 'TABISPT' , $ispta ) ) ;; FIN_SI
+          TOTAL ('51')   := CALCULA_ISPT ( _base_gravable )
+          TOTAL ('IMPS') := CALCULA_ISPT ( _base_gravable ) - ACUM_ANUAL ('IMPS')
+
+          _aux1 :=  TOTAL ('51') 
+
+          _aux1 :=  ACUM_ANUAL ('CRED') + TOTAL ('CRED')
+
+          TOTAL ('51') := TOTAL ('51') - ( ACUM_ANUAL ('CRED') + TOTAL ('CRED')) 
+
+          _aux1 := TOTAL ('51')          
+
+          SI ( TOTAL ('51') < 0 )
+             CAP3  ('51') := TOTAL ('51') - ACUM_ANUAL ('51A')
+             TOTAL ('51') := ACUM_ANUAL ('51') * -1
+             SI ( CAP3 ('51') > 0 )
+                TOTAL ('51') := TOTAL ('51') + CAP3 ('51')
+                CAP3  ('51') := 0
+             FIN_SI
+          SI_NO
+             TOTAL ('51') := TOTAL ('51') - ACUM_ANUAL ('51')
+             TOTAL ('51') := TOTAL ('51') + ( ACUM_ANUAL ('51A') * -1 )
+          FIN_SI
+         FIN_SI
+	FIN_SI
+      FIN_SI
+
+# Cálculo de ISR para FINIQUITOS ( Art. 112 LISR )	
+
+      SI (( CAP1 ('FINI') <> 0 ) OR ( CAP2 ('FINI') <> 0 ))
+      	 _base_gravable := _sueldo_prom * 30.4166
+         SI ( TRAE_REGISTRO ( 'TABISPT' , $ispt ) ) ;; FIN_SI
+         _aux1 := CALCULA_ISPT ( _base_gravable )
+	 SI ( _aux1 > 0 )
+	    TOTAL ('51')     := 0
+	    TOTAL ('51A')    := 0
+	    TOTAL ('51B')    := ( _aux1 / _base_gravable ) * ( TOTAL_PERCEPCIONES - _exento )
+	    TOTAL ('IMPS')   := ( _aux1 / _base_gravable ) * ( TOTAL_PERCEPCIONES - _exento )
+	 FIN_SI
+      FIN_SI
+
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA CHECA_EXENTO
+  SI ( TOTAL ( $concepto_exen ) > 0 )
+     SI ( TRAE_REGISTRO ( 'CONCEPTO' , $concepto_exen ) )	
+       _aux1 := 'CONCEPTO':'EXENTO_PESOS' + ( 'CONCEPTO':'EXENTO_S_M' * _minimo )
+     FIN_SI	
+     SI ( TOTAL ( $concepto_exen ) > _aux1 )
+        _exento := _exento + _aux1
+        $concepto_exen := 'EX' + $concepto_exen
+        SI ( CONCEPTO_CAPTURADO( $concepto_exen ) = FALSO )
+          CAPTURA_CONCEPTO( $concepto_exen )
+        FIN_SI
+        TOTAL ( $concepto_exen ) := _aux1
+     SI_NO
+        _exento := _exento + TOTAL ( $concepto_exen )
+        _aux1 := TOTAL ( $concepto_exen )
+	$concepto_exen := 'EX' + $concepto_exen
+        SI ( CONCEPTO_CAPTURADO( $concepto_exen ) = FALSO )
+          CAPTURA_CONCEPTO( $concepto_exen )
+        FIN_SI
+        TOTAL ( $concepto_exen ) := _aux1
+     FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA FORMULA_IMSS
+   DECIMALES := 8
+   SI ( TOTAL_PERCEPCIONES = 0 ) ;; _dias_imss := 0 ;; FIN_SI
+   SI ( CAP1 ('52') <> 0 )
+     TOTAL ('52') := CAP1 ('52')
+   SI_NO
+      _aux1 := _sueldo_int
+      SI (_aux1 <= ( _minimo + 0.01 ) )
+         TOTAL ('52') := 0
+      SI_NO
+         _aux1 := _sueldo_int
+         SI ( _aux1 < _minimo )
+            _aux1 := _minimo
+         FIN_SI
+         TOTAL ('52') := _aux1 * _dias_imss * ( 'PAGOIMSS':'EG ESPECIE EMPLEADO' / 100 ) 
+         _3mindf := 'MINIMO':'MINIMO A' * 3
+         SI ( _aux1 > _3mindf )
+            TOTAL ('52') := TOTAL ('52') + ( ( _aux1 - _3mindf ) * _dias_imss * ( 'PAGOIMSS':'EG 3SMGDF EMPLEADO' / 100 ) )
+         FIN_SI
+         TOTAL ('52') := TOTAL ('52') + ( _aux1 * _dias_imss * ( ( 'PAGOIMSS':'EG DINERO EMPLEADO' ) / 100 ) )
+         _tope := 'MINIMO':'TOPE IVCM'
+         SI ( _aux1 > _tope )
+            TOTAL ('52') := TOTAL ('52') + ( _tope * _dias_imss * ( 'PAGOIMSS':'INVALIDEZ Y VIDA EMPLEADO' / 100 ) )
+            TOTAL ('52') := TOTAL ('52') + ( _tope * _dias_imss * ( 'PAGOIMSS':'CESANTIA Y VEJEZ EMPLEADO' / 100 ) )
+         SI_NO
+            TOTAL ('52') := TOTAL ('52') + ( _aux1 * _dias_imss * ( 'PAGOIMSS':'INVALIDEZ Y VIDA EMPLEADO' / 100 ) )
+            TOTAL ('52') := TOTAL ('52') + ( _aux1 * _dias_imss * ( 'PAGOIMSS':'CESANTIA Y VEJEZ EMPLEADO' / 100 ) )
+         FIN_SI
+      FIN_SI
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA IMSS_PATRONAL
+   DECIMALES := 8
+   _rt    := 0
+   _guard := 0
+   _sspat := 0
+   _cvpat := 0
+   _aux1  := _sueldo_int
+   SI ( _aux1 < _minimo )
+      _aux1 := _minimo
+   FIN_SI
+   _sspat  := _aux1 * ( _dias_imss_prov - _incapacidades ) * ( 'PAGOIMSS':'EG ESPECIE PATRON' / 100 )
+   _3mindf := 'MINIMO':'MINIMO A' * 3
+   SI ( _aux1 > _3mindf )
+      _sspat := _sspat + ( ( _aux1 - _3mindf ) * ( _dias_imss_prov - _incapacidades ) * ( 'PAGOIMSS':'EG 3SMGDF PATRON' / 100 ) )
+   FIN_SI
+   _sspat := _sspat + ( _aux1 * ( _dias_imss_prov - _incapacidades ) * ( 'PAGOIMSS':'EG DINERO PATRON' / 100 ) )
+   _aux1  := _sueldo_prom + VAR_IMSS_ACTUAL ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' )
+   SI ( _aux1 < ( _minimo + 0.001 ) )
+      _aux1  := _sueldo_int
+      _sspat := _sspat + ( _aux1 * ( _dias_imss_prov - _incapacidades ) * ( 'PAGOIMSS':'EG ESPECIE EMPLEADO' / 100 ) )
+      _sspat := _sspat + ( _aux1 * ( _dias_imss_prov - _incapacidades ) * ( 'PAGOIMSS':'EG DINERO EMPLEADO'  / 100 ) )
+   FIN_SI
+   _sspat := _sspat + ( 'MINIMO':'MINIMO A' * ( _dias_imss_prov - _incapacidades ) * ( 'PAGOIMSS':'EG FIJO' / 100 ) )
+   _aux1  := _sueldo_int
+   _tope  := 'MINIMO':'TOPE IVCM'
+   SI ( _aux1 > _tope )
+      _sspat := _sspat + ( 'MINIMO':'TOPE IVCM' * ( _dias_imss_prov - ( _faltas + _incapacidades ) ) * ( 'PAGOIMSS':'INVALIDEZ Y VIDA PATRON' / 100 ) )
+      _cvpat := 'MINIMO':'TOPE IVCM' * ( _dias_imss_prov - ( _faltas + _incapacidades ) ) * ( 'PAGOIMSS':'CESANTIA Y VEJEZ PATRON' / 100 )
+   SI_NO
+      _sspat := _sspat + ( _aux1 * ( _dias_imss_prov - ( _faltas + _incapacidades ) ) * ( 'PAGOIMSS':'INVALIDEZ Y VIDA PATRON' / 100 ) )
+      _cvpat := _aux1 * ( _dias_imss_prov - ( _faltas + _incapacidades ) ) * ( 'PAGOIMSS':'CESANTIA Y VEJEZ PATRON' / 100 )
+   FIN_SI
+   _rt    := _aux1 * ( _dias_imss_prov - ( _faltas + _incapacidades ) ) * ( _cuota_rt / 100 )
+   _guard := _aux1 * ( _dias_imss_prov - ( _faltas + _incapacidades ) ) * ( 'PAGOIMSS':'GUARDERIA' / 100 )
+   TOTAL ('C04') := _sspat
+   TOTAL ('C05') := _cvpat	
+   TOTAL ('C06') := _guard
+   TOTAL ('C07') := _rt
+
+   SI ( TOTAL_PERCEPCIONES = 0 )
+      TOTAL ('C04') := 0
+      TOTAL ('C05') := 0	
+      TOTAL ('C06') := 0
+      TOTAL ('C07') := 0
+   FIN_SI
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA FORMULA_INFONAVIT
+   
+   _factor_infonavit :=  (('MINIMO':'MINIMO A' * 'EMPPRIN':'VALOR DESCUENTO') * 2 ) / _dias_bim
+   
+   SI ( _dias_info < 0 ) 
+      _dias_info := 0
+   FIN_SI
+   
+   SI ( 'EMPPRIN':'TIPO DESCUENTO' = '1' )# POR PORCENTAJE
+      SI ( _infonavit = 1 )
+         TOTAL ('65') := _sueldo_int * _dias_info * ( 'EMPPRIN':'VALOR DESCUENTO' / 100 )
+      SI_NO
+         _intesm := _sueldo_int / _minimo
+   # ---------- Porcentaje de Descuento al 20%
+         SI ( 'EMPPRIN':'INICIO DESCUENTO INF' < CALCULA_FECHA( 1998, 01, 30 ) )
+           SI ( 'EMPPRIN':'VALOR DESCUENTO' = 20 )
+              SI (( _intesm >= 1 ) AND ( _intesm <= 2.5 ))
+                 _pdinfo := 15.70
+              FIN_SI
+              SI (( _intesm > 2.5 ) AND ( _intesm <= 3.5 ))
+                 _pdinfo := 16.80
+              FIN_SI
+              SI (( _intesm > 3.5 ) AND ( _intesm <= 4.5 ))
+                 _pdinfo := 17.20
+              FIN_SI
+              SI (( _intesm > 4.5 ) AND ( _intesm <= 5.5 ))
+                 _pdinfo := 17.70
+              FIN_SI
+              SI (( _intesm > 5.5 ) AND ( _intesm <= 6.5 ))
+                 _pdinfo := 17.80
+              FIN_SI
+              SI ( _intesm > 6.5 )
+                 _pdinfo := 20.00
+              FIN_SI
+           FIN_SI
+     # ----------  Porcentaje de Descuento al 25%
+           SI ( 'EMPPRIN':'VALOR DESCUENTO' = 25 )
+              SI (( _intesm >= 1 ) AND ( _intesm <= 2.5 ))
+                 _pdinfo := 19.60
+              FIN_SI
+              SI (( _intesm > 2.5 ) AND ( _intesm <= 3.5 ))
+                 _pdinfo := 21.00
+              FIN_SI
+              SI (( _intesm > 3.5 ) AND ( _intesm <= 4.5 ))
+                 _pdinfo := 21.50
+              FIN_SI
+              SI (( _intesm > 4.5 ) AND ( _intesm <= 5.5 ))
+                 _pdinfo := 22.10
+              FIN_SI
+              SI (( _intesm > 5.5 ) AND ( _intesm <= 6.5 ))
+                 _pdinfo := 22.30
+              FIN_SI
+              SI ( _intesm > 6.5 )
+                 _pdinfo := 25.00
+              FIN_SI
+           FIN_SI
+     # ---------- Porcentaje de Descuento al 30%
+           SI ( 'EMPPRIN':'VALOR DESCUENTO' = 30 )
+              SI (( _intesm >= 1 ) AND ( _intesm <= 2.5 ))
+                 _pdinfo := 24.60
+              FIN_SI
+              SI (( _intesm > 2.5 ) AND ( _intesm <= 3.5 ))
+                 _pdinfo := 26.00
+              FIN_SI
+              SI (( _intesm > 3.5 ) AND ( _intesm <= 4.5 ))
+                 _pdinfo := 26.50
+              FIN_SI
+              SI (( _intesm > 4.5 ) AND ( _intesm <= 5.5 ))
+                 _pdinfo := 27.10
+              FIN_SI
+              SI (( _intesm > 5.5 ) AND ( _intesm <= 6.5 ))
+                 _pdinfo := 27.30
+              FIN_SI
+              SI ( _intesm > 6.5 )
+                 _pdinfo := 30.00
+              FIN_SI
+           FIN_SI
+         SI_NO
+            _pdinfo := 'EMPPRIN':'VALOR DESCUENTO'
+         FIN_SI
+   # ---------- Aplicación del Nuevo Descuento
+         TOTAL ('65') := _sueldo_int * _dias_info * ( _pdinfo / 100 )
+      FIN_SI
+   SI_NO
+      SI ( 'EMPPRIN':'TIPO DESCUENTO' = '2' )# CUOTA FIJA
+#         TOTAL ('65') := (('EMPPRIN':'VALOR DESCUENTO' * 2) / _dias_bim   )* _dias_info
+         TOTAL ('65') := ('EMPPRIN':'VALOR DESCUENTO' / 30 )* _dias_info
+
+       SI_NO
+        SI ( 'EMPPRIN':'TIPO DESCUENTO' = '3' )# VECES SM
+         TOTAL ('65') := ( _factor_infonavit * _dias_info)
+        FIN_SI
+      FIN_SI
+   FIN_SI
+   SI ( 'EMPPRIN':'INICIO DESCUENTO INF' > 'PERIODO':'FECHA FINAL' )
+      TOTAL ('65') := 0
+   FIN_SI
+   SI ( CAP1 ( '65') > 0 ) 
+      TOTAL ('65') := CAP1 ('65')
+    SI_NO
+      TOTAL ('65') := CAP2 ('65') + TOTAL ('65') 
+   FIN_SI
+   SI ( CAP3 ( '65') = 1 ) 
+      TOTAL ('65') := 0
+   FIN_SI
+
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA SEGURO_VIVIENDA
+   _sv_info := 'PAGOIMSS':'SV_INFO'
+   SI (( 'EMPPRIN':'VALOR DESCUENTO' <> 0 ) AND ( $seg_vivienda = 'S')) 
+    SI ( 'PERIODO':'INICIO DE BIMESTRE' = 1 ) 
+     TOTAL ('66') := _sv_info      
+     SI_NO
+      SI ( ACUM_MENSUAL ( $bimestre , '66' ) = 0 ) 
+       SI ((   'EMPPRIN':'INICIO DESCUENTO INF' <= _fibim  )    OR       (  'PERIODO':'FECHA INICIAL' = CALCULA_FECHA ( 2011 , 16 , 11 ) ) OR       (  'PERIODO':'FECHA INICIAL' = CALCULA_FECHA ( 2011 , 11 , 13 ) )  )
+        TOTAL ('66') := _sv_info      
+       FIN_SI
+      FIN_SI
+    FIN_SI
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA FORMULA_FONDO
+   DECIMALES := 8
+   SI ( CAP1 ('67') <> 0 )
+      TOTAL ('67') := CAP1 ('67')
+   SI_NO
+      SI ( _fondo_ahorro > 0 )
+        TOTAL ('67') := _fondo_ahorro     
+  # ---------- Conceptos Base de Cálculo para Fondo de Ahorro
+        SI ( _pago_fondo = 1 )
+           _aux1 := TOTAL ('01') + TOTAL ('02') + TOTAL ('04') + TOTAL ('12') 
+           _aux1 := _aux1 + TOTAL ($extra1) + TOTAL ($extra2) + TOTAL ($extra3)
+           _tope := _minimo * 10 * TOTAL ('67') * TOTAL ('DIAS')
+        SI_NO
+           SI ( 'PERIODO':'FIN DE MES' = 1 )
+             _aux1 := TOTAL ($sueldo) + TOTAL ($septimo_dia) + TOTAL ($retroactivo) + TOTAL ($vacaciones) 
+             _aux1 := _aux1 + TOTAL ($extra1) + TOTAL ($extra2) + TOTAL ($extra3)
+             _aux1 := _aux1 + ACUM_MENSUAL ( $mes , $sueldo ) + ACUM_MENSUAL ( $mes , $septimo_dia )
+             _aux1 := _aux1 + ACUM_MENSUAL ( $mes , $retroactivo ) + ACUM_MENSUAL ( $mes,  $vacaciones )
+             _aux1 := _aux1 + ACUM_MENSUAL ( $mes , $extra1 ) + ACUM_MENSUAL ( $mes , $extra2 )
+             _aux1 := _aux1 + ACUM_MENSUAL ( $mes , $extra3 ) 
+             _tope := _minimo * 10 * TOTAL ('67') * ( TOTAL ('DIAS') + ACUM_MENSUAL ( $mes , 'DIAS' ) )
+           SI_NO
+             _aux1 := 0
+             _tope := 0
+           FIN_SI      
+        FIN_SI 
+      FIN_SI
+      TOTAL ('67') := _aux1 * TOTAL ('67') 
+      SI ( TOTAL ('67') >  _tope )
+         TOTAL ('67') := _tope
+      FIN_SI
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA FORMULA_VALES
+   DECIMALES := 8
+   SI ( CAP1 ($concepto_vale) <> 0 )
+      TOTAL ($concepto_vale) := CAP1 ($concepto_vale)
+   SI_NO
+      SI ( _vales > 0 )
+        TOTAL ($concepto_vale) := _vales
+        _aux1 := TOTAL ( $concepto_vale ) 
+  # ---------- Conceptos Base de Cálculo para Vales de Despensa
+	SI ( _pago_vales = 1 )
+           $aux_tmp := $conceptos_vales
+           REPITE
+              SI ( POS ( ',' , $aux_tmp ) > 0 ) 
+                 $aux1    := SUBSTR ( $aux_tmp , 1 , POS ( ',' , $aux_tmp ) - 1)
+                 $aux_tmp := REEMPLAZA( $aux1 + ','  , '' ,  $aux_tmp )                        
+               SI_NO   
+                 $aux1    := $aux_tmp 
+                 $aux_tmp := ''                 
+              FIN_SI
+              _aux1    := _aux1 + TOTAL ($aux1) 
+
+           HASTA ( $aux1 = '' ) 
+           _tope := _minimo * TOTAL ('DIAS')
+           _topi := 'MINIMO':'MINIMO A' * 0.40 * TOTAL ('DIAS')
+        SI_NO
+  	 SI ( 'PERIODO':'FIN DE MES' = 1 )
+             $aux_tmp := $conceptos_vales
+             REPITE
+                $aux1    := SUBSTR ( $aux_tmp , 1 , POS ( ',' , $aux_tmp ) - 1)
+                _aux1    := _aux1 + ( TOTAL ($aux1) + ACUM_MENSUAL ( $mes, $aux1 ))
+                $aux_tmp := REEMPLAZA( $aux1 + ','  , '' ,  $aux_tmp )                        
+             HASTA ( $aux1 = '' ) 
+             SI ( CAP1 ('FINI') = 1 )
+                _tope := _minimo * TOTAL ('DIAS') 
+             SI_NO
+                _tope := _minimo * ( TOTAL ('DIAS') + ACUM_MENSUAL ( $mes , 'DIAS' ) )
+             FIN_SI
+  	     _topi := 'MINIMO':'MINIMO A' * 0.40 * ( TOTAL ('DIAS') + ACUM_MENSUAL ( $mes , 'DIAS' ) )
+          SI_NO
+  	    _aux1 := 0
+  	    _tope := 0
+  	    _topi := 0
+  	 FIN_SI
+        FIN_SI
+      FIN_SI
+      TOTAL ($concepto_vale) := _aux1 * TOTAL ($concepto_vale)
+   FIN_SI
+   SI ( _vales_minimo > 0 ) 
+      TOTAL ($concepto_vale) := TOTAL ( 'DIAS')  * _vales_minimo
+    SI_NO
+     SI ( _vales_minimo < 0 ) 
+      TOTAL ($concepto_vale) := 0
+     FIN_SI
+   FIN_SI
+   SI ( TOTAL ($concepto_vale) > _topi )
+      TOTAL ($concepto_vale) := _topi
+   FIN_SI
+#COMENTARIO:FECHA=12/03/12;AUTOR=JFLORES;SOLICITANTE=ESTANDAR
+#Se modifica para aceptar monto en la captura de vales de despensa  
+   SI ( CAP1 ($concepto_vale ) <>  0 ) 
+    TOTAL ( $concepto_vale ) := CAP1 ( $concepto_vale ) 
+   FIN_SI
+   DECIMALES := 2
+#   TOTAL ($concepto_vale) := TOTAL ($concepto_vale) + AJUSTA ( TOTAL ($concepto_vale) , 1 )
+   DECIMALES := 8
+
+   CAPTURA_CONCEPTO ('XIVD')
+   SI ( TOTAL ($concepto_vale) > _topi )
+      TOTAL ('XIVD') := _topi
+   SI_NO
+      TOTAL ('XIVD') := TOTAL ($concepto_vale)
+   FIN_SI
+FIN_SUB_RUTINA
+
+_hrs   := 0 
+_maxa  := 9
+_maxv  := 3 
+_maxd  := 3
+_hrsa  := 0
+_contc := 0 
+_difh  := 0
+_hrsd  := 0
+_hrst  := 0 
+
+_primer_semana := 0
+_segunda_semana := 0 
+
+SUB_RUTINA FORMULA_TIEMPO_EXTRA
+
+   _primer_semana       := _pi
+   _segunda_semana      := _primer_semana + 7
+
+   _hrsa  := 0
+   _contc := 0 
+   _difh  := 0
+   _hrsd  := 0
+   _hrst  := 0 
+   _ind_he := 0
+
+   LIMPIA_TABLA( &he)
+
+   REPITE
+     PON_VALOR_TABLA( &he, 0, _ind_he, 'NOMINA':'CAP1' )
+     PON_VALOR_TABLA( &he, 1, _ind_he, 'NOMINA':'CAP2' )
+     PON_VALOR_TABLA( &he, 2, _ind_he, 'NOMINA':'CAP3' )
+     _ind_he := _ind_he + 1
+     SIGUIENTE_REGISTRO ('NOMINA')
+   HASTA ( 'NOMINA':'CLAVE' <> '10' )
+   ORDENA_COLUMNA( &he, 0 )
+
+   _ind_he := 0
+   REPITE
+      _hrs   := VALOR(TRAE_VALOR_TABLA ( &he , 1 , _ind_he ))
+      _f_hrs := VALOR(TRAE_VALOR_TABLA ( &he , 0 , _ind_he ))
+   
+      SI ( ( _f_hrs >= _primer_semana  ) and  ( _f_hrs <= ( _primer_semana  + 7 ))  )
+                              _hrsa := 0  
+                              _primer_semana  := 0 
+      FIN_SI
+     
+      SI (( _f_hrs >= _segunda_semana ) AND ( _f_hrs <= ( _segunda_semana +  7 )) ) 
+                 _hrsa := 0  
+                 _segunda_semana := 0 
+      FIN_SI
+
+      SI ( _hrs > 0 ) 
+
+       SI (( ( _hrsa + _hrs ) <= _maxa )) 
+        SI ( _hrs  <= _maxa ) 
+           PON_VALOR_TABLA( &he, 3 , _ind_he, _hrs  )         
+           PON_VALOR_TABLA( &he, 4 , _ind_he, 0 )         
+         SI_NO
+           PON_VALOR_TABLA( &he, 3 , _ind_he, _maxa )         
+           PON_VALOR_TABLA( &he, 4 , _ind_he, _hrs - _maxa )         
+        FIN_SI   
+
+        SI_NO
+           _difh := ( _maxa - _hrsa ) 
+           SI ( _difh  < 0 ) ;; _difh := 0 ;; FIN_SI
+           PON_VALOR_TABLA( &he, 3 , _ind_he, _difh )         
+           PON_VALOR_TABLA( &he, 4 , _ind_he, _hrs - _difh  )                     
+       FIN_SI
+
+      FIN_SI
+
+      _hrsa   := _hrsa   + _hrs
+      _contc  := _contc  + 1   
+      _ind_he := _ind_he + 1
+
+   HASTA ( TRAE_VALOR_TABLA ( &he , 0 , _ind_he ) = '' )
+
+   _ind_he := 0
+   REPITE
+      _hrsd   := _hrsd + VALOR(TRAE_VALOR_TABLA ( &he , 3 , _ind_he ))
+      _hrst   := _hrst + VALOR(TRAE_VALOR_TABLA ( &he , 4 , _ind_he ))
+      _ind_he := _ind_he + 1
+   HASTA ( TRAE_VALOR_TABLA ( &he , 0 , _ind_he ) = '' )
+
+ #   IMPRIME_TABLA ( &he , 10 , 20, 30, 40 , 50 ) # IMPRIME
+ #  TERMINA_REPORTE
+
+   # SE VA A PAGAR SIEMPRE SOBRE SUELDO / 8 * 2 HORAS LABORADAS 
+   
+   SI ( TRAE_REGISTRO ('TURNO1' , 'EMPPRIN':'TURNO'))
+    SI ( 'TURNO1':'TH' > 0 ) 
+      TOTAL ('10') := ( (( _sueldo_prom / 'Turno1':'TH' ) * 2) * (_hrsd) ) + _monto_hrs
+
+      SI ( CONCEPTO_CAPTURADO ( '11' ) = FALSO ) 
+            CAPTURA_CONCEPTO ( '11' ) 
+      FIN_SI
+  
+      TOTAL ('11') := ( (( _sueldo_prom / 'Turno1':'TH' ) * 3) * (_hrst) ) + _monto_hrs
+      SI_NO
+      COLOR('ROJO')
+      IMP ('TURNO1':'CLAVE' , ' NO TIENE HORAS EN LA COLUMNA TH, EL CALCULO NO TERMINARA ' ) ;; IMPRIME
+      COLOR ('NEGRO') 
+      TERMINA_REPORTE  
+     FIN_SI
+    SI_NO
+    COLOR('ROJO')
+    IMP ('EMPPRIN':'CLAVE' , ' NO TIENE UN TURNO VALIDO, EL CALCULO NO TERMINARA' ) ;; IMPRIME
+    COLOR ('NEGRO') 
+   FIN_SI      
+         
+   TOTAL ('HEX2')  := (_hrsd + _hrst ) 
+   TOTAL ('HEX3')  := _hrst
+   TOTAL ('HEXG')  := _hrst
+   TOTAL ('HEXE')  := _hrsd
+   TOTAL ('HESS')  := _hrst
+   TOTAL ('XI10')  := TOTAL ('10')
+   SI ( ('PERIODO':'DIAS DE PAGO' >= 5 ) AND ( 'PERIODO':'DIAS DE PAGO' <= 7 ) )
+      _aux1 := _minimo * 5
+   SI_NO
+      _aux1 := _minimo * 10
+   FIN_SI
+   CAPTURA_CONCEPTO ('EX10')
+   SI ( _sueldo_prom > _minimo )
+      SI ( ( TOTAL ('10') / 2 ) > _aux1 )
+         _exento := _exento + _aux1
+         TOTAL ('EX10') := _aux1
+      SI_NO
+         _exento := _exento + ( TOTAL ('10') / 2 )
+         TOTAL ('EX10') := TOTAL ('10') / 2
+      FIN_SI
+   SI_NO
+      _exento := _exento + TOTAL ('10')
+      TOTAL ('EX10') := TOTAL ('10')
+   FIN_SI
+   
+FIN_SUB_RUTINA
+
+SUB_RUTINA _imp_tot
+   PRIMER_REGISTRO ( 'NOMINA' ) 
+   MIENTRAS ( FIN_BASE ('NOMINA') = 0 )
+      SI ( 'NOMINA':'TOTAL' <> 0 )
+         SI  ( TRAE_REGISTRO ( 'CONCEPTO' , 'NOMINA':'CLAVE' ) )
+            SI ( 'CONCEPTO':'IMPRIMIR' <> 0 )
+               IMP ( COL (3) , 'CONCEPTO':'CLAVE' , COL (10) , 'CONCEPTO':'DESCRIPCION' )
+               SI ( 'CONCEPTO':'PDC' = 0 ) ;; COL (55) ;; FIN_SI
+               SI ( 'CONCEPTO':'PDC' = 1 ) ;; COL (65) ;; FIN_SI        
+               SI ( 'CONCEPTO':'PDC' = 2 ) ;; COL (75) ;; FIN_SI
+               IMP ( DER ( $ ( 'NOMINA':'TOTAL' ) , 15 ) )
+               IMPRIME
+            FIN_SI
+         SI_NO
+            IMP ( COL (10) , 'DESCONOCIDO' )
+            IMP ( DER ( $ ( 'NOMINA':'TOTAL' ) , 15 ) )
+            IMPRIME
+         FIN_SI
+      FIN_SI
+      SIGUIENTE_REGISTRO ( 'NOMINA' )
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+# Reinicio de variables de calculo
+SUB_RUTINA inicializa_variables
+   _exento        := 0
+   _prev_soc      := 0
+   _nogr          := 0
+   _baja_periodo  := 0
+   _alta_periodo  := 0
+   _f_vaca        := 0
+   _f_agdo        := 0
+   _f_pvac        := 0
+   _es_finiquito  := 0
+   _calc_empleado := 0 
+   _fini_reporte  := 0 
+   _negativo      := 0 
+   _es_vigente    := 0 
+   _f_agdo        := 0
+   _f_vaca        := 0
+   _f_pvac        := 0
+   _f_pant        := 0
+   _f_in3m        := 0
+   _f_in20        := 0
+   _bolsa_mensual := 0 
+FIN_SUB_RUTINA
+
+# Se obtienen los valores de empleado para calculo, faltas, incapacidades, salarios, integrados, etc.
+SUB_RUTINA valores_empleado
+               
+#   _pi            := 'PERIODO':'FECHA INICIAL' # Esta variable lleva la fecha de inicio para consideracion de incidencias, puedes ser de la misma tabla periodo o un campo adicioanl de inci
+#   _pf            := 'PERIODO':'FECHA FINAL'   # Esta variable lleva la fecha final para consideracion de incidencias, puedes ser de la misma tabla periodo o un campo adicioanl de inci
+
+
+   SI ( 'PERIODO':'DIAS DE PAGO' > 7 )
+    SI ( DIA('PERIODO':'FECHA INICIAL') >=  15 )
+      _pi    := CALCULA_FECHA ( AÑO ( 'PERIODO':'FECHA INICIAL' ) , MES('PERIODO':'FECHA FINAL')     , 11 )
+      _pf    := CALCULA_FECHA ( AÑO ( 'PERIODO':'FECHA INICIAL' ) , MES('PERIODO':'FECHA FINAL')     , 25 )
+     SI_NO
+     SI ( MES('PERIODO':'FECHA FINAL') <> 1 )
+      _pi    := CALCULA_FECHA ( AÑO ( 'PERIODO':'FECHA INICIAL' ) , MES('PERIODO':'FECHA FINAL') -1  , 26 )
+      SI_NO
+      _pi    := CALCULA_FECHA ( AÑO ( 'PERIODO':'FECHA INICIAL' ) - 1 , 12  , 26 )
+     FIN_SI
+      _pf    := CALCULA_FECHA ( AÑO ( 'PERIODO':'FECHA INICIAL' ) , MES('PERIODO':'FECHA FINAL')     , 10 )
+    FIN_SI
+   SI_NO    
+      _pi    := 'PERIODO':'FECHA INICIAL' #- 3
+      _pf    := 'PERIODO':'FECHA FINAL'   #- 3
+   FIN_SI
+
+   $empresa := 'EMPRESA':'CLAVE'
+   
+   _pi            := 'PERIODO':'FECHA INICIAL' 
+   _pf            := 'PERIODO':'FECHA FINAL'  
+
+   SI ( $empresa = '002')
+     _pi            := ('PERIODO':'FECHA INICIAL')- 6 # Esta variable lleva la fecha de inicio para consideracion de incidencias
+     _pf            := ('PERIODO':'FECHA FINAL')  -6
+   FIN_SI
+     
+   
+    SI ( $empresa = '002')
+
+   _faltas        := TOTAL_FALTAS       ( _pi , _pf , 'S'       )
+   _incapacidades := TRAE_INCAPACIDADES ( _pi , _pf , '*'       )
+   _vacaciones    := TRAE_VACACIONES    ( _pi , _pf , VERDADERO )
+   _vac_pag       := TRAE_VAC_PAGADAS   ( _pi , _pf             )
+   _retardos      := TRAE_RETARDOS      ( _pi , _pf             )
+   _sueldo_prom   := SUELDO_ACTUAL      ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' )
+   _sueldo_int    := INT_IMSS_ACTUAL    ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' )
+   _faltas_premio := TRAE_FALTAS        ( _pi ,_pf , $tipo_falta)
+   
+   SI_NO
+
+    
+
+   _faltas        := TOTAL_FALTAS       ( _pi , _pf , 'S'       )
+   _incapacidades := TRAE_INCAPACIDADES ( _pi , _pf , '*'       )
+   _vacaciones    := TRAE_VACACIONES    ( _pi , _pf , VERDADERO )
+   _vac_pag       := TRAE_VAC_PAGADAS   ( _pi , _pf             )#* 1.2
+   _retardos      := TRAE_RETARDOS      ( _pi , _pf             )
+   _sueldo_prom   := SUELDO_ACTUAL      ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' )
+
+   _sueldo_int    := INT_IMSS_ACTUAL    ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' )
+   _faltas_premio := TRAE_FALTAS        ( _pi ,_pf , $tipo_falta)
+
+   FIN_SI
+
+   SI ( TRAE_REGISTRO ( 'PUESTO' , TRAE_DSP ( 'P' , 'PERIODO':'FECHA FINAL' )))
+      $tipo_emp :=  'PUESTO':'TIPO EMPLEADO'
+   FIN_SI
+
+
+   SI (_sueldo_prom = 0 ) 
+    SI ( ES_VIGENTE ( 'PERIODO':'FECHA INICIAL' -1 ))
+      _sueldo_prom := SUELDO_ACTUAL ('PERIODO':'FECHA INICIAL' -1 ,'PERIODO':'FECHA INICIAL' -1 )
+     SI_NO
+      MENSAJE_PAUSA ('EMPPRIN':'CLAVE' + ' NO TIENE SALARIO DEFINIDO, ERROR!!!!!!!' , 5000) 
+      TERMINA_REPORTE
+    FIN_SI
+   FIN_SI
+
+   SI ( _es_finiquito = 1 )
+      ULTIMO_REGISTRO( 'EMPSDO' )
+      SI ( 'EMPSDO':'TIPO' = 'B' )
+        _fecha_baja   := 'EMPSDO':'FECHA'
+      SI_NO
+        _fecha_baja   := CAP3('FINI')
+      FIN_SI         
+      MIENTRAS (( INICIO_BASE ( 'EMPSDO' ) = FALSO ) AND ( _sueldo_prom = 0 ))
+        SI (( SUELDO_ACTUAL( 'EMPSDO':'FECHA' , 'EMPSDO':'FECHA') <> 0 ) AND ( _sueldo_prom = 0))
+           _sueldo_prom := 'EMPSDO':'SDO1'
+           _sueldo_int  := 'EMPSDO':'SDO3'                          
+        FIN_SI
+        REGISTRO_ANTERIOR( 'EMPSDO' )      
+      FIN_MIENTRAS
+      $suc           := TRAE_DSP ( 'S' , _fecha_baja )
+      $depto         := TRAE_DSP ( 'D' , _fecha_baja )
+      $puesto        := TRAE_DSP ( 'P' , _fecha_baja )
+   SI_NO
+      $suc           := TRAE_DSP ( 'S' , 'PERIODO':'FECHA FINAL' )
+      $depto         := TRAE_DSP ( 'D' , 'PERIODO':'FECHA FINAL' )
+      $puesto        := TRAE_DSP ( 'P' , 'PERIODO':'FECHA FINAL' )
+   FIN_SI
+      
+FIN_SUB_RUTINA
+
+SUB_RUTINA validacion_empleado
+
+   # Se validaran por empleado los datos como minimo que debe tener un empleado correctos para e calculo de nomina, sueldos, deptos, puestos, sucursales, etc
+   SI (( _sueldo_prom = 0 ) AND ( ES_VIGENTE ('PERIODO':'FECHA FINAL') = 1)) ;; MENSAJE ( 'EMPLEADO ' + 'EMPPRIN':'CLAVE' + ' CON SUELDO INVALIDO, RECTIFIQUE!!!'       ) ;; FIN_SI
+   SI (( _sueldo_int  = 0 ) AND ( ES_VIGENTE ('PERIODO':'FECHA FINAL') = 1)) ;; MENSAJE ( 'EMPLEADO ' + 'EMPPRIN':'CLAVE' + ' CON SUELDO INT INVALIDO, RECTIFIQUE!!!'   ) ;; FIN_SI
+   SI (( TRAE_REGISTRO ( 'SUCURSAL' ,  $suc )    = FALSO ) AND ( ES_VIGENTE ('PERIODO':'FECHA FINAL') = 1)) ;; MENSAJE ( 'EMPLEADO ' + 'EMPPRIN':'CLAVE' + ' CON SUCURSAL INVALIDA, RECTIFIQUE!!!'     ) ;; FIN_SI
+   SI (( TRAE_REGISTRO ( 'DEPTO'    ,  $depto )  = FALSO ) AND ( ES_VIGENTE ('PERIODO':'FECHA FINAL') = 1));; MENSAJE ( 'EMPLEADO ' + 'EMPPRIN':'CLAVE' + ' CON DEPTO INVALIDO, RECTIFIQUE!!!'        ) ;; FIN_SI
+   SI (( TRAE_REGISTRO ( 'PUESTO'   ,  $puesto ) = FALSO ) AND ( ES_VIGENTE ('PERIODO':'FECHA FINAL') = 1));; MENSAJE ( 'EMPLEADO ' + 'EMPPRIN':'CLAVE' + ' CON PUESTO INVALIDO, RECTIFIQUE!!!'       ) ;; FIN_SI
+   SI (( 'EMPPRIN':'VALOR DESCUENTO' > 0 ) AND ( 'EMPPRIN':'CREDITO_INFONAVIT' = '' ))
+    $aux1 := USUARIO_ACTUAL
+    SI (( USUARIO_ACTUAL <> '' ) AND (USUARIO_ACTUAL <> 'giro'))
+      MENSAJE ('EL EMPLEADO ' + 'EMPPRIN':'CLAVE' + ' TIENE UN VALOR DE DESCUENTO INFONAVIT, PERO NO UN NUMERO DE CTA INFONAVIT VALIDO, RECTIFIQUE' ) 
+    FIN_SI
+   FIN_SI
+   SI (( _pi  = 0 ) OR ( _pf = 0 )) 
+      MENSAJE ( 'FECHAS IVALIDAS DEL PERIODO, RECTIFIQUE' )
+      TERMINA_REPORTE
+   FIN_SI
+   SI ('PERIODO':'DIAS DE PAGO' = 0)       
+      MENSAJE ( 'DIAS DE PAGO INVALIDOS, RECTIFIQUE'      )  
+      TERMINA_REPORTE
+   FIN_SI
+   SI (( $ispt = '') AND ( $subs = '' ))
+      MENSAJE ( 'VALIDE LAS TABLAS DE IMPUESTOS EN CATALOGOS-->DE NOMINA-->TIPOS DE NOMINA Y PERIODO, NO ESTAN DEFINIDAS!!'      )  
+      TERMINA_REPORTE
+   FIN_SI
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA validacion_de_calculo
+   SI ( TOTAL ('TOTA' ) < 0 )
+     MENSAJE_PAUSA ( 'EL EMPLEADO ' + 'EMPPRIN':'CLAVE' + ' TIENE UN TOTAL EN NEGATIVO, SI NO LE CORRESPONDE PAGO, PUEDE UTILIZAR NO CALCULA CONCEPTO NOCALC = 1' , 4000)
+     _negativo := 1
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA calculos_automaticos_empresa
+
+   _proy_ispt := 'TIPONOM':'PROY_ISR'
+
+   _vales_minimo := 0 
+  
+   SI ( CONCEPTO_CAPTURADO ('28') = FALSO ) 
+    CAPTURA_CONCEPTO ( '28')
+   FIN_SI
+  
+   SI ( _bolsa_mensual <> 0 )   
+     DECIMALES := 4
+     _aux1 := ( _bolsa_mensual / _proy_ispt ) 
+     _sueldo_bolsa := _aux1 - _sueldo_prom
+     _aux1 := _aux1 - _sueldo_prom
+     _aux1 := _aux1 - ( _sueldo_prom * _puntualidad ) 
+     _aux1 := _aux1 - ( _sueldo_prom * _asistencia  ) 
+
+
+     SI (  _sueldo_prom <= 'MINIMO':'MINIMO A') 
+        _vales_minimo := _aux1
+     FIN_SI
+
+     _aux1 := _aux1 - ( 'MINIMO':'MINIMO A' * 0.40   ) 
+     SI( _aux1 > 0 ) 
+        _aux1 := _aux1 + ( 'MINIMO':'MINIMO A' * 0.40  / 2  ) 
+        CAP1 ('28')  := _aux1 
+        CAP1 ('28A') := ('MINIMO':'MINIMO A' * 0.40 /2 ) 
+      SI_NO
+       CAP1 ('28')  := ('MINIMO':'MINIMO A' * 0.20 ) 
+       CAP1 ('28A') := ('MINIMO':'MINIMO A' * 0.20 ) 
+     FIN_SI
+
+   FIN_SI
+
+   _proy_ispt := 'TIPONOM':'PROY_ISR'
+
+FIN_SUB_RUTINA
+
+_factor_hora  := 0 
+_sueldo_hora  := 0 
+_factor_dia   := 0 
+
+#JFR
+
+ABRE_BASE ('TURNO1')
+SUB_RUTINA determina_horas
+   DECIMALES := 8
+   SI (TRAE_REGISTRO('TURNO1' , 'EMPPRIN':'TURNO'))
+     _factor_hora  := 'TURNO1':'TH'
+     _sueldo_hora  := _sueldo_prom / _factor_hora
+     _factor_dia   := 1 / _factor_hora 
+   FIN_SI     
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA precalculos 
+   SI ( 'EMPPRIN':'VALOR DESCUENTO' <> '' ) ;;   CAPTURA_CONCEPTO('65') ;; FIN_SI
+   SI ( $pv_automatica = 'S' ) 
+      valida_prima 
+   FIN_SI  
+   calcula_vacaciones
+   calcula_dias
+   calculos_automaticos_empresa # Para calculos automaticos de la empresa
+   determina_horas
+FIN_SUB_RUTINA
+
+SUB_RUTINA valida_si_calcula
+   SI (FUE_VIGENTE ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL') > 0 ) 
+    #SI ( ES_VIGENTE ( 'PERIODO':'FECHA FINAL' ) = 1) 
+         _calc_empleado := 1
+         _es_vigente    := 1
+    #FIN_SI   
+    SI_NO
+      _es_vigente    := 0 
+   FIN_SI
+   SI ( CAP1 ( 'FINI' ) = 1 )  # Opcion de calulo automatico de finiquito durante la nomina
+       _calc_empleado  := 1
+       _es_finiquito   := 1
+   FIN_SI   
+   SI ( CAP3 ( 'FINI' ) = 1 )  # Si el empleado fue calculo de finiquito por medio del reporte NOM041, se omitira por completo del calculo para no generar nuevos totales
+       _es_finiquito   := 0
+       _calc_empleado  := 0
+       _fini_reporte   := 1 
+   FIN_SI
+   SI ( CAP1 ( 'NOCALC' ) = 1 )  # Si el empleado fue calculo de finiquito por medio del reporte NOM041, se omitira por completo del calculo para no generar nuevos totales
+       _calc_empleado  := 0
+   FIN_SI
+
+FIN_SUB_RUTINA
+
+$impn      := 'IMPIE'
+_base_2nom := 0
+
+SUB_RUTINA FORMULA_IMPN
+   _base_2nom := TOTAL ('C01')
+#   SI (( $ajuste_mensual = 'S' ) AND ( 'PERIODO':'FIN DE MES' = 1 ) AND ( 'EMPPRIN':'INGRESO' <= _inicio_mes ))
+#      _base_2nom := _base_2nom + ACUM_MENSUAL ( $mes , '2NOM' )
+#      SI ( TRAE_REGISTRO ( 'TABISPT' , $impn ) ) ;; # FIN_SI
+#      TOTAL ('C01') := CALCULA_ISPT ( _base_2nom )
+#      TOTAL ('C01') := TOTAL ('C01') - ACUM_MENSUAL ( $mes , 'C01')      
+#   SI_NO
+      _base_2nom := ( _base_2nom / TOTAL ('DIAS') ) * _proy_ispt
+      SI ( TRAE_REGISTRO ( 'TABISPT' , $impn ) ) ;; FIN_SI
+      TOTAL ('C01')   := CALCULA_ISPT ( _base_2nom )
+      TOTAL ('CO1')   := (TOTAL ('C01') / _proy_ispt ) * TOTAL ('DIAS') 
+#   FIN_SI
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA calcula_impuestoC10
+
+   ULTIMO_REGISTRO ( 'EMPSUC')
+   $sucursal:= 'EMPSUC':'CATALOGO'
+
+  _impuest := 0 
+   SI ( TRAE_REGISTRO ( 'SUCURSAL' , $sucursal ) ) 
+      _impuest:=   'Sucursal':'IMP_ESTUDIO'
+   FIN_SI
+
+  DECIMALES:= 2
+
+  _impuesto  := (  (  _impuest   * TOTAL ( 'C01' )  )  / 100 ) 
+   TOTAL ( 'C10') := _impuesto
+FIN_SUB_RUTINA
+
+
+
+SUB_RUTINA calcula_impuestoC11
+
+   ULTIMO_REGISTRO ( 'EMPSUC')
+   $sucursal:= 'EMPSUC':'CATALOGO'
+
+  _impuest := 0 
+   SI ( TRAE_REGISTRO ( 'SUCURSAL' , $sucursal ) ) 
+      _impuest:=   'Sucursal':'IMP_EXTRA'
+   FIN_SI
+
+  DECIMALES:= 2
+  _impuesto  := (  (  _impuest   * TOTAL ( 'C01' )  )  / 100 ) 
+  TOTAL ( 'C11') := _impuesto
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA provisiones
+   DECIMALES := 8
+   _ant := ( ( FECHA_HOY - 'EMPPRIN':'INGRESO' ) + 1 ) / 365
+   _ant := TRUNCAR ( _ant + 1 )
+   SI ( _ant >= 0 )
+   SI ( TRAE_FACTOR( FECHA_HOY, '', _ant ) )
+   DECIMALES := 8
+     _f_agdo := (('FACTOR':'DIAS DE AGUINALDO' * _sueldo_prom) / 365 )       
+     _f_pvac := ((('FACTOR':'PRIMA VACACIONAL' / 'FACTOR':'DIAS DE VACACIONES') * 'FACTOR':'DIAS DE VACACIONES') * _sueldo_prom ) / 365
+   FIN_SI
+   FIN_SI
+     DECIMALES := 2
+     TOTAL ( 'C08' ) := _f_pvac *   FUE_VIGENTE ( _pi , _pf )
+     TOTAL ( 'C09' ) := _f_agdo * ( FUE_VIGENTE ( _pi , _pf ) - _faltas + _incapacidades ) 
+
+   SI ( TRAE_REGISTRO ( 'SUCURSAL' , $suc )) 
+    DECIMALES := 8
+    SI (  'SUCURSAL':'IMP_ESTATAL' = 0 ) 
+         $conc_imp_est := 'Sucursal':'CONC_EX_EST'
+         TOTAL ('C01') := TOTAL_PERCEPCIONES
+         REPITE 
+            _pos := POS( ',' , $conc_imp_est )  
+            SI ( _pos > 0 ) 
+              TOTAL ( 'C01' ) := (TOTAL ('C01') -  TOTAL ( SUBSTR( $conc_imp_est , 1, _pos -1 )))
+              $conc_imp_est := REEMPLAZA(SUBSTR( $conc_imp_est , 1, _pos - 1 ) + ',' , '', $conc_imp_est )
+             SI_NO     
+              TOTAL ( 'C01' ) := (TOTAL ('C01') -  TOTAL ( $conc_imp_est ))
+              $conc_imp_est := REEMPLAZA( $conc_imp_est , '' , $conc_imp_est )
+            FIN_SI
+         HASTA ( $conc_imp_est = '') 
+         FORMULA_IMPN
+    SI_NO  
+    SI ( 'SUCURSAL':'IMP_ESTATAL' <> 0 ) 
+       $conc_imp_est := 'Sucursal':'CONC_EX_EST'
+       TOTAL ('C01') := TOTAL_PERCEPCIONES
+       REPITE 
+          _pos := POS( ',' , $conc_imp_est )  
+          SI ( _pos > 0 ) 
+            TOTAL ( 'C01' ) := (TOTAL ('C01') -  TOTAL ( SUBSTR( $conc_imp_est , 1, _pos -1 )))
+            $conc_imp_est := REEMPLAZA(SUBSTR( $conc_imp_est , 1, _pos - 1 ) + ',' , '', $conc_imp_est )
+           SI_NO     
+            TOTAL ( 'C01' ) := (TOTAL ('C01') -  TOTAL ( $conc_imp_est ))
+            $conc_imp_est := REEMPLAZA( $conc_imp_est , '' , $conc_imp_est )
+          FIN_SI
+       HASTA ( $conc_imp_est = '') 
+       TOTAL ('C01') := TOTAL ( 'C01')  * ('SUCURSAL':'IMP_ESTATAL' / 100 ) 
+     SI_NO
+      DECIMALES := 8
+      TOTAL ('C01') := ( TOTAL_PERCEPCIONES + TOTAL ($concepto_vale) ) - ( TOTAL ('22') + TOTAL ('23') + TOTAL ('31') )
+      TOTAL ('C01') := TOTAL ('C01') * 0.02
+     FIN_SI
+    FIN_SI
+    DECIMALES := 2
+   FIN_SI
+
+calcula_impuestoC10
+calcula_impuestoC11
+FIN_SUB_RUTINA 
+
+SUB_RUTINA subtotal
+SI ( TRAE_VALOR_TABLA ( &empleado , 0 , 0 ) = '*' )
+   _totales := 1
+   AVANZA_HOJA
+FIN_SI
+SI ( TRAE_REGISTRO ('SUCURSAL' , $indice ))   
+   IMPRIME ;; IMPRIME
+   IMP ( COL (27) , '**** SUB TOTAL DE SUCURSAL ' + 'SUCURSAL':'NOMBRE' + ' ****' ) ;; IMPRIME ;; IMPRIME   
+ SI_NO
+   IMPRIME ;; IMPRIME
+   IMP ( COL (27) , '**** SUB TOTAL DE SUCURSAL ****' ) ;; IMPRIME ;; IMPRIME   
+FIN_SI
+
+USA_KARDEX ($kardex_indice)
+_imp_tot
+IMPRIME ;; IMPRIME
+PON_TOTAL_0  
+IMPRIME 
+DECIMALES := 0
+IMP ( '  *** EMPLEADOS CALCULADOS : ', _cont_emp_indice ) ;; IMPRIME
+DECIMALES := 2
+_cont_emp_indice := 0
+IMPRIME ;; IMPRIME
+FIN_SUB_RUTINA
+
+# RUTINAS COMUNES 
+
+SUB_RUTINA valida_indice
+   SI ((( $indice <> 'EMPPRIN':'CATALOGO' ) AND ( $indice <> '' )) OR ( FIN_BASE ('EMPPRIN') = VERDADERO ))
+      DECIMALES := 2
+      subtotal
+      SI ( FIN_BASE ('EMPPRIN') = FALSO ) ;; AVANZA_HOJA ;; FIN_SI
+      $indice :=  'EMPPRIN':'CATALOGO' 
+    SI_NO
+      $indice :=  'EMPPRIN':'CATALOGO' 
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA prestaciones
+   DECIMALES := 8
+   _ant := ( ( FECHA_HOY - 'EMPPRIN':'INGRESO' ) + 1 ) / 365
+   _ant := TRUNCAR ( _ant + 1 )
+   SI ( _ant >= 0 )
+   SI ( TRAE_FACTOR( FECHA_HOY, '', _ant ) )
+   DECIMALES := 8
+     _fagdo := ('FACTOR':'DIAS DE AGUINALDO' )
+     _fpvac := ('FACTOR':'PRIMA VACACIONAL' / 'FACTOR':'DIAS DE VACACIONES')
+   FIN_SI
+   FIN_SI
+FIN_SUB_RUTINA
+
+_neto        := 0
+_dif         := 0
+$conc_inver  := ''    
+SUB_RUTINA calculo_invertido
+  _neto := CAP1 ( $conc_inver ) 
+   REPITE 
+     SI ( (TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES) < _neto ) 
+      _dif := _neto - (TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES) 
+      TOTAL ( $conc_inver ) := TOTAL ( $conc_inver ) + (_dif / 2 )
+      FORMULA_ISPT
+      _dif  := _neto - (TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES)
+     FIN_SI
+   HASTA ( _dif = 0 ) 
+FIN_SUB_RUTINA
+
+SUB_RUTINA invertidos # SE MODIFICO FORMULA PARA CALCULO DE IMPUESTO Y ADAPTACION DE CALCULO INVERTIDO POR : JFLORES SOLICITO: ARGENIS 
+
+                      # PARA AGREGAR UN CONCEPTO NETO, SOLO ES NECESARIO QUE SE INDIQUE QUE CONCEPTO ES EN LA VARIABLE $conc_inver Y EJECUTAR LA SUBRUTINA calculo_invertido
+
+                      # EL MONTO LIBRE VA EN LA CAPTURA 1 Y EL MONTO BRUTO EN CAPTURA 3 LA FORUMLA DEL CONCEPTO DEBE SER TOTAL ('CONCEPTO') :=  CAP3 ('CONCEPTO')  
+
+   $conc_inver := '25'
+
+   calculo_invertido
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA calculo_invertido_total
+
+   _neto := TOTAL_PERCEPCIONES - TOTAL ('17') 
+   REPITE 
+     SI ( (TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES) < _neto ) 
+      _dif := _neto - (TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES) 
+      TOTAL ( '17' ) := TOTAL ( '17' ) + (_dif / 2 )
+      _aux1 := TOTAL('17') 
+      FORMULA_ISPT
+      _dif  := _neto - (TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES)
+     FIN_SI
+   HASTA ( _dif = 0 ) 
+
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA totales_finiquito
+SI ( TRAE_VALOR_TABLA ( &empleado , 0 , 0 ) = '*' )
+   _totales := 1
+   AVANZA_HOJA
+FIN_SI
+IMPRIME ;; IMPRIME
+IMP ( COL (27) , '**** TOTALES DE FINIQUITOS ****' ) ;; IMPRIME ;; IMPRIME
+USA_KARDEX ($kardex_finiquito)
+_imp_tot
+IMPRIME ;; IMPRIME
+  
+IMPRIME 
+DECIMALES := 0
+IMP ( '  *** EMPLEADOS CALCULADOS : ', _cont_emp_fini ) ;; IMPRIME
+IMPRIME ;; IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA termino_de_reporte
+SI ( _cont_emp_fini > 0 ) 
+   totales_finiquito
+FIN_SI
+SI (( TRAE_VALOR_TABLA ( &empleado , 0 , 0 ) = '*' ) OR ( $indice <> '' ))
+   _totales := 1
+   AVANZA_HOJA
+FIN_SI
+IMPRIME ;; IMPRIME
+IMP ( COL (27) , '**** TOTALES GENERALES ****' ) ;; IMPRIME ;; IMPRIME
+USA_KARDEX ('TOTAL')
+_imp_tot
+IMPRIME ;; IMPRIME
+  
+IMPRIME 
+DECIMALES := 0
+IMP ( '  *** EMPLEADOS CALCULADOS : ', _tot_emp ) ;; IMPRIME
+IMPRIME ;; IMPRIME
+IMP ( '  --------------------------------- FIN DE REPORTE ---------------------------' ) ;; IMPRIME
+SI ( _negativo = 1 )
+   MENSAJE_PAUSA ( 'EXISTEN EMPLEADOS EN NEGATIVO, POR FAVOR VALIDE, DESACTIVE PRESTAMOS O PONGA NO CALCULA A LOS EMPLEADOS QUE NO DEBAN TENER PAGO!!!', 5000) 
+FIN_SI
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA ciclo_de_empleados
+PRIMER_REGISTRO ('EMPPRIN')
+MUESTRA_AVANCE('EMPPRIN','Calculando...no cancelar')
+$indice :=  'EMPPRIN':'CATALOGO' 
+MIENTRAS ( FIN_BASE ('EMPPRIN') = 0 )
+   USA_KARDEX ('GENERAL')
+   SI ( 'EMPPRIN':'CLAVE' = 'MC10031172' ) # Esta condicion permite parar el calculo en un empleado en particular
+      DECIMALES := 2
+   FIN_SI
+   inicializa_variables          # Inicia las variables utilizadas durante el calculo, es importante reiniciar todas las variables que se utilizan dentro del calculo.
+   valida_si_calcula             # Esta sub rutina determina si el empleado debe ser calculado o no, la variable que retorna es _calc_empleado si aplica calculo 
+   SI ( _fini_reporte = 0 )      # Se omite a los empleados que tienen un calculo de nomina por medio del reporte calculo de finiquito, Reporte NOM041.NOM
+      PON_TOTAL_0                # Pone en 0 el total de la nomina del empleado
+   FIN_SI              
+   SI (( _calc_empleado = 1) AND ( _fini_reporte = 0 ))
+      valores_empleado           # Determinacion de parametros de calculo para el empleado 
+      carga_minimo               # Seleccion de Zona economica, esta se basa en la sucursal del empleado
+    SI ( _imprime_empleados = 1) 
+      imprime_empleado           # imprision de empleado 
+    FIN_SI
+      precalculos                # Esta subrutina de precalculos manda a llamar una sub rutina en la que podemos incluir cualquier calculo automatico o mandar a llamar mas subrutinas
+      validacion_empleado        # dentro de esta subrutina encontraremos las validaciones necesarias x empleado para no generar ningun error en los calculos de nomina
+      prestaciones               # Ests subrutina se encarga de establecer las prestaciones de un empleado como, vacaciones, aguinaldo, prima vacacional, etc.
+      PRIMER_REGISTRO ('NOMINA')
+      INCLUYE _CALC              # Incluir aqui formulas de Calculo
+      provisiones                # Esta subrutina ayuda a provisionar cualquier requerimientos, por ejemplo vacaciones, aguinaldo, etc.
+      validacion_de_calculo      # Esta subrutina nos permite ejecutar una seccion para validaciones, por ejemplo totales en negativo, o incoherencias en los calculos 
+      ACUMULA_TOTALES ('TOTAL')  # Acumulacion de totales a kardex para impresion de Resumen de nomina
+      ACUMULA_TOTALES ($kardex_indice)  # Acumulacion de Subtotales a kardex para impresion de Resumen de nomina x sucursal
+      _cont_emp_indice := _cont_emp_indice + 1
+      SI (( CAP1 ('FINI') <> 0 ) OR ( CAP2 ('FINI') <> 0 ))
+         ACUMULA_TOTALES ($kardex_finiquito ) # Acumulacion de Subtotales a kardex para impresion de Resumen de nomina x sucursal
+         _cont_emp_fini := _cont_emp_fini + 1
+      FIN_SI
+    SI_NO
+     SI ( _fini_reporte = 1) 
+      SI ( _imprime_empleados = 1) 
+         imprime_empleado
+      FIN_SI
+         ACUMULA_TOTALES ('TOTAL')
+         ACUMULA_TOTALES ($kardex_indice    ) # Acumulacion de Subtotales a kardex para impresion de Resumen de nomina x sucursal
+         ACUMULA_TOTALES ($kardex_finiquito ) # Acumulacion de Subtotales a kardex para impresion de Resumen de nomina x sucursal
+         _cont_emp_fini := _cont_emp_fini + 1
+     FIN_SI
+   FIN_SI
+       
+   GRABA_BASE ('EMPNOM')
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+
+   valida_indice
+
+FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+

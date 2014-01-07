@@ -1,0 +1,144 @@
+#IMPRESION MASIVA DE CONTRATOS
+#VERSION 1.000
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Descripcion no disponible.
+#FIN_DESCRIPCION
+#
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL DEL CONTRATO: ', '' , _fi )
+NUEVO_PARAMETRO_TAB ( 'EMPLEADOS A IMPRIMIR', 'EMPPRIN/CLAVE/EMPLEADOS', &empleados )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+NUEVO_PARAMETRO     ( 'RUTA FORMULARIO: ','F:\GIRO\REPORTES\DOC200',$formulario )
+NUEVO_PARAMETRO_SEL ( 'TIPO CONTRATO: ','INICIAL/RENOVACION/GENERAL' , $tipo  )
+NUEVO_PARAMETRO     ( 'DURACION: ','' , _duracion )
+NUEVO_PARAMETRO     ( 'FORMATO FECHA: ' ,'dd' + 'de' + 'mmmm' + 'de' + 'aaaa', $fecha )
+NUEVO_PARAMETRO     ( 'COMENTARIO: ' ,'', $comentario )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_PESOS := 2
+FORMATO_FECHA := 2
+SI ( $salida = 'EXCEL' )
+  SALIDA := 'PANTALLA'
+SI_NO
+  SALIDA := $salida
+FIN_SI
+RENGLONES:=65
+COLUMNAS:=80
+DRAFT:='S'
+
+ENCABEZADO
+   IMPRIME
+   DECIMALES:=0
+   LETRA ( 'LETRA ENFATISADA' );; IMPRIME
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), 'giro 32 Ver 1.0' );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+   IMP ( CENTRA ('Titulo del Reporte'));; IMPRIME
+   IMP ( REPITETXT('=',80));; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(13), 'NOMBRE COMPLETO' ) ;; IMPRIME
+   IMP ( REPITETXT('-',80) );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' ) ;; IMPRIME
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+#
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &totales )
+VAR_T ( &indices )
+_num_ind     := 0
+$indice      := ''
+_cont        := 0
+_imp         := 0
+$SAux        := ''
+_ant         := 0
+_aux1        := 0
+_fecha       := 0
+$formulario2 := ''
+
+SUB_RUTINA sumatoria
+  DECIMALES:=2
+  #Incremeto de valores para los indices seleccionados
+  _num_ind := 0
+  REPITE
+    _num_ind := _num_ind + 1
+  HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+  LETRA ( 'LETRA NORMAL' )
+  IMPRIME_WORD ( $formulario , 'EMPPRIN':'CLAVE', $tipo , _fi, _duracion , $fecha , $comentario , '' )
+  IMP ( COL(1), SUBSTR('EMPPRIN':'CLAVE', 1, 10 ) )
+  IMP ( COL(13), SUBSTR('EMPPRIN':'NOMBRE', 1, 25 ) )
+  $formulario2 :=  ELIMINA ($formulario ,1 ,POS('\', $formulario )  )
+  $formulario2 :=  ELIMINA ($formulario2 ,1 ,POS('\', $formulario2 )  )
+  $formulario2 :=  ELIMINA ($formulario2 ,1 ,POS('\', $formulario2 )  )
+#  ABRE_BASE ( 'CTCONT' )
+#  SI (TRAE_REGISTRO ('CTCONT' , 'CTCONT':'CLAVE_CONTRATO', $formulario2 ) )
+#     $formulario2 := 'CTCONT':'DESCRIPCION'
+#  FIN_SI
+  IMP ( COL(40), $formulario2 )
+  IMP ( COL(50), $tipo )
+  IMP ( COL(60), FECHA (_fi ) )
+  IMP ( COL(75), DER (.( _duracion ), 5 ) )
+  IMP ( COL(82), $comentario )
+  IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+  #
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 0
+_omitir_sub_totales   := 0
+_incluir_pue := 1
+_incluir_dep := 1
+_incluir_suc := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+$campos_extras:='E. NOMBREN, E. NOMBREP, E. NOMBREM, E. FOTO, E. AFILIACION, E.RFC, E.CURP'
+$emp := TRAE_SELECCION( &empleados )
+SI ( $emp <> '' )
+  $condiciones_extras := 'E.CLAVE IN (' + $emp + ')'
+FIN_SI
+
+base_trabajadores
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+      datos_trabajador
+  SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte
+
+$indice := 'TOTAL'
+sub_totales

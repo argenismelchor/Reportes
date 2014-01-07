@@ -1,0 +1,191 @@
+#VENCIMIENTO DE CONTRATOS UN MES DE ANTICIPACION
+#VENCIMIENTO DE CONTRATOS
+#USUARIO =*
+#VERSION 2.508
+#EXCEL
+#DESCRIPCION
+#Este reporte muestra los contratos proximamente a vencerse según las fechas dadas.
+#Este reporte pide el rango de fechas.
+#Este reporte imprime de los trabajadores la clave, nombre, sucursal, departamento, y puesto; de los contratos imprime fecha, duración y vencimiento.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'EXCEL' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIO' , '' , _finicio ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_lv := 0
+_enviar := 0
+_finicio := FECHA_HOY
+
+ENCABEZADO   
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   _lv := LONGITUD ( VERSION_GIRO )
+   IMP ( COL (1) , NOMBRE_REPORTE , COL (COLUMNAS - _lv) , VERSION_GIRO ) ;; IMPRIME
+   IMP ( COL (1) , CLAVE_REPORTE , CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( REPITETXT ( '=' , 80 ) ) ;; IMPRIME
+   SI ( CD_DC = 0 )
+      IMP ( COL (1) , 'Clave' , COL (10) , 'Nombre' , COL (50) , DER ( 'SUCURSAL' , 10 ) , COL (60) , DER ( 'DEPTO' , 10 ) , COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   SI_NO
+      IMP ( COL (1) , 'Clave' , COL (10) , 'Nombre' , COL (50) , DER ( 'SUCURSAL' , 10 ) , COL (60) , DER ( 'C.C.' , 10 ) , COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   FIN_SI
+   IMP ( COL (10) , 'Fecha Inicio' , COL (25) , 'DURACION' , COL (35) , 'Fecha Vencimiento' ) ;; IMPRIME
+   IMP ( REPITETXT ( '-' , 80 ) ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME 
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL (1) , 'Fecha : ' , FECHA (FECHA_HOY) , '    ' , 'Hora : ' , HORA (HORA_ACTUAL) , COL (65) , 'PAGINA : ' , PAGINA ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' ) ;; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+SI ( $salida = 'EXCEL' )
+   EXCEL ( 'PON_VALOR', 1, 1, 'CLAVE' )
+   EXCEL ( 'PON_VALOR', 2, 1, 'NOMBRE' )
+   EXCEL ( 'PON_VALOR', 3, 1, 'SUCURSAL' )
+   EXCEL ( 'PON_VALOR', 4, 1, 'DEPARTAMENTO' )
+   EXCEL ( 'PON_VALOR', 5, 1, 'PUESTO' )
+   EXCEL ( 'PON_VALOR', 6, 1, 'INICIO' )
+   EXCEL ( 'PON_VALOR', 7, 1, 'DURACION (DIAS)' )
+   EXCEL ( 'PON_VALOR', 8, 1, 'VENCIMIENTO' )
+FIN_SI
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+
+#Variables Globales
+_salir := 0
+_ren_act := 3
+_fcont := 0
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+  DECIMALES := 0
+  IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 38 ) )
+  IMP ( COL (50) , DER ( 'EMPPRIN':'SUC_CLAVE' , 10 ) , COL (60) , DER ( 'EMPPRIN':'DEP_CLAVE' , 10 ) , COL (70) , DER ( 'EMPPRIN':'PUE_CLAVE' , 10 ) )
+  IMPRIME
+  IMP ( COL (10) , FECHA ('EMPPRIN':'FECHA') , COL (25) , .('EMPPRIN':'DURACION') , ' Dias' , COL (35) , FECHA ( 'EMPPRIN':'FECHA_TERMINOC' )) ;; IMPRIME
+  DECIMALES := 2
+   SI ( $salida = 'EXCEL' )
+      EXCEL ( 'PON_VALOR', 1, _ren_act, 'EMPPRIN':'CLAVE' )
+      EXCEL ( 'PON_VALOR', 2, _ren_act, 'EMPPRIN':'NOMBRE' )
+      EXCEL ( 'PON_VALOR', 3, _ren_act, 'EMPPRIN':'SUC_CLAVE' )
+      EXCEL ( 'PON_VALOR', 4, _ren_act, 'EMPPRIN':'DEP_CLAVE' )
+      EXCEL ( 'PON_VALOR', 5, _ren_act, 'EMPPRIN':'PUE_CLAVE' )
+      EXCEL ( 'PON_VALOR', 6, _ren_act,  FECHA ('EMPPRIN':'FECHA') )
+      EXCEL ( 'PON_VALOR', 7, _ren_act, 'EMPPRIN':'DURACION' )
+      EXCEL ( 'PON_VALOR', 8, _ren_act,  FECHA ( 'EMPPRIN':'FECHA_TERMINOC' ))
+      _ren_act := _ren_act + 1
+   FIN_SI
+
+   _enviar := 1
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+#lee_parametros_seleccion
+#lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+SI ( SQL_SERVER )
+   $campos_extras := 'C. TIPO, C. DURACION, C. FECHA, C. FECHA + C. DURACION - 1 AS FECHA_TERMINOC'
+SI_NO
+   $campos_extras := 'C. TIPO, C. DURACION, C. FECHA, C. FECHA + C. DURACION - 1 AS C. FECHA_TERMINOC'
+FIN_SI
+
+$bases_extras := 'EMPCONT C'
+#SI ( SQL_SERVER )
+#  $condiciones_extras := '(C. CLAVE = E. CLAVE ) AND ( C. TIPO IN ("I", "R")) AND ( DATEADD( DAY, C. DURACION - 1, C. FECHA ) >= :FINI ) AND ( DATEADD( DAY, C. DURACION - 1, C. FECHA) <= :FFIN )'
+#SI_NO
+  $condiciones_extras := '(C. CLAVE = E. CLAVE ) AND ( C. TIPO IN ("I", "R"))'
+#FIN_SI
+base_trabajadores
+
+USA_ARCHIVO ( 'EMPPRIN', 'EMPCONT', 'CLAVE' )
+
+_renovado := 0
+
+_dias_para_venc := 0
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+  SI ( ES_VIGENTE( FECHA_HOY ) )
+   _dias_para_venc := ( 'EMPPRIN':'FECHA_TERMINOC' - _finicio )
+   SI ( _dias_para_venc < 0 ) 
+      _dias_para_venc := 0 
+   FIN_SI
+   SI (( _dias_para_venc > 0 ) AND ( _dias_para_venc >= 1 ) AND ( _dias_para_venc <= 5 ))     
+      _fcont    := 'EMPPRIN':'FECHA'
+      _renovado := 0
+      SI ( TRAE_REGISTRO( 'EMPCONT', 'EMPPRIN':'CLAVE', _fcont ) )
+        SIGUIENTE_REGISTRO( 'EMPCONT' )
+        MIENTRAS( FIN_BASE( 'EMPCONT' ) = FALSO )
+          SI ( 'EMPCONT':'TIPO' = 'R' )
+            _renovado := 1
+          FIN_SI
+          SIGUIENTE_REGISTRO( 'EMPCONT' )
+        FIN_MIENTRAS
+      FIN_SI
+      SI ( _renovado = 0 )
+        datos_trabajador
+      FIN_SI
+   FIN_SI
+  FIN_SI
+  SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+# INSTRUCCION PARA ENVIAR CORREOS DESDE GIRO
+
+VAR_T       ( &destinatarios )
+VAR_T       ( &mensaje ) 
+
+$file_backup := ''
+
+EXCEL('NOMBRE_ARCHIVO', 0 , 0 ,$file_backup )
+EXCEL('CERRAR'        , 0 , 0 ,$file_backup )
+
+MENSAJE ( $file_backup ) 
+
+$empresa := ''
+
+SI ( TRAE_REGISTRO('EMPRESA', 'EMPRESA':'CLAVE'))
+   $empresa := 'EMPRESA':'NOMBRE'
+FIN_SI
+
+$nombre_mostrar := LEE_INI('NOTIFICACIONES','NOMBRE','') # NOMBRE PARA MOSTRAR EN LA LLEGADA DE CORREO.
+$de_correo      := LEE_INI('NOTIFICACIONES','CORREO','')   # CUENTA DE CORREO ELECTRONICO
+$con_copia      := ''                          # CON COPIA PARA
+$asunto         := 'Listado de personal con vencimiento de contrato en los proximos 5 dias ' + FECHA(FECHA_HOY)  + ' ' + $empresa             # ASUNTO DEL CORREO
+$adjunto        := $file_backup                # ARCHIVO ADJUNTO DIRECCION COMPLETA
+
+AGREGA_VALOR_COL ( &destinatarios , 0 , 'jflores@consisarh.com.mx' ) #AGREGA DESTINATARIOS
+#AGREGA_VALOR_COL ( &destinatarios , 0 , 'sdavila@seao.com.mx' ) #AGREGA DESTINATARIOS
+AGREGA_VALOR_COL ( &mensaje       , 0 , ' ' ) # AGREGA MENSAJE
+AGREGA_VALOR_COL ( &mensaje       , 0 , ' ' ) # AGREGA MENSAJE
+AGREGA_VALOR_COL ( &mensaje       , 0 , ' ' ) # AGREGA MENSAJE
+
+
+_un     := 0
+
+SI ( _enviar )   
+   ENVIA_CORREO( $nombre_mostrar , $de_correo , &destinatarios , $con_copia , $asunto , &mensaje , $adjunto  )
+FIN_SI
+
+termina_reporte
+
+TERMINA_REPORTE

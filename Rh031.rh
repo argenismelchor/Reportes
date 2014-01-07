@@ -1,0 +1,299 @@
+#PROGRAMA DE CAPACITACION POR EMPLEADO
+#VERSION 2.500
+#USUARIO =*
+#EXCEL
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra el programa de capacitacion de los empleados de la empresa.
+#Este reporte imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal.
+#De los cursos imprime la clave, descripcion, fecha de inicio y termino.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO/EXCEL', $salida )
+NUEVO_PARAMETRO_CHEQ('VIGENTES','',_vig)
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','',_fi)
+NUEVO_PARAMETRO_FEC ('FECHA FINAL','',_ff)
+NUEVO_PARAMETRO_SEL ('CURSOS', 'TOMADOS/PROGRAMADOS', _cursos )
+LEE_PARAMETROS
+
+_estatus := 0
+_obliga  := 0
+$reporte := ''
+_competencia := 0
+COLUMNAS := 85
+_col := 0
+_ren := 0
+SI ( _cursos = 1 )
+  BORRA_PARAMETROS
+  NUEVO_PARAMETRO_SEL ('CURSOS', 'TODOS/TOMADOS/PENDIENTES', _estatus )
+  NUEVO_PARAMETRO_CHEQ('VOLUMEN', 'SOLO OBLIGATORIOS',_obliga)
+  NUEVO_PARAMETRO_SEL ('COMPETENCIA', 'TODOS/GENERALES/TECNICOS/DESARROLLO', _competencia )
+  LEE_PARAMETROS
+SI_NO
+  BORRA_PARAMETROS
+  NUEVO_PARAMETRO_SEL ('CURSOS', 'TODOS/PROGRAMADOS/SIN PROGRAMAR', _estatus )
+  LEE_PARAMETROS
+FIN_SI
+
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   SI ( _cursos = 0 )
+     $reporte := 'CURSOS TOMADOS DEL ' + FECHA (_fi) + ' AL ' + FECHA (_ff)
+   SI_NO
+     $reporte := 'CURSOS PROGRAMADOS DEL ' + FECHA (_fi) + ' AL ' + FECHA (_ff)
+     SI ( _estatus = 0 )
+       $reporte := $reporte + ' TODOS'
+     FIN_SI
+     SI ( _estatus = 1 )
+       $reporte := $reporte + ' TOMADOS'
+     FIN_SI
+     SI ( _estatus = 2 )
+       $reporte := $reporte + ' PENDIENTES'
+     FIN_SI
+     SI ( _competencia = 1 )
+       $reporte := $reporte + ' GENERALES'
+     FIN_SI
+     SI ( _competencia = 2 )
+       $reporte := $reporte + ' TECNICOS'
+     FIN_SI
+     SI ( _competencia = 3 )
+       $reporte := $reporte + ' DESARROLLO'
+     FIN_SI
+
+   FIN_SI
+   $titulo_reporte := $reporte
+   encabezado_ini
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), 'INGRESO', COL(60), 'PUESTO' );; IMPRIME
+   SI ( _cursos = 0 )
+     IMP ( COL ( 15), 'CURSO', COL ( 48 ), 'FECHA I', COL ( 59 ), 'FECHA F', COL( 70 ), DER('EVAL', 6), COL(80), 'HORAS' ) ;; IMPRIME
+   FIN_SI
+   SI ( _cursos = 1 )
+     IMP ( COL ( 15), 'CURSO' )
+     IMP ( COL ( 40 ), 'FECHA I', COL ( 50 ), 'FECHA F' )
+     IMP ( COL (60), 'HORA INI', COL (70), 'HORA FIN' )
+     IMPRIME
+   FIN_SI
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 1
+FORMATO_HORA  := 2
+
+#Variables Globales
+_tomado       := FALSO
+$ant_trab     := ''
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+   SI ( $ant_trab <> 'EMPPRIN':'CLAVE' )
+     IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), 'EMPPRIN':'NOMBRE' )
+     SI ( $salida = 'EXCEL' )
+       EXCEL( 'PON_VALOR', 1, _ren, 'EMPPRIN':'CLAVE' )
+       EXCEL( 'PON_VALOR', 2, _ren, 'EMPPRIN':'NOMBRE' )
+       EXCEL( 'PON_VALOR', 3, _ren, FECHA( 'EMPPRIN':'INGRESO' ) )
+       EXCEL( 'PON_VALOR', 4, _ren, '"' + 'EMPPRIN':'PUE_CLAVE' )
+     FIN_SI
+     IMP ( COL(50), FECHA('EMPPRIN':'INGRESO'), COL(60), 'EMPPRIN':'PUE_CLAVE' )
+     SI ( TRAE_REGISTRO( 'PUESTO', 'EMPPRIN':'PUE_CLAVE' ) )
+       IMP ( '  ', 'PUESTO':'DESCRIPCION' )
+       SI ( $salida = 'EXCEL' )
+         EXCEL( 'PON_VALOR', 5, _ren, 'PUESTO':'DESCRIPCION' )
+       FIN_SI
+     FIN_SI
+     IMPRIME
+     _ren := _ren + 1
+   FIN_SI
+   SI ( _cursos = 0 )
+     DECIMALES := 2
+     IMP ( COL ( 10 ), 'EMPPRIN':'CURSO', COL (15), SUBSTR('EMPPRIN':'DESCRIPCION', 1, 30), COL ( 48 ), FECHA ( 'EMPPRIN':'FECHA_INICIAL' ), COL ( 59 ), FECHA ( 'EMPPRIN':'FECHA_FINAL' ), COL(70), DER( .('EMPPRIN':'EVALUACION'), 6) )
+     IMP ( COL(80), 'EMPPRIN':'HORAS')
+     IMPRIME
+     SI ( $salida = 'EXCEL' )
+       EXCEL( 'PON_VALOR', 2, _ren, '"' + 'EMPPRIN':'CURSO' )
+       EXCEL( 'PON_VALOR', 3, _ren, 'EMPPRIN':'DESCRIPCION' )
+       EXCEL( 'PON_VALOR', 4, _ren, FECHA( 'EMPPRIN':'FECHA_INICIAL' ) )
+       EXCEL( 'PON_VALOR', 5, _ren, FECHA( 'EMPPRIN':'FECHA_FINAL' ) )
+       EXCEL( 'PON_VALOR', 6, _ren, 'EMPPRIN':'EVALUACION' )
+       _ren := _ren + 1
+     FIN_SI
+     SI ( 'EMPPRIN':'INSTRUCTOR' <> '' )
+        SI ( TRAE_REGISTRO( 'INSTRUCT', 'EMPPRIN':'INSTRUCTOR' ) )
+          IMP ( COL(20), 'INSTRUCTOR : ' + 'INSTRUCT':'NOMBRE' ) IMPRIME
+          SI ( $salida = 'EXCEL' )
+            EXCEL( 'PON_VALOR', 3, _ren, 'INSTRUCTOR : ' )
+            EXCEL( 'PON_VALOR', 4, _ren, 'INSTRUCT':'NOMBRE' )
+            _ren := _ren + 1
+          FIN_SI
+        FIN_SI
+     FIN_SI
+     SI ( 'EMPPRIN':'DOCUMENTO' <> '' )
+       IMP ( COL(20), 'DOC : ', 'EMPPRIN':'DOCUMENTO' ) IMPRIME
+       SI ( $salida = 'EXCEL' )
+          EXCEL( 'PON_VALOR', 3, _ren, 'DOCUMENTO : ' )
+          EXCEL( 'PON_VALOR', 4, _ren, 'EMPPRIN':'DOCUMENTO' )
+          _ren := _ren + 1
+       FIN_SI
+     FIN_SI
+     SI ( 'EMPPRIN':'COMENTARIO' <> '' )
+       IMP ( COL(20), 'COM : ', 'EMPPRIN':'COMENTARIO' ) IMPRIME
+       SI ( $salida = 'EXCEL' )
+          EXCEL( 'PON_VALOR', 3, _ren, 'COMENTARIO : ' )
+          EXCEL( 'PON_VALOR', 4, _ren, 'EMPPRIN':'COMENTARIO' )
+          _ren := _ren + 1
+       FIN_SI
+     FIN_SI     
+   FIN_SI
+   SI ( _cursos = 1 )      
+      IMP ( COL ( 10 ), 'EMPPRIN':'CURSO', COL (15), SUBSTR('EMPPRIN':'DESCRIPCION', 1, 20) )
+      IMP ( COL ( 40 ), FECHA ( 'EMPPRIN':'FECHA INICIO' ), COL ( 50 ), FECHA ( 'EMPPRIN':'FECHA TERMINO' ) )
+      DECIMALES := 20
+      IMP ( COL ( 60 ), HORA ( 'EMPPRIN':'HORARIO ENTRADA' ), COL ( 70 ), HORA ( 'EMPPRIN':'HORARIO SALIDA' ) )
+      IMPRIME
+      SI ( $salida = 'EXCEL' )
+        EXCEL( 'PON_VALOR', 2, _ren, '"' + 'EMPPRIN':'CURSO' )
+        EXCEL( 'PON_VALOR', 3, _ren, 'EMPPRIN':'DESCRIPCION' )
+        EXCEL( 'PON_VALOR', 4, _ren, FECHA( 'EMPPRIN':'FECHA INICIO' ) )
+        EXCEL( 'PON_VALOR', 5, _ren, FECHA( 'EMPPRIN':'FECHA TERMINO' ) )
+        EXCEL( 'PON_VALOR', 6, _ren, HORA( 'EMPPRIN':'HORARIO ENTRADA' ) )
+        EXCEL( 'PON_VALOR', 7, _ren, HORA( 'EMPPRIN':'HORARIO SALIDA' ) )
+        _ren := _ren + 1
+      FIN_SI
+      SI ( 'EMPPRIN':'INSTRUCTOR' <> '' )
+        SI ( TRAE_REGISTRO( 'INSTRUCT', 'EMPPRIN':'INSTRUCTOR' ) )
+          IMP ( COL(20), 'INSTRUCTOR : ' + 'INSTRUCT':'NOMBRE' ) IMPRIME
+          SI ( $salida = 'EXCEL' )
+            EXCEL( 'PON_VALOR', 3, _ren, 'INSTRUCTOR : ' )
+            EXCEL( 'PON_VALOR', 4, _ren, 'INSTRUCT':'NOMBRE' )
+            _ren := _ren + 1
+          FIN_SI
+        FIN_SI
+      FIN_SI
+      SI ( 'EMPPRIN':'LUGAR' <> '' )
+        IMP ( COL(20), 'LUGAR      : ' + 'EMPPRIN':'LUGAR' ) IMPRIME
+        SI ( $salida = 'EXCEL' )
+          EXCEL( 'PON_VALOR', 3, _ren, 'LUGAR      : ' )
+          EXCEL( 'PON_VALOR', 4, _ren, 'EMPPRIN':'LUGAR' )
+          _ren := _ren + 1
+        FIN_SI
+      FIN_SI
+      SI ( 'EMPPRIN':'COMENTARIO' <> '' )
+        IMP ( COL(20), 'COMENTARIO : ' + 'EMPPRIN':'COMENTARIO' ) IMPRIME
+        SI ( $salida = 'EXCEL' )
+          EXCEL( 'PON_VALOR', 3, _ren, 'COMENTARIO : ' )
+          EXCEL( 'PON_VALOR', 4, _ren, 'EMPPRIN':'COMENTARIO' )
+          _ren := _ren + 1
+        FIN_SI
+      FIN_SI
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+SUB_RUTINA checa_condicion
+  SI (( _vig = 0 ) OR ( ES_VIGENTE(_ff ) = VERDADERO ) )
+    SI ( _cursos = 0 )
+      datos_trabajador
+    SI_NO
+      SI ( _estatus = 0 )
+        datos_trabajador
+      FIN_SI
+      SI (( _estatus = 1 ) AND (( 'EMPPRIN':'EVALUACION' > 0 ) OR ( 'EMPPRIN':'HORAS' > 0 )))
+        datos_trabajador
+      FIN_SI
+      SI (( _estatus = 2 ) AND (( 'EMPPRIN':'EVALUACION' = 0 ) AND ( 'EMPPRIN':'HORAS' = 0 )))
+        datos_trabajador
+      FIN_SI
+    FIN_SI
+  FIN_SI
+  $ant_trab := 'EMPPRIN':'CLAVE'
+FIN_SUB_RUTINA
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+SI ( _cursos = 0 )
+  $campos_extras := 'C.*, U.*'
+  $bases_extras := 'EMPCURSO C, CURSO U'
+  $condiciones_extras := 'C. CLAVE = E. CLAVE AND C. FECHA_FINAL >= :FINI AND C. FECHA_INICIAL <= :FFIN AND U. CLAVE = C. CURSO'
+  SI ( _estatus = 1 )
+    $condiciones_extras := $condiciones_extras + ' AND C. "CURSO PROGRAMADO" IS NOT NULL'
+  FIN_SI
+  SI ( _estatus = 2 )
+    $condiciones_extras := $condiciones_extras + ' AND C. "CURSO PROGRAMADO" IS NULL'
+  FIN_SI
+SI_NO
+  $campos_extras := 'P. CURSO, P. PROGRAMADO, P. OBLIGATORIO, P. TIPO, S. DESCRIPCION, R. FECHA_INICIAL, R. FECHA_FINAL, R. EVALUACION, R. HORAS, C. *'
+  $bases_extras := 'EMPCAPAC P LEFT JOIN CURSOPRO C ON C. ID = P. PROGRAMADO LEFT JOIN CURSO S ON S. CLAVE = P. CURSO LEFT JOIN EMPCURSO R ON R. "CURSO PROGRAMADO" = C. ID'
+  $condiciones_extras := 'P. CLAVE = E. CLAVE AND C. "FECHA TERMINO" >= :FINI AND C. "FECHA INICIO" <= :FFIN'
+  SI ( _competencia = 1 )
+      $condiciones_extras := $condiciones_extras + ' AND P. TIPO = "GENERAL"'
+  FIN_SI
+  SI ( _competencia = 2 )
+      $condiciones_extras := $condiciones_extras + ' AND P. TIPO = "TECNICO"'
+  FIN_SI
+  SI ( _competencia = 3 )
+      $condiciones_extras := $condiciones_extras + ' AND P. TIPO = "DESARROLLO"'
+  FIN_SI
+FIN_SI
+SI ( _obliga = 1 )
+  SI ( SQL_SERVER )
+    $condiciones_extras := $condiciones_extras + ' AND P. OBLIGATORIO = 1'
+  SI_NO
+    $condiciones_extras := $condiciones_extras + ' AND P. OBLIGATORIO = "True"'
+  FIN_SI
+FIN_SI
+
+base_trabajadores
+PARAMETRO_SQL( 'EMPPRIN', 'FINI', _fi )
+PARAMETRO_SQL( 'EMPPRIN', 'FFIN', _ff )
+#USA_ARCHIVO ( 'EMPPRIN', 'EMPCURSO', 'CLAVE' )
+
+SI ( $salida = 'EXCEL' )
+   _ren := 1
+   EXCEL( 'PON_VALOR', 1, _ren, 'CLAVE' )
+   EXCEL( 'PON_VALOR', 2, _ren, 'NOMBRE' )
+   EXCEL( 'PON_VALOR', 3, _ren, 'INGRESO' )
+   EXCEL( 'PON_VALOR', 4, _ren, 'PUESTO' )
+   _ren := _ren + 1
+   SI ( _cursos = 0 )
+     EXCEL( 'PON_VALOR', 2, _ren, 'CURSO' )
+     EXCEL( 'PON_VALOR', 3, _ren, 'DESCRIPCION' )
+     EXCEL( 'PON_VALOR', 4, _ren, 'FECHA INICIAL' )
+     EXCEL( 'PON_VALOR', 5, _ren, 'FECHA FINAL' )
+     EXCEL( 'PON_VALOR', 6, _ren, 'EVALUACION' )
+     EXCEL( 'PON_VALOR', 7, _ren, 'HORAS' )
+   FIN_SI
+   SI ( _cursos = 1 )
+     EXCEL( 'PON_VALOR', 2, _ren, 'CURSO' )
+     EXCEL( 'PON_VALOR', 3, _ren, 'DESCRIPCION' )
+     EXCEL( 'PON_VALOR', 4, _ren, 'FECHA INICIAL' )
+     EXCEL( 'PON_VALOR', 5, _ren, 'FECHA FINAL' )
+     EXCEL( 'PON_VALOR', 6, _ren, 'HORA INICIAL' )
+     EXCEL( 'PON_VALOR', 7, _ren, 'HORA FINAL' )
+   FIN_SI
+   _ren := _ren + 1
+FIN_SI
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   checa_condicion   
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+

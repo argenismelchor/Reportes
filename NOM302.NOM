@@ -1,0 +1,77 @@
+#IMPORTACION DE CUENTAS
+#REPORTE ESTANDAR DE MUESTRA
+#USUARIO =*
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como base en los reportes.
+#CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL/DISCO', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+
+$clave :=''
+$cta   :=''
+_renglon_excel   := 0
+_columna_excel   := 0
+
+
+ABRE_BASE ('EMPPRIN')
+
+
+NUEVO_PARAMETRO_RUTA ('RUTA','',$archivo)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+EXCEL   ( 'AGREGA_HOJA_PLANTILLA' , 0,0, $archivo )
+
+   EXCEL ( 'TRAE_VALOR' , 1 , _renglon_excel , $clave )
+   EXCEL ( 'TRAE_VALOR' , 2 , _renglon_excel , $cta )
+
+   MIENTRAS ( $clave <> '' )  
+   
+  SI ( TRAE_REGISTRO ( 'EMPPRIN' , $clave )= FALSO)
+   AGREGA_REGISTRO ('EMPPRIN')
+   'EMPPRIN':'CLAVE' :=  $clave
+  FIN_SI
+   
+   'EMPPRIN':'CTA_TARJETA':= $cta
+
+   GRABA_BASE ('EMPPRIN')
+
+   EXCEL ( 'TRAE_VALOR' , 1 , _renglon_excel , $clave )
+   EXCEL ( 'TRAE_VALOR' , 2 , _renglon_excel , $cta )
+  
+
+_renglon_excel := _renglon_excel + 1
+
+     
+   FIN_MIENTRAS
+
+TERMINA_REPORTE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+TERMINA_REPORTE

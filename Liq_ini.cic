@@ -1,0 +1,256 @@
+### VARIABLES GLOBALES
+VAR_A ( $sucursales ) #Contiene la concatenacion de las sucursales
+VAR_N ( _fecha_ini ) #variable auxiliar
+VAR_N ( _fecha_fin ) #variable auxiliar
+VAR_N ( _fecha_ant ) #variable auxiliar
+VAR_N ( _inicio ) #Dia de inicio en el registro patronal
+VAR_N ( _finall ) #Ultimo dia en el registro patronal
+VAR_N ( _finicio ) #Dia inicio de vigencia
+VAR_N ( _ffinal ) #Ultimo dia de vigencia 
+VAR_N ( _primera ) #Bandera para señalar la primera ocación
+VAR_N ( _no_faltas ) #Numero de faltas
+VAR_N ( _no_incap ) #Numero de incapacidades
+VAR_N ( _no_incap_eg ) #Numero de incapacidades de EG
+VAR_N ( _total_faltas ) #Total del faltas
+VAR_N ( _total_incap ) #Total de incapacidades
+VAR_N ( _dias_ti ) #Dias - incapacidades
+VAR_N ( _dias_ta ) #Dias - ausentismo hasta 14 dias
+VAR_N ( _dias_tai ) #Dias - ausentismo - incapacidades 
+VAR_N ( _dias_taieg ) #Dias - ausentismo - incapacidades excepto EG
+VAR_N ( _dias_tari ) #Dias - ausentismo real - incapacidades 
+VAR_N ( _total_dias_ti ) #Total de dias - incapacidades
+VAR_N ( _total_dias_ta ) #Total de dias - ausentismo hasta 14 dias
+VAR_N ( _total_dias_tai ) #Total de dias - ausentismo - incapacidades 
+VAR_N ( _total_dias_tari ) #Total de dias - ausentismo real - incapacidades 
+VAR_N ( _base_eym1 ) #Base de Enfermedad y Maternidad fraccion I Articulo 106
+VAR_N ( _base_eym2 ) #Base de Enfermedad y Maternidad fraccion II Articulo 106
+VAR_N ( _base_eym3 ) #Base de Enfermedad y Maternidad Articulo 107 y 25
+VAR_N ( _base_rt ) #Base de Riesgo de Trabajo y Guarderia Articulo 71
+VAR_N ( _base_iv ) #Base de Invalidez y Vida Articulo 147 y Cesantia y Vejez Articulo 168 Fraccion II
+VAR_N ( _base_iv_p ) #Base de Invalidez y Vida Articulo 147 y Cesantia y Vejez Articulo 168 Fraccion II para el patron
+VAR_N ( _base_sar ) #Base de Retiro Articulo 168 Fraccion I
+VAR_N ( _base_info1 ) #Base de Infonavit dias - ausentismos
+VAR_N ( _base_info2 ) #Base de Infonavit dias laborados descontando el total de faltas e incapacidades
+VAR_N ( _total_base_eym1 ) #total Base
+VAR_N ( _total_base_eym2 ) #total Base
+VAR_N ( _total_base_eym3 ) #total Base
+VAR_N ( _total_base_rt ) #total Base
+VAR_N ( _total_base_iv ) #total Base
+VAR_N ( _total_base_sar ) #total Base
+VAR_N ( _total_base_info1 ) #total Base
+VAR_N ( _total_base_info2 ) #total Base
+VAR_N ( _sueldo_m_25 ) #Sueldo con minimo del SMGDF y tope de 25 SMGDF
+VAR_N ( _sueldo_3m_25 ) #Sueldo con minimo de 3 SMGDF y tope de 25 SMGDF
+VAR_N ( _sueldo_mj_25 ) #Sueldo con minimo del SMGDF y tope de 25 SMGDF excepto jornada reducida o semana reducida
+VAR_N ( _sueldo_mj_15 ) #Sueldo con minimo del SMGDF y tope de 15 SMGDF excepto jornada reducida o semana reducida
+VAR_N ( _sueldo_r_15 ) #Sueldo con minimo de salario real y tope de 15 SMGDF excepto jornada reducida o semana reducida
+VAR_N ( _minimo_zona ) #Salario minimo de la zona
+VAR_N ( _minimo_df ) #Salario minimo del DF
+VAR_N ( _reducida ) #Bandera para verificar si el empleado tiene jornada o semana reducida
+VAR_N ( _fija ) #Cuota fija
+VAR_N ( _ex_3m ) #Cuota Excedente de 3 salarios minimos Empleado y Patron
+VAR_N ( _ex_3m_e ) #Cuota Excedente de 3 salarios minimos Empleado 
+VAR_N ( _ex_3m_p ) #Cuota Excedente de 3 salarios minimos Patron
+VAR_N ( _dinero ) #Cuota de prestaciones en dinero Empleado y Patron
+VAR_N ( _dinero_e ) #Cuota de prestaciones en dinero Empleado
+VAR_N ( _dinero_p ) #Cuota de prestaciones en dinero Patron
+VAR_N ( _especie ) #Cuota de prestaciones en especie Empleado y Patron
+VAR_N ( _especie_e ) #Cuota de prestaciones en especie Empleado 
+VAR_N ( _especie_p ) #Cuota de prestaciones en especie Patron
+VAR_N ( _rt ) #Cuota de Riesgo de Trabajo
+VAR_N ( _credito ) #Cuota por credito
+VAR_N ( _iv ) #Cuota de Invalidez y Vida Empleado y Patron
+VAR_N ( _iv_e ) #Cuota de Invalidez y Vida Empleado 
+VAR_N ( _iv_p ) #Cuota de Invalidez y Vida Patron
+VAR_N ( _guarderia ) #Cuota de Guarderia
+VAR_N ( _retiro ) #Cuaota de Retiro o Sar
+VAR_N ( _cv ) #Cuota de Cesantia y Vejes Empleado y Patron
+VAR_N ( _cv_e ) #Cuota de Cesantia y Vejes Empleado 
+VAR_N ( _cv_p ) #Cuota de Cesantia y Vejes Patron
+VAR_N ( _info ) #Cuota de Infonavit
+VAR_N ( _tot_fija ) #Total de Cuotas
+VAR_N ( _tot_ex_3m ) #Total de Cuotas
+VAR_N ( _tot_dinero ) #Total de Cuotas
+VAR_N ( _tot_especie ) #Total de Cuotas
+VAR_N ( _tot_rt ) #Total de Cuotas
+VAR_N ( _tot_iv ) #Total de Cuotas
+VAR_N ( _tot_guarderia ) #Total de Cuotas
+VAR_N ( _tot_retiro ) #Total de Cuotas
+VAR_N ( _tot_cv ) #Total de Cuotas
+VAR_N ( _tot_info ) #Total de Cuotas
+VAR_N ( _tot_imss ) #SubTotal de Cuotas IMSS
+VAR_N ( _tot_infonavit ) #SubTotal de Cuotas INFONAVIT
+VAR_N ( _total_imss ) #Total de Cuotas IMSS
+VAR_N ( _total_infonavit ) #Total de Cuotas INFONAVIT
+VAR_N ( _total_pagar ) #Total a pagar
+$sucursales:=''
+$dp:=''
+$indice := ''
+
+SUB_RUTINA trae_registros_actuales
+   SI ( TRAE_REGISTRO_VIG ( 'PAGOIMSS', _finicio ) = FALSO )
+     MENSAJE ( 'NO HAY CUOTAS VIGENTES PARA EL CALCULO...' )
+     TERMINA_REPORTE
+   FIN_SI
+   SI ( TRAE_REGISTRO ( 'SUCURSAL', TRAE_DSP ( 'S', _finicio )))
+     SI ( TRAE_REGISTRO ( 'PATRONAL', 'SUCURSAL':'REGISTRO PATRONAL' ))
+       #Definición de salarios mínimos
+       SI ( TRAE_REGISTRO_VIG ( 'MINIMO', _finicio ))
+         DECIMALES := 2
+         _minimo_df := 'MINIMO':'MINIMO A'
+         SI ('PATRONAL':'ZONA ECONOMICA' = 'A' )
+           _minimo_zona := 'MINIMO':'MINIMO A'
+         FIN_SI 
+         SI ('PATRONAL':'ZONA ECONOMICA' = 'B' )
+           _minimo_zona := 'MINIMO':'MINIMO B'
+         FIN_SI 
+         SI ('PATRONAL':'ZONA ECONOMICA' = 'C' )
+           _minimo_zona := 'MINIMO':'MINIMO C'
+         FIN_SI 
+       FIN_SI
+     FIN_SI
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA encabezados
+  SI ( $indice = 'REGISTRO PATRONAL' )
+    SI ( TRAE_REGISTRO ( 'SUCURSAL', TRAE_DSP( 'S', _finicio ) ) )
+      SI ( TRAE_REGISTRO ( 'PATRONAL', 'SUCURSAL':'REGISTRO PATRONAL' ) )
+        #Definición de salarios mínimos
+        SI ( TRAE_REGISTRO_VIG( 'MINIMO', _finicio ) )
+          _minimo_df:='MINIMO':'MINIMO A'
+          SI ('PATRONAL':'ZONA ECONOMICA' = 'A' )
+            _minimo_zona:='MINIMO':'MINIMO A'
+          FIN_SI 
+          SI ('PATRONAL':'ZONA ECONOMICA' = 'B' )
+            _minimo_zona:='MINIMO':'MINIMO B'
+          FIN_SI 
+          SI ('PATRONAL':'ZONA ECONOMICA' = 'C' )
+            _minimo_zona:='MINIMO':'MINIMO C'
+          FIN_SI 
+        FIN_SI
+      FIN_SI
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA calcula_periodo
+      trae_registros_actuales
+      DECIMALES := 6
+      TRAE_MOV_FECHA( _finicio )
+      SI ( 'EMPSDO':'TIPO' = 'B' )
+        TRAE_MOV_FECHA( 'EMPSDO':'FECHA' - 1 )
+      FIN_SI
+       #Definición de semana o jornada reducida
+        SI (( 'EMPPRIN':'SEMANA REDUCIDA' = 1 ) OR ( 'EMPPRIN':'JORNADA REDUCIDA' = 1 ))
+          _reducida:=1
+        SI_NO
+          _reducida:=0
+        FIN_SI
+       #Definición de sueldos
+        _sueldo_m_25:= 'EMPSDO':'SDO3'
+        SI ( _sueldo_m_25 > 'MINIMO':'TOPE EG') 
+           _sueldo_m_25:='MINIMO':'TOPE EG'
+        FIN_SI
+        SI ( _sueldo_m_25 < _minimo_zona )
+           _sueldo_m_25 := _minimo_zona 
+        FIN_SI  
+
+        _sueldo_3m_25:= 'EMPSDO':'SDO3'
+        SI ( _sueldo_3m_25 > 3 * _minimo_df ) 
+          _sueldo_3m_25:='EMPSDO':'SDO3' - (3 * _minimo_df)
+          SI ( _sueldo_3m_25 > 'MINIMO':'TOPE EG' )
+            _sueldo_3m_25:='MINIMO':'TOPE EG'
+          FIN_SI
+        SI_NO
+          _sueldo_3m_25:=0
+        FIN_SI
+
+        _sueldo_mj_25:='EMPSDO':'SDO3'
+        SI ( _sueldo_mj_25 > 'MINIMO':'TOPE EG') 
+          _sueldo_mj_25 := 'MINIMO':'TOPE EG'
+        FIN_SI
+        SI ( _sueldo_mj_25 < _minimo_zona )
+          _sueldo_mj_25 := _minimo_zona
+          SI (_reducida=1)
+            _sueldo_mj_25:='EMPSDO':'SDO3'
+          FIN_SI
+        FIN_SI
+
+        _sueldo_mj_15:='EMPSDO':'SDO3'
+        SI ( _sueldo_mj_15>'MINIMO':'TOPE IVCM') 
+          _sueldo_mj_15:='MINIMO':'TOPE IVCM'
+        FIN_SI
+        SI ( _sueldo_mj_15 < _minimo_zona )
+          _sueldo_mj_15:=_minimo_zona
+          SI (_reducida=1)
+            _sueldo_mj_15:='EMPSDO':'SDO3'
+          FIN_SI
+        FIN_SI
+ 
+        _sueldo_r_15:='EMPSDO':'SDO3'
+        SI ( _sueldo_r_15>'MINIMO':'TOPE INFONAVIT') 
+          _sueldo_r_15:='MINIMO':'TOPE INFONAVIT'
+        FIN_SI
+     #Calculo de bases de cotización 
+       _base_eym1:='MINIMO':'MINIMO A' * _dias_ti
+       _base_eym2:=_dias_ti * _sueldo_3m_25
+       _base_eym3:=_dias_ti * _sueldo_m_25
+       _base_rt:=_dias_tai * _sueldo_mj_25
+       _base_iv:=_dias_tai * _sueldo_mj_15
+       _base_iv_p:=_dias_taieg * _sueldo_mj_15
+       _base_sar:=_dias_ta * _sueldo_mj_25
+       _base_info1:=_dias_ta * _sueldo_r_15
+       _base_info2:=_dias_tari * _sueldo_r_15
+      #Calculo de cuotas de pago
+       _fija:=(_base_eym1 * 'PAGOIMSS':'EG FIJO') / 100
+       _ex_3m_e:=(_base_eym2 * 'PAGOIMSS':'EG 3SMGDF EMPLEADO') / 100
+       _ex_3m_p:=(_base_eym2 * 'PAGOIMSS':'EG 3SMGDF PATRON') / 100
+       _ex_3m:=_ex_3m_e + _ex_3m_p
+       _dinero_e:=(_base_eym3 * 'PAGOIMSS':'EG DINERO EMPLEADO') / 100
+       _dinero_p:=(_base_eym3 * 'PAGOIMSS':'EG DINERO PATRON') / 100
+       _dinero:=_dinero_e + _dinero_p
+       _especie_e:=(_base_eym3 * 'PAGOIMSS':'EG ESPECIE EMPLEADO') / 100
+       _especie_p:=(_base_eym3 * 'PAGOIMSS':'EG ESPECIE PATRON') / 100
+       _especie:=_especie_e + _especie_p
+       _rt:=(_base_rt * 'PATRONAL':'RT') / 100
+       _guarderia:=(_base_rt * 'PAGOIMSS':'GUARDERIA') / 100
+       _iv_e:=(_base_iv * 'PAGOIMSS':'INVALIDEZ Y VIDA EMPLEADO') / 100
+       _iv_p:=(_base_iv * 'PAGOIMSS':'INVALIDEZ Y VIDA PATRON') / 100
+       _iv:=_iv_e + _iv_p
+       _retiro:=(_base_sar * 'PAGOIMSS':'RETIRO') / 100
+       _cv_e:=(_base_iv * 'PAGOIMSS':'CESANTIA Y VEJEZ EMPLEADO') / 100
+       _cv_p:=(_base_iv * 'PAGOIMSS':'CESANTIA Y VEJEZ PATRON') / 100
+       _cv:=_cv_e + _cv_p
+       _info:=_base_info1 * (5 / 100)
+       SI ( 'EMPPRIN':'CREDITO_INFONAVIT' <> '' )
+         _credito := _base_info1 * ( 'EMPPRIN':'VALOR DESCUENTO' / 100)
+       SI_NO
+         _credito := 0
+       FIN_SI
+      DECIMALES := 2
+      #Calculo de totales
+       _tot_fija:=_tot_fija + _fija
+       _tot_ex_3m:=_tot_ex_3m + _ex_3m
+       _tot_dinero:=_tot_dinero + _dinero
+       _tot_especie:=_tot_especie + _especie
+       _tot_rt:=_tot_rt + _rt
+       _tot_guarderia:=_tot_guarderia + _guarderia
+       _tot_iv:=_tot_iv + _iv
+       _tot_retiro:=_tot_retiro + _retiro
+       _tot_cv:=_tot_cv + _cv
+       _tot_info:=_tot_info + _info
+       _tot_imss:=_fija + _ex_3m + _dinero + _especie + _rt + _guarderia + _iv
+       _tot_infonavit:=_retiro + _cv + _info + _credito
+       _total_imss:=_total_imss + _tot_imss
+       _total_infonavit:=_total_infonavit + _tot_infonavit
+       _total_base_eym1:=_total_base_eym1 + _base_eym1
+       _total_base_eym2:=_total_base_eym2 + _base_eym2
+       _total_base_eym3:=_total_base_eym3 + _base_eym3
+       _total_base_rt:=_total_base_rt + _base_rt
+       _total_base_iv:=_total_base_iv + _base_iv
+       _total_base_sar:=_total_base_sar + _base_sar
+       _total_base_info1:=_total_base_info1 + _base_info1
+       _total_base_info2:=_total_base_info2 + _base_info2
+FIN_SUB_RUTINA

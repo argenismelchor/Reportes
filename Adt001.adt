@@ -1,0 +1,190 @@
+#ACCESOS DEL PERSONAL
+#VERSION 1.0
+#USUARIO =*
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL', $salida)
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL', '', _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL', '', _ff )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 3
+SALIDA := $salida
+_fecha := 0
+$ruta  := ''
+
+ENCABEZADO   
+   COLOR( 'NEGRO' )
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'REPORTE DE ACCESOS DEL ' + FECHA( _fi ) + ' AL ' + FECHA( _ff ) )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), 'ENTRADA', COL(70), 'SALIDA' ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   COLOR( 'NEGRO' )
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+VAR_T( &sql )
+AGREGA_VALOR_COL( &sql, 0, 'SELECT *' )
+AGREGA_VALOR_COL( &sql, 0, 'FROM EMPTRA' )
+AGREGA_VALOR_COL( &sql, 0, 'WHERE FECHA >= :FI AND FECHA <= :FF' )
+AGREGA_VALOR_COL( &sql, 0, 'ORDER BY FECHA, RUTA, TIPO DESC' )
+CREA_CONSULTA( 'EMPTRA', &sql )
+PARAMETRO_SQL( 'EMPTRA', 'FI', _fi )
+PARAMETRO_SQL( 'EMPTRA', 'FF', _ff )
+
+#VARIABLES
+_capacidad := 0
+_tot_emp   := 0
+_sub_emp   := 0
+_renglon   := 0
+
+SUB_RUTINA imprime_dia
+  _tot_emp   := 0
+  COLOR( 'ROJO' )
+  IMPRIME
+  IMP ( 'DIA : ' + FECHA ( 'EMPTRA':'FECHA' ) )
+  IMPRIME
+  COLOR( 'NEGRO' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_dia_total
+  COLOR( 'ROJO' )
+  DECIMALES := 0
+  IMPRIME
+  IMP ( 'TOTAL EMPLEADOS DEL DIA : ' + .( _tot_emp ) )
+  IMPRIME 
+  DECIMALES := 0
+  COLOR( 'NEGRO' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_ruta
+  _sub_emp := 0
+  COLOR( 'AZUL' )
+  IMPRIME
+  SI ( TRAE_REGISTRO( 'T_RUTA', 'EMPTRA':'RUTA' ) )
+    IMP ( 'RUTA : ' + 'EMPTRA':'RUTA' + ' ' + 'T_RUTA':'NOMBRE' )
+    _capacidad := 'T_RUTA':'CUPO'
+  FIN_SI
+  IMPRIME
+  COLOR( 'NEGRO' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_ruta_total
+  DECIMALES := 0
+  IMPRIME
+  IMP ( 'TOTAL EMPLEADOS DE LA RUTA : ' + DER( .( _sub_emp ), 5 ) ) IMPRIME
+  IMP ( 'CAPACIDAD DE LA RUTA       : ' + DER( .( _capacidad ), 5 ) ) IMPRIME
+  IMP ( 'DISPONIBILIDAD             : ' + DER( .( _capacidad - _sub_emp ), 5 ) ) IMPRIME
+  'T_RUTA':'ACTUAL' := _sub_emp
+  GRABA_BASE( 'T_RUTA' )
+  DECIMALES := 2
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   SI ( _fecha <> 'EMPTRA':'FECHA' )
+     SI ( _fecha <> 0 )
+       imprime_dia_total
+     FIN_SI
+     imprime_dia
+     _fecha := 'EMPTRA':'FECHA'
+   FIN_SI
+
+   SI ( $ruta <> 'EMPTRA':'RUTA' )
+     SI ( $ruta <> '' )
+       imprime_ruta_total
+     FIN_SI
+     imprime_ruta
+     $ruta := 'EMPTRA':'RUTA'
+   FIN_SI
+
+   SI ( 'EMPTRA':'TIPO' = 0 )
+     SI ( TRAE_REGISTRO( 'EMPPRIN', 'EMPTRA':'CLAVE' ) )
+       IMP ( COL ( 1 ), 'EMPTRA':'CLAVE', COL(10), 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN' )
+       DECIMALES := 6
+       IMP ( COL ( 50 ), HORA( 'EMPTRA':'ENTRADA' ) )
+       IMP ( COL ( 70 ), HORA( 'EMPTRA':'SALIDA' ) )
+       SI ( $salida = 'EXCEL' )
+         EXCEL( 'PON_VALOR', 1, _renglon, '"' + 'EMPPRIN':'CLAVE' )         
+         EXCEL( 'PON_VALOR', 2, _renglon, '"' + 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN' )
+         EXCEL( 'PON_VALOR', 3, _renglon, '"' + HORA( 'EMPTRA':'ENTRADA' ) )
+         EXCEL( 'PON_VALOR', 4, _renglon, '"' + HORA( 'EMPTRA':'SALIDA' ) )
+         SI ( TRAE_REGISTRO( 'T_RUTA', 'EMPTRA':'RUTA' ) )
+           EXCEL( 'PON_VALOR', 5, _renglon, '"' + 'EMPTRA':'RUTA' + ' ' + 'T_RUTA':'NOMBRE' )
+         FIN_SI
+         _renglon := _renglon + 1
+       FIN_SI
+       DECIMALES := 2
+       _sub_emp := _sub_emp  + 1
+       _tot_emp := _tot_emp  + 1
+     FIN_SI
+   SI_NO
+     SI ( TRAE_REGISTRO( 'T_CHOFER', 'EMPTRA':'CLAVE' ) )
+       IMP ( COL ( 1 ), 'EMPTRA':'CLAVE', COL(10), 'T_CHOFER':'NOMBRE', COL ( 50 ), HORA( 'EMPTRA':'ENTRADA' ) )
+       IMPRIME
+       SI ( $salida = 'EXCEL' )
+         EXCEL( 'PON_VALOR', 1, _renglon, '"' + 'EMPTRA':'CLAVE )
+         EXCEL( 'PON_VALOR', 2, _renglon, '"' + 'T_CHOFER':'NOMBRE' )
+         EXCEL( 'PON_VALOR', 3, _renglon, '"' + HORA( 'EMPTRA':'ENTRADA' ) )
+         _renglon := _renglon + 1
+       FIN_SI
+     FIN_SI
+   FIN_SI
+   IMPRIME
+FIN_SUB_RUTINA
+
+_renglon := 1
+SI ( $salida = 'EXCEL' )
+  EXCEL( 'PON_VALOR', 1, _renglon, 'CLAVE' )
+  EXCEL( 'PON_VALOR', 2, _renglon, 'NOMBRE' )
+  EXCEL( 'PON_VALOR', 3, _renglon, 'ENTRADA' )
+  EXCEL( 'PON_VALOR', 4, _renglon, 'SALIDA' )
+  EXCEL( 'PON_VALOR', 5, _renglon, 'RUTA' )
+  _renglon := _renglon + 1
+FIN_SI
+
+#SI ( TRAE_REGISTRO( 'EMPRESA', '001' ) )
+#  CAMBIA_BASE( 'EMPRESA':'PATH TRABAJO' )
+  PRIMER_REGISTRO ( 'EMPTRA' )
+  MIENTRAS ( FIN_BASE ( 'EMPTRA' ) = FALSO )
+     formato_trabajador
+     SIGUIENTE_REGISTRO ( 'EMPTRA' )
+  FIN_MIENTRAS
+#FIN_SI
+
+imprime_ruta_total
+imprime_dia_total
+$ruta := ''
+_capacidad := 0
+_tot_emp   := 0
+_sub_emp   := 0
+
+#AVANZA_HOJA
+#SI ( TRAE_REGISTRO( 'EMPRESA', '004' ) )
+#  CAMBIA_BASE( 'EMPRESA':'PATH TRABAJO' )
+#  PRIMER_REGISTRO ( 'EMPTRA' )
+#  MIENTRAS ( FIN_BASE ( 'EMPTRA' ) = FALSO )
+#     formato_trabajador
+#     SIGUIENTE_REGISTRO ( 'EMPTRA' )
+#  FIN_MIENTRAS
+#FIN_SI
+
+#imprime_ruta_total
+#imprime_dia_total

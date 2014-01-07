@@ -1,0 +1,78 @@
+[] ('31') ;; # CALCULO DE PTU
+#VERSION 1.0
+   DECIMALES := 8
+   CAP3('31') := 0 
+   SI ( CAP1('31') <> 0 )
+     TOTAL  ('31') := CAP1('31')
+   SI_NO
+     TOTAL  ('31') := _ptu_tot_dias + _ptu_tot_sdo
+   FIN_SI
+   SI ( TRAE_REGISTRO ( 'CONCEPTO' , '31' ) )
+      _aux1 := 'CONCEPTO':'EXENTO_PESOS' + ( 'CONCEPTO':'EXENTO_S_M' * _minimo )
+   FIN_SI
+   CAPTURA_CONCEPTO ('EX31')
+   SI ( TOTAL ('31') > _aux1 )
+     _exento        := _exento + _aux1
+     TOTAL ('EX31') := _aux1
+   SI_NO
+     _exento        := _exento + TOTAL ('31')
+     TOTAL ('EX31') := TOTAL ('31')
+   FIN_SI 
+   SI ( _afectar = 1 ) 
+     GRABA_BASE ( 'EMPNOM' )
+   FIN_SI
+   _aux10 := TOTAL ('31')
+][
+[] ('51') ;; # 
+FORMULA_ISPT 
+#COMENTARIO:FECHA=21/05/2012;AUTOR=JFLORES;SOLICITANTE=ARGENIS MELCHOR
+#SE CAMBIO LA FORMULA AL NOMPTU YA QUE SE UTILIZARA COMO 
+#SUB_RUTINA 
+][
+[] ('AJUS') ;; # 
+   DECIMALES := 2
+   TOTAL ('AJUS') := AJUSTA ( ( TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES ) , _ajuste ) * -1
+][
+[] ('PERC') ;; # 
+   DECIMALES := 8
+   TOTAL ('PERC') := TOTAL_PERCEPCIONES
+][
+[] ('PGRA') ;; # 
+   TOTAL ('PGRA') := TOTAL_PERCEPCIONES - _exento
+][
+[] ('EXEN') ;; # 
+   TOTAL ('EXEN') := _exento
+][
+[] ('DEDU') ;; # 
+   TOTAL ('DEDU') := TOTAL_DEDUCCIONES
+][
+[] ('TOTA') ;; # 
+   _neto := CAP1('31') 
+   TOTAL ('TOTA') := TOTAL ('PERC') - TOTAL ('DEDU')
+   _aux2 := TOTAL ('TOTA') 
+
+   DECIMALES := 2
+   SI ( TOTAL ('TOTA') < CAP1 ('31')) 
+    MIENTRAS ( TOTAL ('TOTA') < CAP1 ('31')) 
+      _aux1 := _neto - _aux2
+      _aux1 := _aux1 / 2
+      CAP3 ('31') := CAP3 ('31') + _aux1 
+      TOTAL ('31') := CAP1 ('31') + CAP3 ('31')   
+      _aux1 := TOTAL ('31') 
+      FORMULA_ISPT
+      DECIMALES := 8
+      DECIMALES := 2
+      TOTAL ('AJUS') := AJUSTA ( ( TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES ) , _ajuste ) * -1
+      TOTAL ('PERC') := TOTAL_PERCEPCIONES
+      TOTAL ('PGRA') := TOTAL_PERCEPCIONES - _exento
+      TOTAL ('EXEN') := _exento
+      TOTAL ('DEDU') := TOTAL_DEDUCCIONES
+      TOTAL ( 'TOTA' ) := TOTAL ('PERC') - TOTAL ('DEDU')   
+      _aux2 := TOTAL ('TOTA') 
+    FIN_MIENTRAS         
+   FIN_SI
+][
+[] ('EX31') ;; # 
+][
+[] ('SUBN') ;; # 
+][

@@ -1,0 +1,146 @@
+#PROVISION Y CALCULO DE AGUINALDO
+#NO EDITAR
+#VERSION 1.0
+#EXCEL
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL   ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL', $salida)
+NUEVO_PARAMETRO_FEC   ( 'FECHA', '', _fecha )
+NUEVO_PARAMETRO_CHEQ  ( 'DESCONTAR', 'FALTAS', _dfal )
+NUEVO_PARAMETRO_CHEQ  ( '', 'INCAPACIDADES', _dinc )
+NUEVO_PARAMETRO_CHEQ  ( 'GRABAR', '', _grabar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+COLUMNAS := 90
+
+ENCABEZADO   
+   $titulo_reporte := 'PROVISION DE AGUINALDO AL ' + FECHA( _fecha )
+   encabezado_ini
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(45), DER( 'DIAS', 5 ), COL(52), 'FAL  INC', COL(60), DER( 'FACTOR', 10 ), COL(70), DER( 'SUELDO', 10 ), COL(80), DER( 'MONTO', 10 ) )
+   IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+
+#VARIABLES
+_dias   := 0
+_monto  := 0
+_total  := 0
+_factor := 0
+_sueldo_ispt := 0
+_nren   := 1
+_faltas := 0
+_incap  := 0
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   DECIMALES := 0
+   _dias := _dias - ( _faltas + _incap )
+   IMP ( COL(45), DER( .( _dias ), 5 ) )
+   IMP ( COL(52), DER( .( _faltas ), 3 ) )
+   IMP ( COL(57), DER( .( _incap ), 3 ) )
+   DECIMALES := 2
+   _sueldo_ispt := SUELDO_ACTUAL( _fecha, _fecha )
+   _factor := 0
+   SI ( TRAE_FACTOR( _fecha, '', 0 ) )
+     _factor := _dias / 365 * 'FACTOR':'DIAS DE AGUINALDO'
+   FIN_SI
+   IMP ( COL(60), DER( .( _factor ), 10 ) )
+   _monto := _factor * 'EMPSDO':'SDO1'
+   _total := _total + _monto
+   IMP ( COL(70), DER( $( _sueldo_ispt ), 10) )
+   IMP ( COL(80), DER( $( _monto ), 10) )
+   IMPRIME
+
+   # GRABAR
+   SI ( _grabar = 1 )
+     SI ( CONCEPTO_CAPTURADO( '30' ) = FALSO )
+       CAPTURA_CONCEPTO( '30' )
+     FIN_SI
+     CAP1('30')    := _factor
+     GRABA_BASE( 'EMPNOM' )
+   FIN_SI
+
+   # EXCEL
+   _nren   := _nren  + 1
+   SI ( $salida = 'EXCEL' )
+     EXCEL ( 'PON_VALOR', 1, _nren, SUBSTR('EMPPRIN':'CLAVE', 1, 10 ) )
+     EXCEL ( 'PON_VALOR', 2, _nren, 'EMPPRIN':'NOMBRE' )
+     EXCEL ( 'PON_VALOR', 3, _nren, .( _dias ) )
+     EXCEL ( 'PON_VALOR', 4, _nren, .( _faltas ) )
+     EXCEL ( 'PON_VALOR', 5, _nren, .( _incap ) )
+     EXCEL ( 'PON_VALOR', 6, _nren, $( _factor ) )
+     EXCEL ( 'PON_VALOR', 7, _nren, $( _sueldo_ispt ) )
+     EXCEL ( 'PON_VALOR', 8, _nren, $( _monto ) )
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_incluir_dep := 1
+SI ( _grabar = 1 )
+  _reporte_nomina := 1
+FIN_SI
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+SI ( $salida = 'EXCEL')
+  EXCEL ( 'PON_VALOR', 1, 1, 'CLAVE' )
+  EXCEL ( 'PON_VALOR', 2, 1, 'NOMBRE COMPLETO' )
+  EXCEL ( 'PON_VALOR', 3, 1, 'DIAS' )
+  EXCEL ( 'PON_VALOR', 4, 1, 'FALTAS' )
+  EXCEL ( 'PON_VALOR', 5, 1, 'INCAPACIDADES' )
+  EXCEL ( 'PON_VALOR', 6, 1, 'FACTOR' )
+  EXCEL ( 'PON_VALOR', 7, 1, 'SUELDO' )
+  EXCEL ( 'PON_VALOR', 8, 1, 'MONTO' )
+FIN_SI
+
+SI ( TRAE_REGISTRO_VIG ( 'MINIMO', _fecha ) = FALSO )
+  MENSAJE( 'NO HAY MINIMOS A LA FECHA ESPECIFICADA' )
+FIN_SI
+
+FORMATO_FECHA := 6
+_ano := VALOR( SUBSTR( FECHA( FECHA_HOY ), 5, 4 ) )
+_fi  := CALCULA_FECHA ( _ano, 01, 01 )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+  SI ( ES_VIGENTE( _fecha ) )
+    _dias := FUE_VIGENTE( _fi, _fecha )
+    SI ( _dfal = 1 )
+      _faltas := TOTAL_FALTAS( _fi, _fecha, 'S' )
+    SI_NO
+      _faltas := 0
+    FIN_SI
+    SI ( _dinc = 1 )
+      _incap := TRAE_INCAPACIDADES( _fi, _fecha, '*' )
+    SI_NO
+      _incap := 0
+    FIN_SI
+    datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+IMPRIME IMPRIME
+DECIMALES := 2
+IMP ( 'TOTAL DE PROVISION ' + $( _total ) )
+IMPRIME

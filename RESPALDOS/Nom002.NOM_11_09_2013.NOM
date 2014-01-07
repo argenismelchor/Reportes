@@ -1,0 +1,81 @@
+#CAPTURA DE PRENOMINA
+#NO EDITAR
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte imprime un formato para capturar la prenomina, permite capturar hasta 7 conceptos.
+#Este reporte imprime de los trabajadores la clave, nombre y los espacios para las capturas.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO ('CONCEPTO 1', 'CON1', $con1 )
+NUEVO_PARAMETRO ('CONCEPTO 2', 'CON2', $con2 )
+NUEVO_PARAMETRO ('CONCEPTO 3', 'CON3', $con3 )
+NUEVO_PARAMETRO ('CONCEPTO 4', 'CON4', $con4 )
+NUEVO_PARAMETRO ('CONCEPTO 5', 'CON5', $con5 )
+NUEVO_PARAMETRO ('CONCEPTO 6', 'CON6', $con6 )
+NUEVO_PARAMETRO ('CONCEPTO 7', 'CON7', $con7 )
+NUEVO_PARAMETRO ('CONCEPTO 8', 'CON8', $con8 )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+
+ENCABEZADO
+   $titulo_reporte := 'Periodo ' + 'TIPONOM':'CLAVE' + ' Del '+ FECHA ('PERIODO':'FECHA INICIAL') + ' al ' + FECHA ('PERIODO':'FECHA FINAL')
+   encabezado_ini
+   IMP ( COL (1)  , 'CLAVE' , COL (11) , 'NOMBRE' )
+   IMP ( COL (57) , SUBSTR ( $con1 , 1 , 6 ) , COL (64) , SUBSTR ( $con2 , 1 , 6 ) , COL (71) , SUBSTR ( $con3 , 1 , 6 ) , COL (78)  , SUBSTR ( $con4 , 1 , 6 ) )
+   IMP ( COL (85) , SUBSTR ( $con5 , 1 , 6 ) , COL (92) , SUBSTR ( $con6 , 1 , 6 ) , COL (99) , SUBSTR ( $con7 , 1 , 6 ) , COL (106) , SUBSTR ( $con8 , 1 , 6 ) ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+FORMATO_FECHA := 3
+COLUMNAS      := 130
+RENGLONES     := 65
+
+SI ( $salida = 'DISCO' )
+   SALIDA_REPORTE ( 'C:\GIRO\PRENOM.TXT' )
+FIN_SI
+
+### VARIABLES GLOBALES DEL REPORTE
+$tipo_act := ''
+VAR_T ( &kardex )
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (11) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 45 ) , COL (55) , '|' , COL (62) , '|' , COL (69) , '|' , COL (76) , '|' )
+   IMP ( COL (83) , '|' , COL (90) , '|' , COL(97) , '|' , COL (104) , '|' , COL (111) , '|' ) ;; IMPRIME
+   IMP ( COL (55) , REPITETXT ( '-' , 57 ) ) ;; IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+base_trabajadores
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( FUE_VIGENTE ( 'PERIODO':'FECHA INICIAL', 'PERIODO':'FECHA FINAL' ) )
+    datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte

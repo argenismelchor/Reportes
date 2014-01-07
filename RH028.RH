@@ -1,0 +1,136 @@
+#ESTADISTICA DE MOVIMIENTOS
+#NO EDITAR
+#USUARIO =*
+#EXCEL
+#VERSION 2.5
+#DESCRIPCION
+#Reporte estadistico de movimientos mostrando por dia cuantos movimientos tiene el empleado.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL', $salida)
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL', '', _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL', '', _ff )
+NUEVO_PARAMETRO_SEL ( 'TIPO', 'ALTAS/BAJAS/MODIFICACIONES/REINGRESOS', $filtro )
+NUEVO_PARAMETRO_CHEQ( 'GRAFICAR', '', _grafica )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+$tipo := SUBSTR( $filtro, 1, 1 )
+_totales := 0
+
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'REPORTE ESTADISTICO DE ' + $filtro
+   encabezado_ini
+   SI ( _totales = 0 )
+     IMP ( COL (5) , 'FECHA' , COL (25) , 'NO. MOVIMIENTOS' ) ;; IMPRIME
+   SI_NO
+     IMP ( COL (5) , 'MES' , COL (25) , 'NO. MOVIMIENTOS' ) ;; IMPRIME
+   FIN_SI
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+  pie_estandar
+FIN_PIE
+
+# PARAMETROS
+DECIMALES     := 2
+COLUMNAS      := 80
+RENGLONES     := 65
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+VAR_T ( &detalle )
+VAR_T ( &mes )
+
+SUB_RUTINA formato_trabajador
+  DECIMALES := 0
+  INCREMENTA_TABLA( &detalle,  'TOTAL', .( 'EMPPRIN':'FECHA' ), 1 )
+  FORMATO_FECHA := 0
+  INCREMENTA_TABLA( &mes,      'TOTAL', SUBSTR( FECHA ( 'EMPPRIN':'FECHA' ), 3, 2 ), 1 )
+  FORMATO_FECHA := 3
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'S.*'
+$bases_extras := 'EMPSDO S'
+$condiciones_extras := 'S. CLAVE = E. CLAVE AND S. FECHA >= :FI AND S. FECHA <= :FF AND S. TIPO = "' + $tipo + '"' 
+base_trabajadores
+PARAMETRO_SQL( 'EMPPRIN', 'FI', _fi )
+PARAMETRO_SQL( 'EMPPRIN', 'FF', _ff )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+_ren_excel := 2
+SI ( $salida = 'EXCEL' )
+  EXCEL( 'PON_VALOR', 1, 1, 'FECHA' )
+  EXCEL( 'PON_VALOR', 2, 1, 'NO. MOVIMIENTOS' )
+FIN_SI
+ORDENA_COLUMNA( &detalle, 0 )
+_indice := 1
+$fecha := TRAE_VALOR_TABLA( &detalle, 0, _indice )
+MIENTRAS ( $fecha <> '' )
+  IMP ( COL(5), FECHA ( VALOR( $fecha) ) )
+  IMP ( COL(25), DER( VALOR( TRAE_VALOR_TABLA( &detalle, 1, _indice ) ), 10 ) )
+  IMPRIME
+  SI ( $salida = 'EXCEL' )
+    EXCEL( 'PON_VALOR', 1, _ren_excel, FECHA ( VALOR( $fecha) ) )
+    EXCEL( 'PON_VALOR', 2, _ren_excel, VALOR( TRAE_VALOR_TABLA( &detalle, 1, _indice ) ) )
+    _ren_excel := _ren_excel + 1
+  FIN_SI
+  _indice := _indice + 1
+  $fecha := TRAE_VALOR_TABLA( &detalle, 0, _indice )  
+FIN_MIENTRAS
+
+_totales := 1
+AVANZA_HOJA
+IMP ( '** RESUMEN POR MES' ) IMPRIME
+SI ( $salida = 'EXCEL' )
+  _ren_excel := _ren_excel + 2
+  EXCEL( 'PON_VALOR', 1, _ren_excel, '** RESUMEN POR MES' )
+  _ren_excel := _ren_excel + 1
+  EXCEL( 'PON_VALOR', 1, _ren_excel, 'FECHA' )
+  EXCEL( 'PON_VALOR', 2, _ren_excel, 'NO. MOVIMIENTOS' )
+  _ren_excel := _ren_excel + 1
+FIN_SI
+
+ORDENA_COLUMNA( &mes, 0 )
+_indice := 1
+$mes := TRAE_VALOR_TABLA( &mes, 0, _indice )
+FORMATO_FECHA := 5
+MIENTRAS ( $mes <> '' )  
+  IMP ( COL(5), SUBSTR( FECHA( CALCULA_FECHA( AÑO ( FECHA_HOY ), VALOR( $mes ), 01 ) ), 4, LONGITUD( FECHA( CALCULA_FECHA( AÑO ( FECHA_HOY ), VALOR( $mes ), 01 ) ) ) - 8 ) )
+  IMP ( COL(25), DER( VALOR( TRAE_VALOR_TABLA( &mes, 1, _indice ) ), 10 ) )
+  IMPRIME
+  SI ( $salida = 'EXCEL' )
+    EXCEL( 'PON_VALOR', 1, _ren_excel, SUBSTR( FECHA( CALCULA_FECHA( AÑO ( FECHA_HOY ), VALOR( $mes ), 01 ) ), 4, LONGITUD( FECHA( CALCULA_FECHA( AÑO ( FECHA_HOY ), VALOR( $mes ), 01 ) ) ) - 8 ) )
+    EXCEL( 'PON_VALOR', 2, _ren_excel, VALOR( TRAE_VALOR_TABLA( &mes, 1, _indice ) ) )
+    _ren_excel := _ren_excel + 1
+  FIN_SI
+  _indice := _indice + 1
+  $mes := TRAE_VALOR_TABLA( &mes, 0, _indice )  
+FIN_MIENTRAS
+
+SI ( _grafica = 1 )
+  CREA_GRAFICA ( &mes )
+FIN_SI
+
+TERMINA_REPORTE

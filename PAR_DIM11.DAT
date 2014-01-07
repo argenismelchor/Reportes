@@ -1,0 +1,672 @@
+#####################################################################SECCION DIM####################################################################
+####################################################################################################################################################
+
+$version_par := '10.2012.1'
+
+$version_pardim := LEE_INI (CLAVE_REPORTE , 'PAR_DIMM' , '') 
+
+SI ( $version_pardim <> $version_par )   
+   ESCRIBE_INI ( CLAVE_REPORTE , 'PAR_DIMM' , $version_par )   
+   MENSAJE ('LA VERSION DE LA UTILERIA HA SIDO ACTUALIZADA, VERSION: ' + $version_pardim )
+FIN_SI
+
+#VARIABLES NUEVO DIM
+$sucursal     := ''
+$estado       := ''
+
+# LIBRERIA PARA LA PARAMETRIZACION DE LA DECLARACION ANUAL DEL DIMM Y FORMATO F37
+$saux        := ''
+$conceptos   := ''
+_total       := 0
+_hay         := 0
+$valor       := ''
+_suma        := 0
+$path        := DIRECTORIO_PROGRAMAS
+
+_incapacidades       := 0
+_existe_campo_omitir := 0
+_dec_antes := 0
+
+_isr_ordinario  := 0
+_base_gravable  := 0
+_acumulable     := 0
+_isr_separacion := 0
+_isr_mensual    := 0
+_isr_indem2     := 0
+_total_indem    := 0
+_exen_indem     := 0
+_sgrabado       := 0
+_sexento        := 0
+_aplicar_calc_anual := _aplicar_calc_anual
+
+$ispt           := $ispt
+$subs           := 'SUBSN'
+$campos         := $campos
+
+
+SUB_RUTINA FORMULA_ISPT
+         _base_gravable := _acumulable
+         SI ( TRAE_REGISTRO ( 'TABISPT' , $ispt ) ) ;; FIN_SI
+         _isr_ordinario  := CALCULA_ISPT ( _base_gravable )                          
+FIN_SUB_RUTINA
+
+SUB_RUTINA FORMULA_ISPT_CON_SUBSIDIO
+         _base_gravable := _acumulable
+         SI ( TRAE_REGISTRO ( 'TABISPT' , $ispt ) ) ;; FIN_SI
+         _isr_ordinario  := CALCULA_ISPT ( _base_gravable )  
+
+         SI ( TRAE_REGISTRO ( 'TABISPT' , $subs ) ) ;; FIN_SI
+         _isr_ordinario  :=  _isr_ordinario - CALCULA_ISPT ( _base_gravable )                          
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA sumatoria
+  $conceptos := $saux
+  _total := 0
+  _dec_antes := DECIMALES
+  DECIMALES := 2 
+  _hay := 1
+  MIENTRAS ( _hay = 1 )
+    SI ( POS(',', $saux) > 0 )
+      $valor := SUBSTR( $saux, 1, POS(',', $saux ) - 1 )
+      $saux := ELIMINA ( $saux, 1, POS(',', $saux ) )
+      _hay := 1
+    SI_NO
+      $valor := $saux
+      _hay := 0
+    FIN_SI
+    _suma := ACUM_ANUAL( $valor )
+    SI ( _suma > 0 )
+      _suma := TRUNCAR( _suma + 0.55 )
+    FIN_SI
+    _total := _total + _suma
+  FIN_MIENTRAS
+  DECIMALES := _dec_antes
+FIN_SUB_RUTINA
+
+
+#VARIABLES PARA EL CALCULO ANUAL
+_calculo      := 0
+_ispta        := 0
+_pgra         := 0 
+_subs_anual   := 0
+_subsn_anual  := 0
+_cred_anual   := 0
+_ispt_favor   := 0
+_ispt_contra  := 0
+_aplica_anual := 0
+_subsidioa    := 0
+_perc_calc    := 0
+_exen_calc    := 0
+_isr_ordinario := 0
+
+$cve_salario  := ''
+$cve_exen     := ''
+$ispta        := $ispta
+$cve_ispt     := ''
+
+# ********************************** CALCULO ANUAL DE IMPUESTO
+SUB_RUTINA calculo_anual
+
+   _perc_calc := 0
+   _exen_calc := 0
+   _pgra      := 0
+
+  SI ( _aplica_anual = 1 )
+   DECIMALES := 2
+
+   $saux := $cve_salario
+   sumatoria   
+   _perc_calc := _total
+
+   $saux := $cve_exen
+   sumatoria   
+   _exen_calc := _total
+
+   _pgra := _perc_calc - _exen_calc
+
+############################################## PARA EMERSON ES EL CONCEPTO 83
+    
+   _cred_anual := ACUM_ANUAL ('CRED')
+
+   SI ( TRAE_REGISTRO ( 'TABISPT' , $ispta ) )
+      _calculo := CALCULA_ISPT (_pgra )
+      _ispta   := CALCULA_ISPT (_pgra )
+      DECIMALES := 2
+   FIN_SI
+   _calculo     := _calculo - _cred_anual
+   SI ( _calculo < 0 )
+     _calculo :=  0
+   FIN_SI
+
+   $campos := '116'
+   SI ( TRAE_REGISTRO ( '_DIM' , $campos ) )
+      _total := 0
+      $saux := '_DIM':'CONCEPTOS'   
+      sumatoria      
+      $valor := .(_total)
+   FIN_SI
+  
+   _ispt_favor := _calculo - _total
+   SI ( _ispt_favor < 0 )
+     _ispt_favor := _ispt_favor * -1
+     _ispt_contra := 0
+   SI_NO
+     _ispt_contra := _ispt_favor
+     _ispt_favor := 0
+   FIN_SI
+  SI_NO
+     _ispt_favor  := 0
+     _ispt_contra := 0
+     _calculo     := 0
+  FIN_SI
+
+FIN_SUB_RUTINA
+
+ABRE_BASE( 'EMPEXT' )
+_indice_campo := 0
+MIENTRAS( NOMBRE_CAMPO( 'EMPEXT', _indice_campo ) <> '' )
+  SI ( NOMBRE_CAMPO( 'EMPEXT', _indice_campo ) = 'OMITIR_CALCULO_ANUAL' )
+    _existe_campo_omitir := 1
+  FIN_SI
+  _indice_campo := _indice_campo + 1
+FIN_MIENTRAS
+CIERRA_BASE( 'EMPEXT' )
+
+SUB_RUTINA aplica_anual
+   SI ( _aplicar_calc_anual ) 
+   ###### SON SUJETOS AL CACULO ANUAL TODOS AQUELLOS CON MAS DE 360 DIAS
+   ###### Y QUE TENGAN UN VALOR <= A 400,000.00 EN EL INCISO 2A.
+   $saux := $cve_salario
+   sumatoria
+   _incapacidades := TRAE_INCAPACIDADES( _fi, _ff, '*' )
+   SI ( ( _total <= 400000 ) AND ('EMPPRIN':'INGRESO' <= CALCULA_FECHA( VALOR($ejercicio) ,01,01) ) AND  ( FUE_VIGENTE (CALCULA_FECHA(VALOR($ejercicio),12,01), CALCULA_FECHA(VALOR($ejercicio),12,01))))
+     _aplica_anual := 1
+   SI_NO
+     _aplica_anual := 0
+   FIN_SI
+   SI ( _existe_campo_omitir = 1 )
+     SI ( 'EMPEXT':'OMITIR_CALCULO_ANUAL' = 1 )
+       _aplica_anual := 0
+     FIN_SI
+   FIN_SI
+   SI ( 'EMPPRIN':'INGRESO' > _fi )
+     _aplica_anual := 0
+   FIN_SI
+   SI_NO  
+        _aplica_anual := 0
+   FIN_SI
+FIN_SUB_RUTINA
+
+# VARIABLES DEL PROCEDIMIENTO
+_ffi         := 0
+_fff         := 0
+$mes_inicial := ''
+$mes_final   := ''
+$ejercicio   := $ejercicio
+_fauxi := 0
+_fauxf := 0
+_mes_aux := 0
+
+SUB_RUTINA checa_periodo
+   _mes_aux := 1
+   _ffi := 0
+   MIENTRAS ( _mes_aux <= 12 )
+     _fauxi := CALCULA_FECHA( VALOR( $ejercicio ), _mes_aux, 01 )
+     _fauxf := CALCULA_FECHA( VALOR( $ejercicio ), _mes_aux, 31 )
+     SI  ( FUE_VIGENTE( _fauxi, _fauxf ) )  
+         SI ( _ffi = 0 )
+           _ffi := _fauxi
+         FIN_SI
+     FIN_SI
+     SI ( _ffi > 0 )
+       SI ( FUE_VIGENTE( _fauxi, _fauxf ) )
+         _fff := _fauxi
+       FIN_SI
+     FIN_SI
+     _mes_aux := _mes_aux + 1
+  FIN_MIENTRAS
+
+  FORMATO_FECHA := 0
+  $mes_inicial := FECHA( _ffi )
+  $mes_final   := FECHA( _fff )
+  $mes_inicial := SUBSTR ( FECHA( _ffi ) , 3 , 2 )
+  $mes_final   := SUBSTR ( FECHA( _fff ) , 3 , 2 )
+FIN_SUB_RUTINA
+
+SUB_RUTINA valida_entidad
+SI ( TRAE_REGISTRO ( 'SUCURSAL' , $sucursal  ))
+
+   SI ( 'SUCURSAL':'ESTADO' = 'AGUASCALIENTES')      ;; $estado := '01' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'BAJA CALIFORNIA')     ;; $estado := '02' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'BAJA CALIFORNIA SUR') ;; $estado := '03' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'CAMPECHE')            ;; $estado := '04' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'COAHUILA')            ;; $estado := '05' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'COLIMA')              ;; $estado := '06' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'CHIAPAS')             ;; $estado := '07' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'CHIHUAHUA')           ;; $estado := '08' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'DISTRITO FEDERAL')    ;; $estado := '09' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'DURANGO')             ;; $estado := '10' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'GUANAJUATO')          ;; $estado := '11' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'GUERRERO')            ;; $estado := '12' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'HIDALGO')             ;; $estado := '13' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'JALISCO')             ;; $estado := '14' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'ESTADO DE MEXICO')    ;; $estado := '15' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'MICHOACAN')           ;; $estado := '16' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'MORELOS')             ;; $estado := '17' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'NAYARIT')             ;; $estado := '18' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'NUEVO LEON')          ;; $estado := '19' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'OAXACA')              ;; $estado := '20' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'PUEBLA')              ;; $estado := '21' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'QUERETARO')           ;; $estado := '22' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'QUINTANA ROO')        ;; $estado := '23' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'SAN LUIS POTOSI')     ;; $estado := '24' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'SINALOA')             ;; $estado := '25' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'SONORA')              ;; $estado := '26' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'TABASCO')             ;; $estado := '27' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'TAMAULIPAS')          ;; $estado := '28' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'TLAXCALA')            ;; $estado := '29' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'VERACRUZ')            ;; $estado := '30' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'YUCATAN')             ;; $estado := '31' ;; FIN_SI
+   SI ( 'SUCURSAL':'ESTADO' = 'ZACATECAS')           ;; $estado := '32' ;; FIN_SI
+ 
+FIN_SI
+FIN_SUB_RUTINA
+
+##############################################################################################################################
+################################        REPUTIL MODIFICADO PARA REPORTE DEL DIMM          ####################################
+##############################################################################################################################
+
+_reputil := 1
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+_html       := _html
+$titulo_html  := $titulo_html
+$archivo_html := 'REPORTE.HTM'
+
+# VARIABLES GLOBALES
+VAR_T ( &columnas )
+VAR_T ( &totales )
+
+# DETERMINA CADA UNA DE LAS COLUMNAS
+$columna   := ''
+_longitud  := 0
+$justifica := ''
+$totales   := ''
+
+# AUXILIARES
+_num_col    := 0
+_separacion := 2
+_columna    := 0
+
+# VARIABLES DE IMPRESION DE EMPLEADO
+_no_columna     := 0
+_indice_columna := 1
+$valor          := ''
+_valor_imprimir := 0
+
+# VARIABLES DE SUBTOTALES
+VAR_T ( &indices )
+VAR_T ( &in2 )
+$indice_total := ''
+$ind_act      := ''
+$nom_ind      := ''
+_num_ind      := 0
+_impreso      := 0
+$indice       := ''
+$indice_valor := ''
+$indice_texto := ''
+
+# VARIABLES PARA EXCEL
+_ren_excel  := 1
+_col_excel  := 0
+_primera_ex := 0
+
+
+SUB_RUTINA html_encabezado 
+
+  'HTML':'LINEA' :=  '<html> <head> <title>   REPORTE HTML GIRO </title><img src="http://www.consisarh.com.mx/img/logo.jpg"> <p><br> <body>'   
+  GRABA_BASE('HTML')   AGREGA_REGISTRO ('HTML')
+  'HTML':'LINEA' :=  '<table border align="Left" width="30%" bgcolor=""> <td> FECHA: </td> <td>' + FECHA ( FECHA_HOY ) +' </td> <tr> <td> REPORTE: </th>'   
+  GRABA_BASE('HTML')   AGREGA_REGISTRO ('HTML')
+  'HTML':'LINEA' :=  '<td>' + CLAVE_REPORTE +' </td> <tr> <td> HORA: </td><td>' + HORA ( HORA_ACTUAL ) + ' </td><tr><tr></table><table border align="Left" width="100%" bgcolor="">'    
+  GRABA_BASE('HTML')   AGREGA_REGISTRO ('HTML')
+  'HTML':'LINEA' :=  '<caption> <font color="Black">' + $titulo_html + '</caption></font>'    
+  GRABA_BASE('HTML')   AGREGA_REGISTRO ('HTML')
+
+FIN_SUB_RUTINA
+
+# CREACION DE ARCHIVO HTML
+SI ( _html = 1 )
+  CREA_BASE_TXT ( 'HTML', 'EMPRESA':'PATH REPORTES' + '\' + $archivo_html, 'VARIABLE' )
+  DEFINE_CAMPO_TXT ( 'HTML', 'LINEA', 1, 1000 )
+  ABRE_BASE_TXT ( 'HTML', 'APERTURA' )
+#  DELIMITADOR_TXT('HTML',' ')
+  html_encabezado    
+FIN_SI
+
+# VARIABLES
+$html_linea := ''
+_html_nivel := 0
+_html_aux   := 0
+
+
+SUB_RUTINA html_genera_linea
+  _html_aux   := 0
+  AGREGA_REGISTRO( 'HTML' )
+  MIENTRAS ( _html_aux <= _html_nivel )
+    $html_linea := '    ' + $html_linea
+    _html_aux   := _html_aux + 1
+  FIN_MIENTRAS
+  'HTML':'LINEA' := $html_linea
+  GRABA_BASE( 'HTML' )
+  $html_linea := ''
+FIN_SUB_RUTINA
+
+SUB_RUTINA html_inicia_renglon
+  $html_linea := '<tr>'
+  _html_nivel := _html_nivel + 1
+  html_genera_linea
+FIN_SUB_RUTINA
+
+SUB_RUTINA html_termina_renglon
+  $html_linea := '</tr>'
+  html_genera_linea
+  _html_nivel := _html_nivel - 1
+FIN_SUB_RUTINA
+
+SUB_RUTINA html_inicia_columna
+  $html_linea := '<td>'
+  _html_nivel := _html_nivel + 1
+  html_genera_linea
+FIN_SUB_RUTINA
+
+SUB_RUTINA html_termina_columna
+  $html_linea := '</td>'
+  html_genera_linea
+  _html_nivel := _html_nivel - 1
+FIN_SUB_RUTINA
+
+SUB_RUTINA html_valor_columna
+  _html_nivel := _html_nivel + 1
+  html_genera_linea
+  _html_nivel := _html_nivel - 1
+FIN_SUB_RUTINA
+
+
+# AUXILIARES
+_max_columnas := 0
+_tot_columnas := 0
+_omitir_sub_totales := _omitir_sub_totales
+
+SUB_RUTINA agrega_columna
+  PON_VALOR_TABLA( &columnas, 0, _num_col, $columna )
+  $valor := $columna
+  SI ( _html = 1 )
+    html_inicia_columna
+  FIN_SI
+  SI ( _html = 1 )    
+    $html_linea := $valor
+    html_valor_columna
+    html_termina_columna
+  FIN_SI
+    DECIMALES := 0
+  PON_VALOR_TABLA( &columnas, 1, _num_col, .( _longitud ) )
+  PON_VALOR_TABLA( &columnas, 2, _num_col, $justifica )
+  PON_VALOR_TABLA( &columnas, 3, _num_col, $totales )
+  _num_col := _num_col + 1
+  _tot_columnas := _tot_columnas + _longitud + _separacion
+FIN_SUB_RUTINA
+
+SUB_RUTINA suma_totales
+  MIENTRAS( POS( ',', $valor ) > 0 )
+    $valor := ELIMINA( $valor, POS( ',', $valor ), 1 )
+  FIN_MIENTRAS
+
+   #Incremeto de valores para los indices seleccionados
+   _num_ind := 0
+   REPITE
+     INCREMENTA_TABLA( &totales, TRAE_VALOR_TABLA( &indices, 0, _num_ind ), TRAE_VALOR_TABLA( &columnas, 0, _no_columna ), VALOR( $valor ) )
+     _num_ind := _num_ind + 1
+   HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_columna
+  _longitud := VALOR( TRAE_VALOR_TABLA( &columnas, 1, _no_columna ) )
+  SI ( _html = 1 )
+    html_inicia_columna
+  FIN_SI
+    IMP ( $valor ) 
+  SI ( _html = 1 )    
+    $html_linea := $valor
+    html_valor_columna
+    html_termina_columna
+  FIN_SI
+  SI ( $salida = 'EXCEL' )
+    EXCEL( 'PON_VALOR', _col_excel, _ren_excel, $valor )
+  FIN_SI
+  SI ( TRAE_VALOR_TABLA( &columnas, 3, _no_columna ) = 'SI' )
+    suma_totales
+  FIN_SI
+  _indice_columna := _indice_columna + _longitud + _separacion
+  _no_columna := _no_columna + 1
+  _col_excel := _col_excel + 1
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_renglon
+  IMPRIME
+  _indice_columna   := 1
+  _no_columna := 0
+  _ren_excel := _ren_excel + 1
+  _col_excel := 1
+  SI ( _html = 1 )
+    html_termina_renglon
+    html_inicia_renglon
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA define_encabezado
+  SI ( _tot_columnas < 80 )
+    COLUMNAS := 80
+  SI_NO
+    COLUMNAS := _tot_columnas
+  FIN_SI
+  SI ( $salida <> 'DISCO' )
+    ENCABEZADO
+       encabezado_ini
+       _columna := 1
+       _num_col := 0
+       $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+       MIENTRAS( $columna <> '' )
+         SI ( TRAE_VALOR_TABLA( &columnas, 2, _num_col ) = 'IZQ' )
+           IMP ( COL( _columna ), $columna )
+         SI_NO
+           IMP ( COL( _columna ), DER( $columna, VALOR( TRAE_VALOR_TABLA( &columnas, 1, _num_col ) ) ) )
+         FIN_SI
+         _longitud := VALOR( TRAE_VALOR_TABLA( &columnas, 1, _num_col ) )
+         _columna := _columna + _longitud + _separacion
+         _num_col := _num_col + 1
+         $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+       FIN_MIENTRAS
+       IMPRIME
+       encabezado_fin
+       SI ( ( $salida = 'EXCEL' ) AND ( _primera_ex = 0 ) )
+         _col_excel := 1
+         _num_col := 0
+         $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+         MIENTRAS( $columna <> '' )
+           EXCEL( 'PON_VALOR', _col_excel, _ren_excel, $columna )
+           _col_excel := _col_excel + 1
+           _num_col := _num_col + 1
+           $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+         FIN_MIENTRAS
+         _max_columnas := _col_excel - 1
+         _ren_excel := _ren_excel + 1
+         _col_excel := 1
+       FIN_SI
+       _primera_ex := _primera_ex + 1
+    FIN_ENCABEZADO
+    
+    PIE
+      pie_estandar
+    FIN_PIE
+  SI_NO
+       _columna := 1
+       _num_col := 0
+       $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+       MIENTRAS( $columna <> '' )
+         SI ( TRAE_VALOR_TABLA( &columnas, 2, _num_col ) = 'IZQ' )
+           IMP ( COL( _columna ), $columna )
+         SI_NO
+           IMP ( COL( _columna ), DER( $columna, VALOR( TRAE_VALOR_TABLA( &columnas, 1, _num_col ) ) ) )
+         FIN_SI
+         _longitud := VALOR( TRAE_VALOR_TABLA( &columnas, 1, _num_col ) )
+         _columna := _columna + _longitud + _separacion
+         _num_col := _num_col + 1
+         $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+       FIN_MIENTRAS
+       IMPRIME
+  FIN_SI
+  SI ( _html = 1 )
+    html_inicia_renglon
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_leyenda
+  SI ( _impreso = 0 )
+    IMPRIME
+    IMP ( COL(5), '*** SUB TOTALES ' + $indice + ' -> ' + $indice_texto )
+    SI ( $salida = 'EXCEL' )
+      EXCEL( 'PON_VALOR', 2, _ren_excel, '*** SUB TOTALES ' + $indice + ' -> ' + $indice_texto )
+    FIN_SI
+  FIN_SI
+  _impreso := 1   
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_totales
+   _impreso := 0
+   _columna := 1
+   _num_col := 0
+   _col_excel := 1
+   $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+   MIENTRAS( $columna <> '' )
+     SI ( TRAE_VALOR_TABLA( &columnas, 3, _num_col ) = 'SI' )
+       SI ( TRAE_VALOR_TABLA( &columnas, 2, _num_col ) = 'IZQ' )
+         imprime_leyenda
+         IMP ( COL( _columna ), $( VALOR_TABLA( &totales, $indice_total, $columna ) ) )
+       SI_NO
+         imprime_leyenda
+         IMP ( COL( _columna ), DER( $( VALOR_TABLA( &totales, $indice_total, $columna ) ), VALOR( TRAE_VALOR_TABLA( &columnas, 1, _num_col ) ) ) )
+       FIN_SI
+       SI ( $salida = 'EXCEL' )
+         EXCEL( 'PON_VALOR', _col_excel, _ren_excel, $( VALOR_TABLA( &totales, $indice_total, $columna ) ) )
+       FIN_SI
+       SI ( $indice_total <> 'TOTAL' )
+         ASIGNA_VALOR_TABLA ( &totales, $indice_total, $columna, 0 )
+       FIN_SI
+     FIN_SI
+     _longitud := VALOR( TRAE_VALOR_TABLA( &columnas, 1, _num_col ) )
+     _columna := _columna + _longitud + _separacion
+     _num_col := _num_col + 1
+     _col_excel := _col_excel + 1
+     $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+   FIN_MIENTRAS
+   IMPRIME
+   imprime_renglon
+FIN_SUB_RUTINA
+
+# ESTAS LINEAS TIENEN QUE IR EN EL REPORTE ORIGINAL DESPUES DE LEER LOS PARAMETROS PARA INICIAZALIR LOS SUBTOTALES.
+#ASIGNA_TABLA( &in, &in2 )
+#inicializa_totales
+
+SUB_RUTINA inicializa_totales
+  #Definicion de la tabla de indices utilizados
+  REPITE
+    $nom_ind := TRAE_VALOR_TABLA( &in2, 2, _num_ind )
+    $ind_act := TRAE_VALOR_TABLA( &in2, 0, _num_ind )
+    SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+      AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+    FIN_SI
+    _num_ind := _num_ind + 1
+  HASTA(  $nom_ind = '' )
+  AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_total_util
+  SI ( _omitir_sub_totales = 0 )
+    DECIMALES := 2
+    $indice_total := $indice
+    imprime_totales
+  FIN_SI
+  SI ( _html = 1 )
+    html_termina_renglon
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA encabezados_util
+  SI ( $salida = 'EXCEL' )
+    EXCEL( 'PON_VALOR', 2, _ren_excel, '*** ' + $indice + ' ' +  $indice_valor + ' -> ' + $indice_texto )  
+    _ren_excel := _ren_excel + 1
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA encabezados
+  encabezados_util
+FIN_SUB_RUTINA
+
+VAR_T ( &tabla_excel )
+_et_renglon := 0
+_et_columna := 0
+$et_valor   := ''
+SUB_RUTINA envia_tabla_excel
+  _et_renglon := 0
+  $et_valor   := TRAE_VALOR_TABLA( &tabla_excel, _et_columna, _et_renglon )
+  MIENTRAS( $et_valor <> '' )
+     _et_columna := 0
+     $et_valor   := TRAE_VALOR_TABLA( &tabla_excel, _et_columna, 0 )
+     MIENTRAS( $et_valor <> '' )
+       $et_valor   := TRAE_VALOR_TABLA( &tabla_excel, _et_columna, _et_renglon )
+       EXCEL( 'PON_VALOR', _et_columna + 1, _et_renglon + 1, $et_valor )
+       _et_columna := _et_columna + 1
+       $et_valor   := TRAE_VALOR_TABLA( &tabla_excel, _et_columna, 0 )
+     FIN_MIENTRAS
+    _et_columna := 0
+    _et_renglon := _et_renglon + 1
+    $et_valor   := TRAE_VALOR_TABLA( &tabla_excel, _et_columna, _et_renglon )    
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+VAR_T ( &grafica_util )
+VAR_T ( &orden_grafica )
+_indice_grafica  := 0
+_max_grafica     := 0
+_ordenar_grafica := 0
+$titulo_superior := '.'
+$titulo_derecho  := '.'
+$titulo_izquierdo:= '.'
+$titulo_inferior := '.'
+_max_columnas_graf := 10
+
+SUB_RUTINA muestra_grafica
+  SI ( _ordenar_grafica = 1 )
+    ORDENA_RENGLON ( &grafica_util, 1 )
+    _max_grafica := 0
+    MIENTRAS ( TRAE_VALOR_TABLA( &grafica_util, _max_grafica, 0 ) <> '' )
+      _max_grafica := _max_grafica + 1
+    FIN_MIENTRAS
+
+    _indice_grafica := 0
+    MIENTRAS (( _indice_grafica <= _max_columnas_graf ) AND ( _max_grafica >= 0 ))
+      PON_VALOR_TABLA( &orden_grafica, _indice_grafica, 0, TRAE_VALOR_TABLA( &grafica_util, _max_grafica - 1, 0 ) )
+      PON_VALOR_TABLA( &orden_grafica, _indice_grafica, 1, TRAE_VALOR_TABLA( &grafica_util, _max_grafica - 1, 1 ) )
+      _max_grafica := _max_grafica - 1
+      _indice_grafica := _indice_grafica + 1
+    FIN_MIENTRAS
+  SI_NO
+    ASIGNA_TABLA( &grafica_util, &orden_grafica )
+  FIN_SI
+  CREA_GRAFICA( &orden_grafica )
+  TITULOS_GRAFICA ( &orden_grafica, '"' + $titulo_superior + '"', '"' + $titulo_derecho + '"', '"' + $titulo_inferior + '"', '"' + $titulo_izquierdo + '"' )
+FIN_SUB_RUTINA

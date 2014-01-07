@@ -1,0 +1,331 @@
+#SERVINOMINA BANORTE
+#TRABAJADORES VIGENTES
+#VERSION 2.1
+#NO EDITAR
+#DESCRIPCION
+#Genera un archivo ASCII para el pago electrónico de nómina con BANORTE.
+#FIN_DESCRIPCION
+
+$movimiento := LEE_INI ( 'LAYOUT' , 'DEPOSITO' , '' ) 
+
+$emisora  := '46003/55780/46004/84224/NEW/NEW'
+$bancorec := '072'
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'DISCO' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA APLICACION' , '' , _fi ) 
+NUEVO_PARAMETRO_SEL ( 'NUMERO DE EMISORA' , '31359/81023/50218/84224/42498' , $emisora ) 
+NUEVO_PARAMETRO     ( 'NUMERO BANCO REC' , $bancorec , $bancorec )
+NUEVO_PARAMETRO     ( 'CONSECUTIVO' , $movimiento , $movimiento ) 
+#NUEVO_PARAMETRO_SEL ( 'TIPO PAGO' ,'NETO/A.HABITACION/AGUINALDO' , _tipo )  
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+ESCRIBE_INI ( 'LAYOUT' , 'DEPOSITO' ,  $movimiento ) 
+
+
+NUEVO_PARAMETRO     ( 'ARCHIVO' , 'C:\NI' + $emisora + $movimiento + '.PAG' , $archivo )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+
+$tota := 'TOTA'
+
+MODO_IMPRESION ( 'DIRECTO' )
+SALIDA_REPORTE ( $archivo )
+SALIDA        := $salida
+FORMATO_FECHA := 0
+FORMATO_PESOS := 3
+RELLENO       := '0'
+
+# Variables Globales
+
+$anio     := ''  ;; $mes := ''  ;; $dia := ''  ;; $fechaproc := ''
+
+$nombre   := ''
+$clave    := ''
+_trab     := 0
+_total    := 0
+$total    := ''
+$nombre1  := ''
+$nombre2  := ''
+_long     := 0
+$espacios := ''
+$fecha    := ''
+$suc      := ''
+$cuenta := ''
+_total := 0
+DECIMALES := 0
+_movimiento := 0
+_esletra := 0
+$x := ''
+# Subrutinas diversas
+
+SUB_RUTINA esletra
+     $x := SUBSTR ( $clave , 1 , 1 )
+     _esletra := 0 
+
+    SI ( MAYUSCULAS ($x) = 'A'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'B'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'C'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'D'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'E'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'F'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'G'  )  
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'H'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'I'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'J'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'K'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'L'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'M'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'N'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'O'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'P'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'Q'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'R'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'S'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'T'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'U'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'V'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'W'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'X'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'Y'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+    SI ( MAYUSCULAS ($x) = 'Z'  )    
+$clave := ELIMINA ( $clave , 1 , 1 )   
+_esletra := 1  
+FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+
+   $nombre := SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 20 )
+
+
+   $clave  := 'EMPPRIN':'CLAVE'
+
+     $clave:= 'HUITZI02010'  
+   REPITE
+        esletra
+   HASTA ( _esletra = 0 ) 
+
+   MIENTRAS ( LONGITUD ( $clave ) <  10 ) 
+                         $clave := '0' + $clave
+   FIN_MIENTRAS
+
+   DECIMALES := 2 
+      $total := $( TOTAL($tota ) )
+
+   SI ( POS ( '.' , $total ) > 0 ) 
+        $total := ELIMINA ( $total , POS ( '.' , $total ) , 1 )
+   FIN_SI 
+
+
+   $cuenta := 'EMPPRIN':'CTA_TARJETA'
+
+   MIENTRAS ( LONGITUD ( $clave )   < 10 ) 
+       $clave    := '0' + $clave  
+   FIN_MIENTRAS  
+
+   MIENTRAS ( LONGITUD ( $total )   < 15 ) 
+       $total    := '0' + $total
+   FIN_MIENTRAS
+  
+   MIENTRAS ( LONGITUD ( $bancorec ) < 3 )  
+        $bancorec := '0' + $bancorec  
+   FIN_MIENTRAS  
+
+   IMP ( COL(1)   , 'D'                     ) 
+   IMP ( COL(2)   , $fechaproc              ) 
+   IMP ( COL(10)  , $clave                  )  
+   IMP ( COL(20)  , REPITETXT ( ' ' , 40 )  ) 
+   IMP ( COL(60)  , REPITETXT ( ' ' , 40 )  )
+   IMP ( COL(100) , $total                  )  
+   IMP ( COL(115) , $bancorec               ) 
+   IMP ( COL(118) , '01'                    ) 
+   IMP ( COL(120) , REPITETXT ( '0' , 9 )   )
+   IMP ( COL(128) , $cuenta                 ) 
+   IMP ( COL(138) , '0 '                    ) 
+   IMP ( COL(140) , REPITETXT ( '0' , 8 )   ) 
+   IMP ( COL(148) , REPITETXT ( ' ' , 18 )  ) 
+   IMPRIME
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina       := 1
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+$campos_extras:= 'E.CTA_TARJETA,E.TIPO_PAGO'
+base_trabajadores
+
+_suma := 0
+
+
+USA_ARCHIVO ('EMPPRIN' , 'EMPSUC' , 'CLAVE' )
+USA_ARCHIVO ('EMPPRIN' , 'EMPEXT' , 'CLAVE' )
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+
+      _suma := TOTAL ( $tota )
+   SI ( ( 'EMPPRIN':'CTA_TARJETA' <> '' ) AND ( 'EMPEXT':'BANCO' = '4' ) AND ( _suma <> 0 ) )      
+      DECIMALES := 0
+      _movimiento := _movimiento + 1
+      DECIMALES := 2
+      _total := _total + TOTAL ( $tota  ) 
+   FIN_SI
+
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+
+DECIMALES := 0
+$total_pagos := .( _movimiento )
+DECIMALES := 2
+$total_monto := .( _total )
+
+
+SI ( POS ( '.' , $total_monto ) > 0 )
+   $total_monto := ELIMINA ( $total_monto , POS ( '.' , $total_monto ) , 1 )
+FIN_SI
+
+
+SUB_RUTINA imprime_encabezado
+
+    MIENTRAS ( LONGITUD ( $emisora  ) < 5 )  
+             $emisora  := $emisora  + ' ' 
+    FIN_MIENTRAS
+
+    MIENTRAS ( LONGITUD ( $total_pagos   ) < 6  )   
+             $total_pagos   := '0' + $total_pagos  
+    FIN_MIENTRAS
+
+    MIENTRAS ( LONGITUD ( $total_monto  ) < 15 )    
+             $total_monto  := '0' + $total_monto    
+    FIN_MIENTRAS
+
+    DECIMALES:=0
+    $anio := .(AÑO ( _fi  )) 
+    $mes  := .(MES ( _fi  ))
+    $dia  := .(DIA ( _fi  )) 
+   
+    RELLENO := '0'
+
+    $fechaproc :=    $anio + DER($mes,2) + DER($dia,2)
+
+    RELLENO := ''
+  
+    IMP ( COL(1)  , 'H'  ) 
+    IMP ( COL(2)  , 'NE' )
+    IMP ( COL(4)  , $emisora      ) 
+    IMP ( COL(9)  , $fechaproc    ) 
+    IMP ( COL(17) , $movimiento   )
+    IMP ( COL(19) , $total_pagos  )
+    IMP ( COL(25) , $total_monto  )
+    IMP ( COL(40) , REPITETXT ( '0' , 6  ) ) 
+    IMP ( COL(46) , REPITETXT ( '0' , 15 ) )
+    IMP ( COL(61) , REPITETXT ( '0' , 6  ) ) 
+    IMP ( COL(67) , REPITETXT ( '0' , 15 ) ) 
+    IMP ( COL(82) , REPITETXT ( '0' , 6  ) ) 
+    IMP ( COL(88) , '0'           )    
+    IMP ( COL(89) , REPITETXT ( ' ' , 77 ) ) 
+    IMPRIME
+
+FIN_SUB_RUTINA
+
+
+#----------- Impresion del Registro de Detalle
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+imprime_encabezado
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+
+      _suma := TOTAL ( $tota )
+
+   SI ( ( 'EMPPRIN':'CTA_TARJETA' <> '' ) AND ( 'EMPEXT':'BANCO' = '4' ) AND ( _suma <> 0 ) )      
+      formato_trabajador
+   FIN_SI
+
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+

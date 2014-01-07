@@ -1,0 +1,157 @@
+#TRANSFERENCIA DE ACUMULADOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 1.0
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO     ( 'EMPRESA ORIGEN', '', $empresa )
+NUEVO_PARAMETRO_CHEQ( 'ENERO',      '', _ene )
+NUEVO_PARAMETRO_CHEQ( 'FEBRERO',    '', _feb )
+NUEVO_PARAMETRO_CHEQ( 'MARZO',      '', _mar )
+NUEVO_PARAMETRO_CHEQ( 'ABRIL',      '', _abr )
+NUEVO_PARAMETRO_CHEQ( 'MAYO',       '', _may )
+NUEVO_PARAMETRO_CHEQ( 'JUNIO',      '', _jun )
+NUEVO_PARAMETRO_CHEQ( 'JULIO',      '', _jul )
+NUEVO_PARAMETRO_CHEQ( 'AGOSTO',     '', _ago )
+NUEVO_PARAMETRO_CHEQ( 'SEPTIEMBRE', '', _sep )
+NUEVO_PARAMETRO_CHEQ( 'OCTUBRE',    '', _oct )
+NUEVO_PARAMETRO_CHEQ( 'NOVIEMBRE',  '', _nov )
+NUEVO_PARAMETRO_CHEQ( 'DICIEMBRE',  '', _dic )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+VAR_T( &meses )
+SI ( _ene = 1 ) AGREGA_VALOR_COL( &meses, 0, 'ENE' ) FIN_SI
+SI ( _feb = 1 ) AGREGA_VALOR_COL( &meses, 0, 'FEB' ) FIN_SI
+SI ( _mar = 1 ) AGREGA_VALOR_COL( &meses, 0, 'MAR' ) FIN_SI
+SI ( _abr = 1 ) AGREGA_VALOR_COL( &meses, 0, 'ABR' ) FIN_SI
+SI ( _may = 1 ) AGREGA_VALOR_COL( &meses, 0, 'MAY' ) FIN_SI
+SI ( _jun = 1 ) AGREGA_VALOR_COL( &meses, 0, 'JUN' ) FIN_SI
+SI ( _jul = 1 ) AGREGA_VALOR_COL( &meses, 0, 'JUL' ) FIN_SI
+SI ( _ago = 1 ) AGREGA_VALOR_COL( &meses, 0, 'AGO' ) FIN_SI
+SI ( _sep = 1 ) AGREGA_VALOR_COL( &meses, 0, 'SEP' ) FIN_SI
+SI ( _oct = 1 ) AGREGA_VALOR_COL( &meses, 0, 'OCT' ) FIN_SI
+SI ( _nov = 1 ) AGREGA_VALOR_COL( &meses, 0, 'NOV' ) FIN_SI
+SI ( _dic = 1 ) AGREGA_VALOR_COL( &meses, 0, 'DIC' ) FIN_SI
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+_mes_enc := 0
+$mes_enc := ''
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'TITULO DEL REPORTE' )) IMPRIME
+   IMP ( CENTRA ( 'SUB-TITULO DEL REPORTE')) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE' ) IMPRIME
+   IMP ( COL(5), 'CONC' )
+   _mes_enc := 0
+   MIENTRAS ( TRAE_VALOR_TABLA( &meses, 0, _mes_enc ) <> '' )
+     $mes_enc := TRAE_VALOR_TABLA( &meses, 0, _mes_enc )
+     IMP ( COL(10 + ( _mes_enc * 10 )), DER( $mes_enc, 10 ) )
+     _mes_enc := _mes_enc + 1
+   FIN_MIENTRAS 
+   IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   IMPRIME
+FIN_SUB_RUTINA
+
+#VARIABLES
+VAR_T( &acum )
+$empresa_origen := 'EMPRESA':'CLAVE'
+$empleado := ''
+_mes := 0
+$mes := ''
+$concepto := ''
+_conc := 0
+
+REPITE
+    SI ( TRAE_REGISTRO( 'EMPRESA', $empresa ) )
+      CAMBIA_BASE( 'EMPRESA':'PATH TRABAJO' )
+      BORRA_PARAMETROS
+      NUEVO_PARAMETRO     ( 'EMPLEADO (FIN=TERMINAR)', '', $empleado )
+      LEE_PARAMETROS
+      ABRE_BASE( 'EMPPRIN' )
+      USA_ARCHIVO ( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+      SI ( TRAE_REGISTRO( 'EMPPRIN', $empleado ) )
+        IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN' )
+        IMPRIME
+        PRIMER_REGISTRO( 'EMPACUM' )
+        MIENTRAS( FIN_BASE( 'EMPACUM' ) = FALSO )
+          IMP ( COL(5), 'EMPACUM':'CONCEPTO' )
+          _mes := 0
+          MIENTRAS ( TRAE_VALOR_TABLA( &meses, 0, _mes ) <> '' )
+            $mes := TRAE_VALOR_TABLA( &meses, 0, _mes )
+            INCREMENTA_TABLA( &acum, $mes, 'EMPACUM':'CONCEPTO', 'EMPACUM':$mes )
+            IMP ( COL(10 + ( _mes * 10 )), DER( $( 'EMPACUM':$mes ), 10 ) )
+            _mes := _mes + 1
+          FIN_MIENTRAS
+          IMPRIME
+          SIGUIENTE_REGISTRO( 'EMPACUM' )
+        FIN_MIENTRAS
+        CIERRA_BASE( 'EMPACUM' )
+        CIERRA_BASE( 'EMPPRIN' )
+        #CAMBIA A LA BASE ACTUAL
+        SI ( TRAE_REGISTRO ( 'EMPRESA', $empresa_origen ) )
+          ABRE_BASE( 'EMPPRIN' )
+          USA_ARCHIVO( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+          SI ( TRAE_REGISTRO ( 'EMPPRIN', $empleado ) )
+            _conc := 0
+            MIENTRAS( TRAE_VALOR_TABLA( &acum, 0, _conc ) <> '' )
+              $concepto := TRAE_VALOR_TABLA( &acum, 0, _conc )
+              SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', $concepto ) = FALSO )
+                AGREGA_REGISTRO( 'EMPACUM' )
+                'EMPACUM':'CLAVE' := 'EMPPRIN':'CLAVE'
+                'EMPACUM':'CONCEPTO' := $concepto
+              FIN_SI
+              _mes := 0
+              MIENTRAS ( TRAE_VALOR_TABLA( &meses, 0, _mes ) <> '' )
+                $mes := TRAE_VALOR_TABLA( &meses, 0, _mes )
+                'EMPACUM':$mes := VALOR_TABLA( &acum, $mes, $concepto )
+                _mes := _mes + 1
+              FIN_MIENTRAS             
+              GRABA_BASE( 'EMPACUM' )
+              _conc := _conc + 1
+            FIN_MIENTRAS
+            IMPRIME_TABLA( &acum, 10, 20, 30, 40, 50 )
+          SI_NO
+            MENSAJE( 'EL EMPLEADO NO EXISTE EN LA EMPRESA ACTUAL.' )
+          FIN_SI
+          CIERRA_BASE( 'EMPACUM' )
+          CIERRA_BASE( 'EMPPRIN' )
+        FIN_SI
+      SI_NO
+        CIERRA_BASE( 'EMPACUM' )
+        CIERRA_BASE( 'EMPPRIN' )
+        SI ( $empleado <> 'FIN' )
+          MENSAJE( 'LA CLAVE DEL EMPLEADO ' + $empleado + ' NO EXISTE' )
+        FIN_SI
+      FIN_SI
+   SI_NO
+     MENSAJE( 'ERROR AL CARGAR LA EMPRESA' )
+   FIN_SI
+HASTA ( $empleado = 'FIN' )
+TERMINA_REPORTE

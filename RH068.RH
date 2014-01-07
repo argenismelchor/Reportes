@@ -1,0 +1,111 @@
+#REPORTE DE ASISTENCIA PERFECTA
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como estandar en los reportes.
+#
+#CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+$faltas := LEE_INI ( 'ASISTENCIA_PERFECTA', 'FALTAS', 'F' )
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL', '', _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL', '', _ff )
+NUEVO_PARAMETRO     ( 'FALTAS', $faltas, $faltas )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+ESCRIBE_INI ( 'ASISTENCIA_PERFECTA', 'FALTAS', $faltas )
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INGRESO'
+_longitud  := 12
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'PUESTO'
+_longitud  := 25
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+_condensado := 0
+$titulo_reporte := 'REPORTE DE ASISTENCIA PERFECTA DEL ' + FECHA( _fi ) + ' AL ' + FECHA( _ff )
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+
+   $valor := FECHA( 'EMPPRIN':'INGRESO' )
+   imprime_columna
+
+   $valor := ''
+   SI ( TRAE_REGISTRO( 'PUESTO', 'EMPPRIN':'PUE_CLAVE' ) )
+     $valor := 'PUESTO':'DESCRIPCION'
+   FIN_SI
+   imprime_columna
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_incluir_pue := 1
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPAUS', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPINC', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPRET', 'CLAVE' )
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+_incap := 0
+_falta := 0
+_ret   := 0
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   _falta  := TRAE_FALTAS( _fi, _ff, $faltas )
+   _incap  := TRAE_INCAPACIDADES( _fi, _ff, '*' )
+   _ret    := TRAE_RETARDOS( _fi, _ff )
+   SI (( FUE_VIGENTE( _fi, _ff ) > 0 ) AND ( _incap + _falta + _ret = 0 ))
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+TERMINA_REPORTE

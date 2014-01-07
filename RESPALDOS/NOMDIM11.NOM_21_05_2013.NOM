@@ -1,0 +1,1145 @@
+#DECLARACION INFORMATIVA MULTIPLE 2012
+#REPORTE ESTANDAR DE MUESTRA
+#NO EDITAR
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#DECLARACION INFORMATIVA MULTIPLE
+#PARA DIM VERSION 3.3.8
+#FIN_DESCRIPCION
+
+ESCRIBE_INI ('CATALOGOS ' + 'EMPRESA':'CLAVE' , 'DIM'      , 'DIM' )
+ESCRIBE_INI ('CATALOGOS ' + 'EMPRESA':'CLAVE' , 'DIM_MENU' , 'MENU CONF. DIM' )
+
+$version := '10.2012.1'
+$version_dim := LEE_INI (CLAVE_REPORTE , 'VERSION_DIM' , '') 
+
+SI ( $version_dim <> $version )   
+   ESCRIBE_INI ( CLAVE_REPORTE , 'VERSION_DIM' , $version )   
+   MENSAJE ('LA VERSION DEL REPORTE HA SIDO ACTUALIZADA, VERSION: ' + $version )
+FIN_SI
+
+FORMATO_FECHA := 0
+DECIMALES     := 0
+
+$fi        := FECHA(CALCULA_FECHA ( AÑO ( FECHA_HOY )-1 ,1, 1))
+$ff        := FECHA(CALCULA_FECHA ( AÑO ( FECHA_HOY )-1 ,12, 31))
+$ejercicio := .(AÑO(FECHA_HOY)-1)
+
+$archivo   := 'C:\DIM' + 'EMPRESA':'CLAVE' + '.TXT'
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL/DISCO', $salida)
+NUEVO_PARAMETRO_FEC  ( 'FECHA INICIO'             , $fi , _fi )
+NUEVO_PARAMETRO_FEC  ( 'FECHA TERMINO'            , $ff , _ff ) 
+NUEVO_PARAMETRO_CHEQ ( 'INCLUIR RFC CON HOMO.'    , '' , _rfc ) 
+NUEVO_PARAMETRO_CHEQ ( 'INCLUIR CURP'             , '' , _curp ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( $salida = 'EXCEL' ) 
+   MENSAJE ( 'HA SELECCIONADO LA SALIDA A EXCEL, PARA ESTO SE IMPRIMIRAN COMPLETOS LOS CAMPOS DEL DIM EN TOTAL 131, EN EL CASO DE SALIDA TXT SOLO SE IMPRIMIRAN LOS CAMPOS NECESARIOS EN LOS CASOS DE PAGOS POR SEPARACION Y/O ASIMILIDOS')
+FIN_SI
+
+$ispta := LEE_INI ( CLAVE_REPORTE , 'ISPTA' , '' )
+$ispt  := LEE_INI ( CLAVE_REPORTE , 'ISPT'  , '' )
+
+
+NUEVO_PARAMETRO_SEL  ( 'APLICAR CALC. ANUAL'      , 'SI/NO' , _aplicar_calc_anual )
+SI ( $ispta = '' ) 
+   NUEVO_PARAMETRO_TAB  ( 'TABLA ANUAL'   , 'TABISPT/CLAVE/CLAVE' , $ispta    )
+ SI_NO
+   NUEVO_PARAMETRO      ( 'TABLA ANUAL'   , $ispta , $ispta    )
+FIN_SI
+SI ( $ispt = '' ) 
+   NUEVO_PARAMETRO_TAB  ( 'TABLA MENSUAL' , 'TABISPT/CLAVE/CLAVE' , $ispt    )
+ SI_NO
+   NUEVO_PARAMETRO      ( 'TABLA MENSUAL'   , $ispt , $ispt    )
+FIN_SI
+SI ( $salida = 'DISCO' )
+   NUEVO_PARAMETRO   ( 'ARCHIVO SALIDA' , $archivo , $archivo )
+FIN_SI
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+ESCRIBE_INI ( CLAVE_REPORTE ,'ISPTA' , $ispta ) 
+ESCRIBE_INI ( CLAVE_REPORTE ,'ISPT' , $ispt ) 
+
+SI ( _aplicar_calc_anual = 0 ) 
+   _aplicar_calc_anual := 1
+ SI_NO
+   _aplicar_calc_anual := 0
+FIN_SI
+
+
+SI ( $salida = 'DISCO') 
+SALIDA_REPORTE ( $archivo ) 
+MODO_IMPRESION ('DIRECTO')
+FIN_SI
+
+
+SALIDA := $salida
+
+$ejercicio := .(AÑO( _fi ))
+
+ABRE_BASE ('_DIM')
+
+INCLUYE PAR_DIM11.DAT
+
+# DEFINICION DE COLUMNAS
+
+ABRE_BASE ( '_DIM') 
+
+MIENTRAS ( FIN_BASE ('_DIM') = FALSO) 
+
+  $columna   := '_DIM':'CAMPO'
+  _longitud  := 20
+  $justifica := 'IZQ'
+  $totales   := 'NO'
+  agrega_columna
+
+SIGUIENTE_REGISTRO ('_DIM')
+FIN_MIENTRAS
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+VAR_A ( $clave_emp )   ;;   VAR_A ( $rfc )     ;;   VAR_A ( $pipe )        ;; VAR_A ( $curp      ) 
+VAR_A ( $reg_patro )   ;;   VAR_N ( _dias )    ;;   VAR_N ( _antiguedad ) ;; VAR_N ( _fechabaja ) 
+VAR_A ( $patronal  )   ;;   VAR_A ( $area )    ;;   VAR_N ( _exen )       
+VAR_N ( _sdo_men   )   ;;   VAR_N ( _cont )    ;;   VAR_N ( _perc )       ;; VAR_A ( $gravados  ) 
+VAR_A ( $exentos   )   ;;   VAR_N ( _exentos ) ;;   VAR_N ( _gravados )   ;; VAR_N ( _sum_ingr  )
+VAR_N ( _asimilados )  ;;   VAR_N ( _no_acumulable ) VAR_N ( _cancela_impresion ) ;; VAR_N ( _invertir_impresion ) 
+VAR_N ( _imp_ejerc  )
+
+# CONSTANTES
+
+$ce        := 'Ñ'
+$cn        := 'N'
+$t_actual  := '1' 
+$t_1991    := '2'
+_tarifa    := 1
+
+
+# SUBRUTINAS GLOBALES
+
+SUB_RUTINA determina_valores
+   SI ( TRAE_REGISTRO ( '_DIM' , $campos ) )
+      _total := 0
+      $saux := '_DIM':'CONCEPTOS'   
+      sumatoria      
+      SI ( _total < 0) 
+         _total := _total * -1
+      FIN_SI
+      $valor := .(_total)
+   FIN_SI
+FIN_SUB_RUTINA
+
+$error := ''
+
+SUB_RUTINA determina_gravado
+
+   DECIMALES := 0
+
+   SI ( TRAE_REGISTRO ( '_DIM' , $exentos ) )
+      _total := 0
+      $saux := '_DIM':'CONCEPTOS'   
+      sumatoria      
+      _exentos := _total
+   FIN_SI
+
+   SI ( TRAE_REGISTRO ( '_DIM' , $gravados ) )
+      _total := 0
+      $saux := '_DIM':'CONCEPTOS'   
+      sumatoria      
+      _gravados := _total
+   FIN_SI
+
+   SI ( _gravados < 0 ) 
+        _gravados := 0
+        _exentos  := 0
+
+        $error := 'EL EMPLEADO ' + 'EMPPRIN':'CLAVE' +  ' TIENE PERCEPCIONES EN NEGATIVO EN ALGUNO DE LOS CONCEPTOS: ' + '_DIM':'CONCEPTOS' + ' CAMPO: '  
+        $error := $error + ' ' + $gravados
+      
+        SI ( LONGITUD ('_DIM':'CONCEPTOS') > 20)          
+           MENSAJE_PAUSA ( $error , 6000) 
+         SI_NO
+           MENSAJE_PAUSA ( $error , 3000)  
+        FIN_SI
+
+   FIN_SI
+
+   _gravados := _gravados - _exentos 
+
+   SI ( _invertir_impresion ) 
+           $valor := .( _exentos  ) 
+           $valor := $valor + $pipe
+           imprime_columna 
+           $valor := .( _gravados ) 
+           $valor := $valor + $pipe
+           imprime_columna 
+           _sum_ingr := _sum_ingr + ( _gravados + _exentos )
+           _invertir_impresion := 0
+   SI_NO  
+        SI ( _cancela_impresion = 0 ) 
+               $valor := .( _gravados ) 
+               $valor := $valor + $pipe
+               imprime_columna 
+               $valor := .( _exentos  ) 
+               $valor := $valor + $pipe
+               imprime_columna 
+               _sum_ingr := _sum_ingr + ( _gravados + _exentos )
+            SI_NO
+                _cancela_impresion := 0
+   FIN_SI
+   FIN_SI
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA reinicia_variables
+
+# ALFANUMERICAS
+SI ( $salida <> 'EXCEL')
+   $pipe            := '|'
+FIN_SI   
+$clave_emp          := ''
+$rfc                := ''
+$curp               := ''
+$estado             := ''
+
+# NUMERICOS
+_dias               := 0
+_total              := 0
+_exen               := 0
+_sdo_men            := 0
+_gravados           := 0
+_exentos            := 0
+_sum_ingr           := 0
+_ispta              := 0
+_separacion         := 2
+_asimilados         := 2
+_acumulable         := 0
+_no_acumulable      := 0
+_cancela_impresion  := 0
+_invertir_impresion := 0
+_isr_separacion     := 0
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+
+
+  #********************************************************** ANEXO 1 INDENTIFICACION DEL EMPLEADO **********************************************************
+
+   reinicia_variables 
+
+   $clave_emp  := 'EmpPrin':'CLAVE'
+   _dias       := FUE_VIGENTE ( _fi , _ff )
+   _antiguedad := ( ( _fechabaja - 'EMPPRIN':'INGRESO' ) + 1 ) / 365
+
+   SI ( FRAC ( _antiguedad) > 0.50 ) 
+      _antiguedad := TRUNCAR ( _antiguedad ) + 1   
+      SI_NO
+      _antiguedad := TRUNCAR ( _antiguedad )
+   FIN_SI
+
+   $sucursal   := TRAE_DSP ( 'S' , FECHA_HOY ) 
+   SI ( TRAE_REGISTRO ( 'SUCURSAL' , $sucursal )  = VERDADERO )   
+      $patronal := 'SUCURSAL':'REGISTRO PATRONAL'
+      SI ( TRAE_REGISTRO ( 'PATRONAL' , $patronal ) = VERDADERO )
+         $area  := 'PATRONAL':'ZONA ECONOMICA'
+      FIN_SI
+   FIN_SI
+
+   checa_periodo   
+
+   SI (( FUE_VIGENTE ( _fi , _ff ) = 0 ) AND ( ACUM_ANUAL( '31' ) <> 0 ) )
+      $mes_inicial := '05'
+      $mes_final   := '05'   
+   FIN_SI
+
+   #-----------------------------------------------CAMPO 1   
+   $valor  := ''
+   $valor  := $mes_inicial + $pipe
+   imprime_columna 
+
+   #-----------------------------------------------CAMPO 2  
+   $valor  := ''
+   $valor  := $mes_final + $pipe
+   imprime_columna 
+
+   #-----------------------------------------------CAMPO 3     
+   $valor  := ''
+   SI ( _rfc )
+      $rfc := 'EMPPRIN':'RFC'
+    SI_NO
+      $rfc := SUBSTR (  'EMPPRIN':'RFC' , 1 , 10 ) 
+   FIN_SI
+   $valor  := $rfc + $pipe
+   imprime_columna 
+
+   #-----------------------------------------------CAMPO 4
+   $valor   := ''
+   SI ( _curp )
+      $curp := 'EMPPRIN':'CURP'
+    SI_NO
+      $curp := ''
+   FIN_SI
+   $valor  := $curp
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 5
+   $valor := ''
+   $valor := REEMPLAZA ($ce , $cn ,  'EMPPRIN':'NOMBREP' )
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 6
+   $valor := ''
+   $valor := REEMPLAZA ($ce , $cn ,  'EMPPRIN':'NOMBREM' )
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 7
+   $valor := ''
+   $valor := REEMPLAZA ($ce , $cn ,  'EMPPRIN':'NOMBREN' )
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 8
+   $valor := ''
+   SI ( TRAE_REGISTRO ( 'SUCURSAL' , TRAE_DSP ( 'S' , _ff )))
+      $valor    := 'SUCURSAL':'REGISTRO PATRONAL'
+      $sucursal := 'SUCURSAL':'CLAVE'
+      SI ( TRAE_REGISTRO ('PATRONAL' , $valor ))
+          $valor     := 'PATRONAL':'ZONA ECONOMICA'         
+          $reg_patro := 'PATRONAL':'CLAVE'
+          SI ( $valor = 'A' ) ;; $valor := '01' ;; FIN_SI
+          SI ( $valor = 'B' ) ;; $valor := '02' ;; FIN_SI
+          SI ( $valor = 'C' ) ;; $valor := '03' ;; FIN_SI
+         SI_NO
+         MENSAJE ('EL EMPLEADO ' + $clave_emp + ' NO TIENE UNA SUCURSAL VALIDA, EL REPORTE SE ABORTARA!!!!')
+         TERMINA_REPORTE
+      FIN_SI
+   SI_NO
+         MENSAJE ('EL EMPLEADO ' + $clave_emp + ' NO TIENE UNA SUCURSAL VALIDA, EL REPORTE SE ABORTARA!!!!')
+         TERMINA_REPORTE         
+   FIN_SI
+   
+   $valor := $valor + $pipe
+   imprime_columna
+
+   DECIMALES := 2
+
+
+   SI ( TRAE_REGISTRO ('_DIM' , 116 ))
+      $cve_ispt := '_DIM':'CONCEPTOS'         
+   FIN_SI
+
+   SI ( TRAE_REGISTRO ('_DIM' , '114'))
+      $cve_salario := '_DIM':'CONCEPTOS'            
+      SI_NO
+      MENSAJE ( 'NO HA DETERMINADO LOS CONCEPTOS A CONSIDERAR EL LA PERCEPCION GRAVADA, ESTOS DEBEN ESTAR CAPTURADOS EN EL CAMPO 114 DE CATALOGO DIM')
+   FIN_SI
+   SI ( TRAE_REGISTRO ('_DIM' , '115'))
+      $cve_exen := '_DIM':'CONCEPTOS'            
+      SI_NO
+      MENSAJE ( 'NO HA DETERMINADO LOS CONCEPTOS A CONSIDERAR EL LA PERCEPCION EXEN, ESTOS DEBEN ESTAR CAPTURADOS EN EL CAMPO 115 DE CATALOGO DIM')
+   FIN_SI
+
+   aplica_anual
+   calculo_anual
+
+   #-----------------------------------------------CAMPO 9
+   $valor := ''
+   SI ( _aplica_anual ) 
+      $valor := '1'
+    SI_NO
+      $valor := '2'
+   FIN_SI
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 10 TARIFA UTILIZADA DEL EJERCICIO QUE DECLARA
+   SI ( _tarifa = 0  ) $t_actual := '1' $t_1991 := '2' FIN_SI
+   SI ( _tarifa = 1  ) $t_actual := '2' $t_1991 := '1' FIN_SI
+
+   $valor := '1'
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 11 TARIFA UTILIZADA 1991 ACTUALIZADA
+   $valor := '2'
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 12 PROPORCION DEL SUBSIDIO APLICADA
+   $valor := ''
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 13 INDIQUE SI EL TRABAJADOR ES SINDIZALIZADO   
+   SI ( ( ACUM_ANUAL ('104') > 0 ) OR ('EmpPrin':'CUOTA_SINDICAL' = 1))
+      $valor := '1'
+    SI_NO
+      $valor := '2'
+   FIN_SI  
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 14 SI ES ASIMILADO A SALARIOS, SEÑALE LA CLAVE CORRESPONDIENTE 
+   $valor := '0' + $pipe
+   imprime_columna 
+
+   #-----------------------------------------------CAMPO 15 CLAVE DE LA ENTIDAD FEDERATIVA DONDE PRESTO SUS SERVICIOS.
+   SI ( $estado <> '')
+      #
+      SI_NO
+      valida_entidad
+   FIN_SI
+   $valor := $estado + $pipe   
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 16 EN CASO DE QUE EL TRABAJADOR HAYA TENIDO MAS DE UN PATRON EN EL EJERCICIO, SEÑALE EL RFC NUM 1 DEL OTRO PATRON
+   $valor := '' + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 17 EN CASO DE QUE EL TRABAJADOR HAYA TENIDO MAS DE UN PATRON EN EL EJERCICIO, SEÑALE EL RFC NUM 2 DEL OTRO PATRON
+   $valor := '' + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 18 EN CASO DE QUE EL TRABAJADOR HAYA TENIDO MAS DE UN PATRON EN EL EJERCICIO, SEÑALE EL RFC NUM 3 DEL OTRO PATRON
+   $valor := '' + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 19 EN CASO DE QUE EL TRABAJADOR HAYA TENIDO MAS DE UN PATRON EN EL EJERCICIO, SEÑALE EL RFC NUM 4 DEL OTRO PATRON
+   $valor := '' + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 20 EN CASO DE QUE EL TRABAJADOR HAYA TENIDO MAS DE UN PATRON EN EL EJERCICIO, SEÑALE EL RFC NUM 5 DEL OTRO PATRON
+   $valor := '' + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 21  EN CASO DE QUE EL TRABAJADOR HAYA TENIDO MAS DE UN PATRON EN EL EJERCICIO, SEÑALE EL RFC NUM 6 DEL OTRO PATRON
+   $valor := '' + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 22  EN CASO DE QUE EL TRABAJADOR HAYA TENIDO MAS DE UN PATRON EN EL EJERCICIO, SEÑALE EL RFC NUM 6 DEL OTRO PATRON
+   $valor := '' + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 23  EN CASO DE QUE EL TRABAJADOR HAYA TENIDO MAS DE UN PATRON EN EL EJERCICIO, SEÑALE EL RFC NUM 7 DEL OTRO PATRON
+   $valor := '' + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 24  EN CASO DE QUE EL TRABAJADOR HAYA TENIDO MAS DE UN PATRON EN EL EJERCICIO, SEÑALE EL RFC NUM 8 DEL OTRO PATRON
+   $valor := '' + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 25  EN CASO DE QUE EL TRABAJADOR HAYA TENIDO MAS DE UN PATRON EN EL EJERCICIO, SEÑALE EL RFC NUM 9 DEL OTRO PATRON
+   $valor := '' + $pipe
+   imprime_columna
+
+
+  #********************************************************** SECCION QUE SE AGREGA PARA 2010 **********************************************************
+
+   #-----------------------------------------------CAMPO 26 MONTO DE LAS APORTACIONES VOLUNTARIAS EFECTUADAS
+
+   $campos := '26'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 27 INDIQUE SI EL PATRON APLICO EL MONTO DE LAS APORTACIONES VOLUNTARIAS EN EL CALCULO
+
+   $campos := '27'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 28 MONTO DE LAS APORTACIONES VOLUNTARIAS DEDUCIBLES PARA TRABAJADORES QUE
+
+
+   $campos := '28'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 29 MONTO DE LAS APORTACIONES VOLUNTARIAS DEDUCIBLES APLICADAS POR EL PATRON
+
+   $campos := '29'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+
+  #********************************************************** ANEXO 1 SELECCION DE TEMAS **********************************************************
+   
+   #-----------------------------------------------CAMPO 30  PAGOS POR SEPARACION
+   SI ( TRAE_REGISTRO ( '_DIM' , 43 ) )
+      $saux := '_DIM':'CONCEPTOS'   
+      sumatoria      
+      SI ( _total > 0 ) 
+        $valor := '1'   
+        _separacion := 1
+       SI_NO
+        $valor := '2'   
+        _separacion := 2
+      FIN_SI         
+   FIN_SI
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 31  ASIMILADOS A SALARIOS ( EXCEPTO FRACCION 1 DEL ART. 110 DE LA LISR )
+   SI ( TRAE_REGISTRO ( '_DIM' , 51 ) )
+      $saux := '_DIM':'CONCEPTOS'   
+      sumatoria      
+      SI ( _total > 0 ) 
+        $valor := '1'   
+        _asimilados := 1
+       SI_NO
+        $valor := '2'   
+        _asimilados := 2
+      FIN_SI         
+   FIN_SI
+   $valor := $valor + $pipe
+   imprime_columna
+   
+   #-----------------------------------------------CAMPO 32 PAGOS DEL PATRON EFECTUADOS A SUS TRABAJADORES ( INCLUNDO FRACCION 1 ART. 110 DE LA LISR) 
+   $valor := '1'
+   $valor := $valor + $pipe
+   imprime_columna
+
+  #********************************************************** ANEXO 1 PAGOS POR SEPARACION **********************************************************
+
+   DECIMALES := 0
+
+   SI ( $salida = 'EXCEL' ) 
+        _separacion := 1
+   FIN_SI
+
+   SI ( _separacion = 1 ) 
+
+   ############################################################################################################ PAGOS POR JUBILACION
+
+   #-----------------------------------------------CAMPO 33 INGRESOS TOTALES POR PAGO EN PARCIALIDADES
+   $campos := '33'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 34 MONTO DIARIO PERCIBIDO POR JUBILACIONES, PENSIONES O HABERES DE RETIRO EN PARCIALIDADES
+   $campos := '34'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 35 CANTIDAD QUE SE HUBIERA PERCIBIDO EN EL PERIODO DE NO HABER UNICO POR JUBILACIONES, PENSIONES O HABERES DE RETIRO EN UNA SOLA EXHIBICION
+   $campos := '35'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 36 MONTO TOTAL DE PAGO POR UNA SOLA EXHIBICION
+   $campos := '36'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 37 NUMERO DE DIAS
+#   $valor := .(FUE_VIGENTE ( _fi , _ff ))
+   $valor := '0'
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 38 INGRESOS EXENTOS
+   $campos := '38'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 39 INGRESOS GRAVADOS
+   $campos := '39'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 40 INGRESOS ACUMULABLES
+   $campos := '40'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 41 INGRESOS NO ACUMULABLES
+   $campos := '41'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 42 IMPUESTO RETENIDO
+
+   $campos := '42'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   ###############################################################################################################################################################
+
+   #-----------------------------------------------CAMPO 43 Monto total pagado de otros pagos por separación
+   $campos := '43'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 44 Número de años de servicio del trabajador
+   $valor := .(_antiguedad) 
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 45 INGRESOS EXENTOS
+   #-----------------------------------------------CAMPO 46 INGRESOS GRAVADOS
+
+   $exentos  := '45'
+   $gravados := '46'
+   _invertir_impresion := 1
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 47 INGRESOS ACUMULABLES ( ULTIMO SUELDO MENSUAL ORDINARIO )
+
+   ULTIMO_REGISTRO ('EMPSDO')
+   SI ( 'EMPSDO':'TIPO' = 'B' )
+      DECIMALES := 2
+      REGISTRO_ANTERIOR ('EMPSDO')
+      _sdo_men :=  TRUNCAR ('EmpSdo':'SDO1' * 30 )
+      DECIMALES := 0
+    SI_NO
+      _sdo_men  := TRUNCAR (SUELDO_ACTUAL ( FECHA_HOY , FECHA_HOY)   * 30 )
+   FIN_SI
+
+   $exentos  := '45'
+   $gravados := '46'
+   _cancela_impresion := 1
+   determina_gravado
+
+   ## IMPUESTO CORREWSPONDIENTE AL ULTIMO SDO MENSUAL
+   _acumulable  := _sdo_men
+   _total_indem := _gravados + _exentos
+   _exen_indem  := _exentos
+   FORMULA_ISPT_CON_SUBSIDIO
+   _isr_ordinario := TRUNCAR(_isr_ordinario)
+   SI ( _isr_ordinario < 0 )
+      _isr_ordinario := 0
+   FIN_SI
+   DECIMALES := 2
+   _isr_indem2 := TRUNCAR((_isr_ordinario / _sdo_men) * (_total_indem - _exen_indem ))
+   SI (_isr_indem2 < 0)
+      _isr_indem2 := 0
+   FIN_SI
+   DECIMALES := 0
+
+   SI (  _gravados < _sdo_men)
+        $valor := .(_total)      
+        _acumulable    := _gravados
+        _no_acumulable := 0
+        FORMULA_ISPT_CON_SUBSIDIO
+        _isr_ordinario := _isr_ordinario
+        _isr_ordinario := ( _isr_ordinario + _isr_indem2)
+     SI_NO 
+        _acumulable := _sdo_men
+        _no_acumulable := _gravados - _acumulable
+        FORMULA_ISPT_CON_SUBSIDIO
+        _isr_separacion := ( _isr_separacion + _isr_indem2 ) - _isr_ordinario
+        $valor := .(_sdo_men )  
+   FIN_SI
+
+   _sum_ingr       := 0
+   _sgrabado       := 0
+   _sexento        := 0
+
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 48 IMPUESTO CORRESPONDIENTE AL ULTIMO SUELDO MENSUAL ORDINARIO
+   SI ( _isr_ordinario < 0 ) 
+      _isr_ordinario := 0
+   FIN_SI
+   $campos := '48'
+   $valor := .(_isr_ordinario)
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 49 INGRESOS NO ACUMULABLES
+   $campos := '49'
+   $valor  :=  .(_no_acumulable)
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 50 IMPUESTO RETENIDO
+   $campos := '50'
+   determina_valores   
+   $valor := .(_isr_separacion ) 
+   $valor := $valor + $pipe
+   imprime_columna
+
+   FIN_SI
+
+  #********************************************************** ANEXO 1 INGRESOS ASIMILADOS A SALARIOS **********************************************************
+
+   SI ( $salida = 'EXCEL' ) 
+        _asimilados := 1
+   FIN_SI
+
+   SI ( _asimilados  = 1 ) 
+
+   #-----------------------------------------------CAMPO 51 Ingresos asimilados a salarios
+   $campos := '51'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+   
+   #-----------------------------------------------CAMPO 52 IMPUESTO RETENIDO DURANTE EL EJERCICIO
+   $campos := '52'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 53 INDIQUE SI EJERCIO LA OPCION DEL EMPLEADOR PARA ADQUIRIR ACCIONES O TITULOS VALOR
+   $valor := '2'
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 54 VALOR DEL MERCADO DE LAS ACCIONES O TITULOS VALOR AL EJERCER LA OPCION
+   $campos := '54'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 55 PRECIO ESTABLECIDO AL OTORGARSE LA OPCION DE INGRESOS EN ACCIONES O TITULOS VALOR
+   $campos := '55'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 56 Ingreso acumulable
+   $campos := '56'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 57 Impuesto retenido durante el ejercicio
+   $campos := '57'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   FIN_SI
+
+  #************************************************ ANEXO 1 PAGOS DEL PATRON EFECTUADOS A SUS TRABAJADORES ************************************************
+
+   #-----------------------------------------------CAMPO 58 SUELDOS, SALARIOS, RAYAS Y JORNALES  GRAVADOS
+   #-----------------------------------------------CAMPO 59 SUELDOS, SALARIOS, RAYAS Y JORNALES  EXENTOS
+   $gravados := '58'
+   $exentos  := '59'
+   determina_gravado
+  
+   #-----------------------------------------------CAMPO 60 GRATIFICACION ANUAL GRAVADOS
+   #-----------------------------------------------CAMPO 61 GRATIFICACION ANUAL EXENTOS
+   $gravados := '60'
+   $exentos  := '61'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 62 VIATICOS ANUAL GRAVADOS
+   #-----------------------------------------------CAMPO 63 VIATICOS ANUAL EXENTOS
+   $gravados := '62'
+   $exentos  := '63'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 64 VIATICOS ANUAL GRAVADOS
+   #-----------------------------------------------CAMPO 65 VIATICOS ANUAL EXENTOS
+
+   SI ( 'EMPPRIN':'CLAVE' = 'M386' ) 
+    DECIMALES:= 0
+   FIN_SI
+
+   $gravados := '64'
+   $exentos  := '65'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 66 PRIVA VACACIONAL ANUAL GRAVADA
+   #-----------------------------------------------CAMPO 67 PRIMA VACACIONAL ANUAL EXENTOS
+   $gravados := '66'
+   $exentos  := '67'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 68 PRIMA DOMINICAL GRAVADA
+   #-----------------------------------------------CAMPO 69 PRIMA DOMINICAL EXENTA
+   $gravados := '68'
+   $exentos  := '69'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 70 PARTICIPACION DE LOS TRABAJADORES EN LA UTILIDADES GRAVADA
+   #-----------------------------------------------CAMPO 71 PARTICIPACION DE LOS TRABAJADORES EN LA UTILIDADES EXENTA
+   $gravados := '70'
+   $exentos  := '71'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 72 REEMBOLSO DE GASTOS MEDICOS, DENTALES Y HOSPITALARIOS GRAVADO
+   #-----------------------------------------------CAMPO 73 REEMBOLSO DE GASTOS MEDICOS, DENTALES Y HOSPITALARIOS EXENTOS
+   $gravados := '72'
+   $exentos  := '73'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 74 FONDO DE AHORRO GRAVADO
+   #-----------------------------------------------CAMPO 75 FONDO DE AHORRO EXENTO
+   $gravados := '74'
+   $exentos  := '75'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 76 CAJA DE AHORRO GRAVADO
+   #-----------------------------------------------CAMPO 77 CAJA DE AHORRO EXENTO
+   $gravados := '76'
+   $exentos  := '77'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 78 VALES DE DESPENSA GRAVADO
+   #-----------------------------------------------CAMPO 79 VALES DE DESPENSA EXENTO
+   $gravados := '78'
+   $exentos  := '79'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 80 AYUDA PARA GASTOS DE FUNERAL GRAVADO
+   #-----------------------------------------------CAMPO 81 AYUDA PARA GASTOS DE FUNERAL EXENTO
+   $gravados := '80'
+   $exentos  := '81'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 82 CONTRIBUCIONES A CARGO DE LOS TRABAJADORES PAGADAS POR EL PATRON GRAVADO
+   #-----------------------------------------------CAMPO 83 CONTRIBUCIONES A CARGO DE LOS TRABAJADORES PAGADAS POR EL PATRON EXENTO
+   $gravados := '82'
+   $exentos  := '83'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 84 PREMIOS POR PUNTUALIDAD GRAVADO
+   #-----------------------------------------------CAMPO 85 PREMIOS POR PUNTUALIDAD EXENTOS
+   $gravados := '84'
+   $exentos  := '85'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 86 PRIMA DE SEGURO DE VIDA EXENTO
+   #-----------------------------------------------CAMPO 87 PRIMA DE SEGURO DE VIDA GRAVADO
+   $gravados := '86'
+   $exentos  := '87'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 88 SEGURO DE GASTOS MEDICOS GRAVADO
+   #-----------------------------------------------CAMPO 89 SEGURO DE GASTOS MEDICOS EXENTO
+   $gravados := '88'
+   $exentos  := '89'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 90 VALES DE RESTAURANTE GRAVADO
+   #-----------------------------------------------CAMPO 91 VALES DE RESTAURANTE EXENTO
+   $gravados := '90'
+   $exentos  := '91'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 92 VALES DE GASOLINA GRAVADO
+   #-----------------------------------------------CAMPO 93 VALES DE GASOLINA EXENTO
+   $gravados := '92'
+   $exentos  := '93'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 94 VALES DE ROPA GRAVADO
+   #-----------------------------------------------CAMPO 95 VALES DE ROPA EXENTO
+   $gravados := '94'
+   $exentos  := '95'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 96 AYUDA DE RENTA GRAVADO
+   #-----------------------------------------------CAMPO 97 AYUDA DE RENTA EXENTO
+   $gravados := '96'
+   $exentos  := '97'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 98 AYUDA PARA ARTICULOS ESCOLARES GRAVADO
+   #-----------------------------------------------CAMPO 99 AYUDA PARA ARTICULOS ESCOLARES EXENTO
+   $gravados := '98'
+   $exentos  := '99'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 100 DOTACION O AYUDA PARA ANTEOJOS GRAVADO
+   #-----------------------------------------------CAMPO 101 DOTACION O AYUDA PARA ANTEOJOS EXENTOS
+   $gravados := '100'
+   $exentos  := '101'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 102 AYUDA PARA TRANSPORTE GRAVADO
+   #-----------------------------------------------CAMPO 103 AYUDA PARA TRANSPORTE EXENTO
+   $gravados := '102'
+   $exentos  := '103'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 104 CUOTAS SINDICALES PAGADAS POR EL PATRON GRAVADO
+   #-----------------------------------------------CAMPO 105 CUOTAS SINDICALES PAGADAS POR EL PATRON EXENTO
+   $gravados := '104'
+   $exentos  := '105'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 106 SUBSIDIOS POR INCAPACIDAD GRAVADO
+   #-----------------------------------------------CAMPO 107 SUBSIDIOS POR INCAPACIDAD EXENTOS
+   $gravados := '106'
+   $exentos  := '107'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 108 BECAS PARA TRABAJADORES Y/O SUS HIJOS GRAVADOS
+   #-----------------------------------------------CAMPO 109 BECAS PARA TRABAJADORES Y/O SUS HIJOS EXENTOS
+   $gravados := '108'
+   $exentos  := '109'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 110 PAGOS EFECTUADOS POR OTROS EMPLEADORES (SOLO SI EL PATRON QUE DECLARA REALIZO CALCULO ANUAL ) GRAVADO
+   #-----------------------------------------------CAMPO 111 PAGOS EFECTUADOS POR OTROS EMPLEADORES (SOLO SI EL PATRON QUE DECLARA REALIZO CALCULO ANUAL ) EXENTO
+   $gravados := '110'
+   $exentos  := '111'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 112 OTROS INGRESOS POR SALARIOS GRAVADOS
+   #-----------------------------------------------CAMPO 113 OTROS INGRESOS POR SALARIOS EXENTOS
+   $gravados := '112'
+   $exentos  := '113'
+   determina_gravado
+
+   #-----------------------------------------------CAMPO 114 SUMA DEL INGRESO GRAVADO POR SUELDOS Y SALARIOS
+   $campos := '114'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 115 SUMA DEL INGRESO EXENTO POR SUELDOS Y SALARIOS
+   $campos := '115'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 116 IMPUESTO RETENIDOS DURANTE EL EJERCICIO QUE DECLARA
+   $campos := '116'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+   
+   #-----------------------------------------------CAMPO 117 IMPUESTO RETENIDO POR OTROS PATRONES DURANTE EL EJERCICIO QUE DECLARA
+   $campos := '117'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 118 SALDO A FAVOR DETERMINADO EN EL EJERCICIO QUE DECLARA
+   $campos := '118'
+   $valor := .(_ispt_favor) 
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 119 SALDO A FAVOR DEL EJERCICIO ANTERIOR NO COMPENSADO DURANTE EL EJERCICIO QUE DECLARA
+   $campos := '119'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 120 SUMA DE LAS CANTIDADES QUE POR CONCEPTO DE CREDITO AL SALARIO LE CORRESPONDIO AL TRABAJADOR 
+   $campos := '120'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 121 CREDITO AL SALARIO EN EFECTIVO AL TRABAJADOR DURANTE EL EJERCICIO QUE DECLARA
+   $campos := '121'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 122 MONTO TOTAL DE INGRESOS OBTENIDOS POR CONCEPTO DE PRESTACIONES DE PREVISION SOCIAL 
+   $campos := '122'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 123 SUMA DE INGRESOS EXENTOS POR CONCEPTO DE PRESTACIONES DE PREVISION SOCIAL
+   $campos := '123'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 124 SUMA DE INGRESOS POR SUELDOS Y SALARIOS
+   $campos := '124'
+   $valor  := .(_sum_ingr)
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 125 MONTO DEL IMPUESTO LOCAL A LOS INGRESOS POR SUELDOS Y SALARIOS Y EN GENERAL POR LA PRESTACION DE UN SERVICIO PERSONAL SUBORDINADO RETENIDO
+   $campos := '125'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 126 MONTO DEL SUBSIDIO PARA EL EMPLEO ENTREGADO EN EFECTIVO AL TRABAJADOR DURANTE EL EJERCICIO QUE DECLARA
+   $campos := '126'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+
+  #********************************************************** ANEXO 1 IMPUESTO SOBRE LA RENTA ( RESUMEN ) **********************************************************
+
+   #-----------------------------------------------CAMPO 127 Total de las aportaciones voluntarias deducibles
+
+   $campos := '127'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 128 ISR conforme a la tarifa anual
+
+   $campos := '128'
+
+   SI ( _aplicar_calc_anual = 0 ) 
+         _ispta := 0
+      SI_NO
+         SI ( TRAE_REGISTRO ('_DIM' , '114'))
+            $cve_salario := '_DIM':'CONCEPTOS'            
+            SI_NO
+            MENSAJE ( 'NO HA DETERMINADO LOS CONCEPTOS A CONSIDERAR EL LA PERCEPCION GRAVADA, ESTOS DEBEN ESTAR CAPTURADOS EN EL CAMPO 110 DE CATALOGO DIM')
+         FIN_SI
+         SI ( TRAE_REGISTRO ('_DIM' , '115'))
+            $cve_exen := '_DIM':'CONCEPTOS'            
+            SI_NO
+            MENSAJE ( 'NO HA DETERMINADO LOS CONCEPTOS A CONSIDERAR EL LA PERCEPCION EXEN, ESTOS DEBEN ESTAR CAPTURADOS EN EL CAMPO 111 DE CATALOGO DIM')
+         FIN_SI
+            aplica_anual
+            calculo_anual      
+         _ispta := (_ispta)
+   FIN_SI
+        
+   $valor  := .(_ispta )
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 129 Subsidio acreditable
+
+   $campos := '129'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 130 Subsidio no acreditable
+
+   $campos := '130'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 131 Impuesto sobre ingresos acumulables
+   $campos := '131'
+   SI ( _aplica_anual ) 
+      $valor := .( _ispta )
+      SI_NO
+      $valor := '0'
+   FIN_SI
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 132 Impuesto sobre ingresos no acumulables
+   $campos := '132'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 133 Impuesto local a los ingresos por sueldos, salarios y en general por la prestación de un servicio personal subordinado
+   $campos := '133'
+   determina_valores
+   SI ( _total < 0 ) 
+	$valor := .( _total * -1 ) 		
+   FIN_SI
+   $valor := $valor + $pipe
+   imprime_columna
+
+   #-----------------------------------------------CAMPO 134 Monto del subsidio para el empleo que le correspondió al trabajador durante el ejercicio
+   $campos := '134'
+   determina_valores
+   $valor := $valor + $pipe
+   imprime_columna
+
+   imprime_renglon
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+SI ( $salida = 'DISCO') 
+      _omitir_encabezados   := 1
+SI_NO
+      _condensado := 0
+      $titulo_reporte := 'REPORTE ESTANDAR DE TRABAJADORES'
+      define_encabezado
+FIN_SI
+
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. RFC , E. *'
+base_trabajadores
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+# APERTURA DE BASES 
+ABRE_BASE ('PATRONAL')
+ABRE_BASE ('SUCURSAL')
+USA_ARCHIVO ('EMPPRIN' , 'EMPACUM' , 'CLAVE' )
+USA_ARCHIVO ('EMPPRIN' , 'EMPSDO'  , 'CLAVE' )
+USA_ARCHIVO ('EMPPRIN' , 'EMPEXT'  , 'CLAVE' )
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+
+  SI ( 'EMPPRIN':'CLAVE'  = 'M385')
+   DECIMALES:= 0 
+  FIN_SI
+  
+   DECIMALES := 0 
+   ULTIMO_REGISTRO ('EMPSDO')
+   SI ( 'EMPSDO':'TIPO' = 'B')
+      _fechabaja := 'EMPSDO':'FECHA'
+   SI_NO
+      _fechabaja := FECHA_HOY
+   FIN_SI   
+  
+   $campos := '58'
+   determina_valores
+   _perc := _total 
+
+   SI (( FUE_VIGENTE ( _fi , _ff ) > 0 ) AND ( _total > 0 ))
+        _cont := _cont + 1
+        datos_trabajador
+   SI_NO
+      ###  PARA AQUELLAS PERSONAS QUE SOLO TUVIERON  PAGO DE PTU EN EL EJERCICIO
+      ###  Y FUERON BAJA EN EL EJERCICIO PASADO POR LO QUE NO ESTUVIERON VIGENTES EN ESTE.
+   
+      SI ( TRAE_REGISTRO ('_DIM' , '70'))                   
+         SI ( ( ACUM_ANUAL( '_DIM':'CONCEPTOS' ) <> 0 ) )
+         _cont := _cont + 1
+         datos_trabajador
+         FIN_SI        
+      FIN_SI
+
+   FIN_SI
+SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+
+SI ( $salida <> 'DISCO')
+   termina_reporte
+FIN_SI
+
+TERMINA_REPORTE

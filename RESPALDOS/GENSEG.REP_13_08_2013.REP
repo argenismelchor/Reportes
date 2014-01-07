@@ -1,0 +1,148 @@
+#IMPORTACION TIPO DE NOMINA
+#NO EDITAR
+#DESCRIPCION
+#Este reporte cambia masivamente el tipo de nomina de los empleados.
+# Este reporte importa directamente desde una hoja de calculo con el siguiente formato
+#    |   A   |    B   |           C          |  D   |
+#  1 | CLAVE | NOMBRE | TIPO DE NOMINA NUEVO |FECHA
+#  2 | 00001 | JUAN   |          SEM         |01/02/2006|
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA'       , 'PANTALLA/IMPRESORA'                       , $salida        )
+NUEVO_PARAMETRO      ( 'PATH ARCHIVO' , 'C:\LICENCIA.XLS ' , $path_archivo )
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR'       , ''                                        , _grabar        )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 40
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TIPO NOMINA ANTERIOR'
+_longitud  :=10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TIPO NOMINA NUEVO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'FECHA'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ESTADO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+_condensado := 1
+$titulo_reporte := 'CAMBIO MASIVO DE TIPO DE NOMINA'
+define_encabezado
+
+# PARAMETROS
+DECIMALES     := 0
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+$clave                := ''
+$tipo_nomina_nuevo    := ''
+$tipo_nomina_anterior := ''
+_renglon_excel        := 2
+_total_importaciones  := 0
+_fecha                := 0
+$valor_excel          := ''
+
+
+SUB_RUTINA carga_datos
+  EXCEL ( 'TRAE_VALOR' , 1 , _renglon_excel , $clave             )
+  EXCEL ( 'TRAE_VALOR' , 3 , _renglon_excel , $tipo_nomina_nuevo )
+  EXCEL ( 'TRAE_VALOR' , 4 , _renglon_excel , $tipo_nomina_anterior )
+  EXCEL ( 'TRAE_VALOR' , 5 , _renglon_excel , $valor_excel       )
+                _fecha           := CALCULA_FECHA ( 
+                                                         VALOR ( SUBSTR ( $valor_excel , 7 , 4 ) ) , 
+                                                         VALOR ( SUBSTR ( $valor_excel , 4 , 2 ) ) , 
+                                                         VALOR ( SUBSTR ( $valor_excel , 1 , 2 ) ) 
+                                                       )
+
+
+
+
+FIN_SUB_RUTINA
+
+USA_ARCHIVO('EMPPRIN','EMPEXT','CLAVE')
+
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 1 , 1 , $path_archivo )
+carga_datos
+  MIENTRAS ( $clave <> '' )
+    $valor := $clave
+    imprime_columna
+      SI ( TRAE_REGISTRO ( 'EMPPRIN' , $clave ) )
+        $valor := 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' +'EMPPRIN':'NOMBREN'
+        imprime_columna
+#        $valor := 'EMPPRIN':'TIPO_NOM'
+        imprime_columna
+          SI ( TRAE_REGISTRO ( 'TIPONOM' , $tipo_nomina_nuevo ) )
+            $valor := $tipo_nomina_nuevo
+            imprime_columna
+            $valor := $valor_excel
+            imprime_columna
+              SI ( _grabar )
+                'EMPPRIN':'TIPO_NOM' := $tipo_nomina_nuevo
+          SI ( TRAE_REGISTRO ( 'EMPTIPONOM' , $clave , _fecha ) = FALSO )
+                 AGREGA_REGISTRO('EMPTIPONOM')
+                'EMPTIPONOM':'CLAVE'         := $clave
+          FIN_SI
+                'EMPTIPONOM':'FECHA_ENTRADA' := _fecha
+                'EMPTIPONOM':'CATALOGO'      := $tipo_nomina_nuevo
+                GRABA_BASE ( 'EMPPRIN' )
+                GRABA_BASE ( 'EMPTIPONOM' )
+              FIN_SI
+              _total_importaciones  :=  _total_importaciones + 1
+          SI_NO
+            $valor := '(' + $tipo_nomina_nuevo + ') NO VALIDO'
+            imprime_columna
+          FIN_SI
+      SI_NO
+        $valor := 'CLAVE NO RECONOCIDA'
+        imprime_columna
+        $valor := '' ;; imprime_columna ;; $valor := '' ;; imprime_columna 
+      FIN_SI
+    $valor := 'SIMULACION'
+      SI ( _grabar )
+        $valor := 'GRABADO'
+      FIN_SI
+    imprime_columna
+    imprime_renglon    
+    _renglon_excel := _renglon_excel + 1
+    carga_datos
+  FIN_MIENTRAS
+
+IMPRIME ;; IMPRIME
+IMP ( 'TOTAL DE IMPORTACIONES -> ' , _total_importaciones ) ;; IMPRIME
+IMP ( '* * * * * * * * * * * * * * * * * * * * *' );; IMPRIME
+IMP ( ' * * * * * * * * * * * * * * * * * * * * *' );; IMPRIME
+IMPRIME
+
+TERMINA_REPORTE

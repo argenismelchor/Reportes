@@ -1,0 +1,165 @@
+#GENERAL DE TRABAJADORES
+#VERSION 2.500
+#NO EDITAR
+#Este proceso hace una actualización de salarios integrados a los trabajadores vigentes de la empresa que esten topados o bien cumplan años de antiguedad en la empresa.
+#Pide la fecha y tipo del aumento. Mientras no se indique grabar este reporte no afecta los kardex de los empleados.
+#Este proceso imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal. De los sueldos imprime el sueldo anterior, el nuevo y el aumento.
+#Este proceso tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#DESCRIPCION
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ('FECHA','',_ff)
+NUEVO_PARAMETRO_CHEQ('ARRASTRAR VARIABLE', '', _arr_var)
+NUEVO_PARAMETRO_CHEQ('GRABAR DATOS', '', _grabar)
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+   IMP ( CENTRA ('ACTUALIZACION DE SALARIOS INTEGRADOS'));; IMPRIME
+   IMP ( REPITETXT('=',80));; IMPRIME
+   SI ( CD_DC = 0 )
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), DER('SUCURSAL', 10), COL(60), DER('DEPTO', 10), COL(70), DER('PUESTO', 10) );; IMPRIME
+   SI_NO
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), DER('SUCURSAL', 10), COL(60), DER('C.C.', 10), COL(70), DER('PUESTO',10) );; IMPRIME
+   FIN_SI
+   IMP ( REPITETXT('-',80) );; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_A ( $filtro )
+$val_tabla:=''
+_i:=0
+_sal_anterior:=0
+_sal_nuevo:=0
+_var_imss:=0
+_var_info:=0
+_int_imss:=0
+_int_info:=0
+_minimo_anterior:=0
+_minimo_actual:=0
+_int_imss_ant:=0
+_sueldo:=0
+$indice := ''
+
+#Subrutina diversas
+
+SUB_RUTINA carga_minimo
+  SI ( TRAE_REGISTRO_VIG('MINIMO', _ff ) = FALSO )
+    MENSAJE('NO HAY MINIMO A LA FECHA ESPECIFICADA')
+    TERMINA_REPORTE
+  SI_NO
+      SI ('PATRONAL':'ZONA ECONOMICA'='A')
+        _minimo_actual:='MINIMO':'MINIMO A'
+      FIN_SI
+      SI ('PATRONAL':'ZONA ECONOMICA'='B')
+        _minimo_actual:='MINIMO':'MINIMO B'
+      FIN_SI
+      SI ('PATRONAL':'ZONA ECONOMICA'='C')
+        _minimo_actual:='MINIMO':'MINIMO C'
+      FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA agrega_movimiento
+  SI ( _grabar = 1 )
+    ULTIMO_REGISTRO( 'EMPSDO' )
+    SI ( 'EMPSDO':'FECHA' <> _ff )
+      AGREGA_REGISTRO( 'EMPSDO' )
+    FIN_SI
+    'EMPSDO':'CLAVE' := 'EMPPRIN':'CLAVE'
+    'EMPSDO':'FECHA' := _ff
+    'EMPSDO':'TIPO' := 'M'
+    'EMPSDO':'SDO1' := _sueldo
+    'EMPSDO':'SDO2' := _var_imss
+    'EMPSDO':'SDO3' := _int_imss
+    'EMPSDO':'SDO4' := _var_info
+    'EMPSDO':'SDO5' := _int_info
+    GRABA_BASE( 'EMPSDO' )
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+    IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE',1,30) )
+    IMP ( COL(50), DER('EMPPRIN':'SUC_CLAVE', 10), COL(60), DER('EMPPRIN':'DEP_CLAVE', 10), COL(70), DER('EMPPRIN':'PUE_CLAVE', 10) )
+    IMPRIME
+    DECIMALES := 2
+    IMP( COL(8), 'Integrado Anterior: ', DER($(_int_imss_ant), 8), '     Integrado Nuevo: ',  DER($(_int_imss), 8)) 
+    IMPRIME
+    agrega_movimiento
+FIN_SUB_RUTINA
+
+SUB_RUTINA encabezados
+  SI ( $indice = 'REGISTRO PATRONAL' )
+    SI ( TRAE_REGISTRO ( 'SUCURSAL', TRAE_DSP( 'S', _ff ) ) )
+      SI ( TRAE_REGISTRO ( 'PATRONAL', 'SUCURSAL':'REGISTRO PATRONAL' ) )
+        carga_minimo
+      FIN_SI
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+INCLUYE UTIL2.DAT
+
+SUB_RUTINA checa_datos
+  ULTIMO_REGISTRO('EMPSDO')
+  DECIMALES := 2
+  SI (('EMPSDO':'FECHA'<=_ff) AND ('EMPSDO':'TIPO' <> 'B'))
+    _int_imss_ant:='EMPSDO':'SDO3'
+    _sueldo:='EMPSDO':'SDO1'
+    SI ( _arr_var = 1 )
+      _var_imss:='EMPSDO':'SDO2'
+      _var_info:='EMPSDO':'SDO4'
+    SI_NO
+      _var_imss:=0
+      _var_info:=0
+    FIN_SI
+    _int_imss:=INTEGRA_IMSS( _ff, _sueldo, _var_imss )
+    _int_info:=INTEGRA_INFONAVIT( _ff, _sueldo, _var_info )
+    SI (( TRUNCAR(_int_imss_ant) <> TRUNCAR(_int_imss) ) AND (_int_imss > 0))
+      datos_trabajador
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+_reporte_ssocial := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( ES_VIGENTE ( _ff ))
+    checa_datos
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte

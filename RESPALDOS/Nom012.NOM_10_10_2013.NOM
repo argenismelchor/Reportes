@@ -1,0 +1,164 @@
+#POLIZA CONTABLE ESTANDAR
+#NO EDITAR
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra la poliza contable estandar de los empleados que tuvieron alguna cantidad pagada en el periodo vigente.
+#Este reporte imprime la poliza de los indices seleccionados en 3 columnas ( Pecepciones, Deducciones, Conceptos ). 
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+_per_sel := 0
+
+ENCABEZADO  
+   DECIMALES := 0
+   SI ( _per_sel = 0 )
+      $titulo_reporte := 'POLIZA CONTABLE DE NOMINA ' + 'TIPONOM':'CLAVE' + ' ' + .('TIPONOM':'ACTUAL') + ' DEL '+ FECHA ('PERIODO':'FECHA INICIAL')+ ' AL ' + FECHA ('PERIODO':'FECHA FINAL')
+   SI_NO
+      $titulo_reporte := 'POLIZA CONTABLE DE NOMINA ' + 'TIPONOM':'CLAVE' + ' ' + .( _per_sel ) + ' DEL '+ FECHA ('PERIODO':'FECHA INICIAL')+ ' AL ' + FECHA ('PERIODO':'FECHA FINAL')
+   FIN_SI
+   DECIMALES := 2
+   encabezado_ini
+   IMP ( COL(1), 'CONCEPTO', COL(15), 'DESCRIPCION', COL(50), DER('CARGOS',13), COL(65), DER('ABONO',13) ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+RENGLONES     := 65
+COLUMNAS      := 80
+
+### VARIABLES GLOBALES DEL REPORTE
+$tipo_act := ''
+VAR_T ( &kardex )
+VAR_T ( &indices )
+_num_ind := 0
+$aux:=''
+$aux1:=''
+$con:=''
+_abonos:=0
+_cargos:=0
+$indice := ''
+
+#Subrutina diversas
+
+SUB_RUTINA _imp_tot
+   PRIMER_REGISTRO ( 'NOMINA' )
+   MIENTRAS ( FIN_BASE ( 'NOMINA' ) = 0 )
+      SI ( 'NOMINA':'TOTAL' <> 0 )
+         SI  ( TRAE_REGISTRO ( 'CONCEPTO', 'NOMINA':'CLAVE' ))
+            SI ( 'CONCEPTO':'IMPRIMIR' <> 0 )
+               SI ( 'CONCEPTO':'PDC' = 0 )
+                 IMP ( 'CONCEPTO':'CARGO' )
+                 IMP ( COL(15), 'CONCEPTO':'DESCRIPCION' )
+                 IMP ( COL(50), DER ( $ ( 'NOMINA':'TOTAL' ), 13 ))
+                 _cargos:=_cargos + 'NOMINA':'TOTAL'
+                 IMPRIME
+               FIN_SI
+               SI ( 'CONCEPTO':'PDC' = 1 )
+                 IMP ( 'CONCEPTO':'ABONO' )
+                 IMP ( COL(15), 'CONCEPTO':'DESCRIPCION' )
+                 IMP ( COL(65), DER ( $ ( 'NOMINA':'TOTAL' ), 13 ))
+                 _abonos:=_abonos + 'NOMINA':'TOTAL'
+                 IMPRIME
+               FIN_SI
+               SI ( 'CONCEPTO':'PDC' = 2 )
+                 SI ('CONCEPTO':'CLAVE' = 'TOTA')
+                   IMP ( 'CONCEPTO':'ABONO' )
+                   IMP ( COL(15), 'CONCEPTO':'DESCRIPCION' )
+                   IMP ( COL(65), DER ( $ ( 'NOMINA':'TOTAL' ), 13 ))
+                   _abonos:=_abonos + 'NOMINA':'TOTAL'
+                   IMPRIME
+                 FIN_SI
+               FIN_SI
+            FIN_SI
+         SI_NO
+            IMP ( COL (11), 'DESCONOCIDO' )
+            IMP ( DER ( $ ( 'NOMINA':'TOTAL' ), 10 ))
+            IMPRIME
+         FIN_SI
+      FIN_SI
+      SIGUIENTE_REGISTRO ( 'NOMINA' )
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   DECIMALES:=2
+   #Incremeto de valores para los indices seleccionados
+   _num_ind := 0
+   REPITE
+     ACUMULA_TOTALES ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) )
+     _num_ind := _num_ind + 1
+   HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+   DECIMALES:=2
+   USA_KARDEX( $indice )
+   IMPRIME
+   IMP ( 'SUBTOTAL ', $indice ) ;; IMPRIME
+   IMPRIME
+   _imp_tot
+   DECIMALES:=2
+   SI ((_cargos>0) OR (_abonos>0))
+     IMP( COL(50), '-------------', COL(65), '-------------' )
+     IMPRIME
+     IMP(COL(50), DER($(_cargos),13), COL(65), DER($(_abonos),13)) ;; IMPRIME
+   FIN_SI
+   PON_TOTAL_0
+   USA_KARDEX('GENERAL')
+   IMPRIME
+   _cargos:=0
+   _abonos:=0 
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+#Creacion de Kardex para los indices seleccionados
+_num_ind := 0
+REPITE
+  CREA_KARDEX ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) )
+  _num_ind := _num_ind + 1
+HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+
+base_trabajadores
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI (( TOTAL ('TOTA') <> 0 ) O ( TOTAL ('PERC') <> 0 ) O ( TOTAL ('DEDU') <> 0 ))
+    datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte
+

@@ -1,0 +1,75 @@
+#EMPLEADOS VIGENTES CON COSTO COMEDOR
+#EXCEL
+#USUARIO =*
+#VERSION 1.0
+#NO EDITAR
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'EMPLEADOS VIGENTES CON COSTO COMEDOR' )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(60), DER( 'COSTO', 10) ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+_renglon := 1
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE', COL(60), DER( 'EMPPRIN':'COSTO_COMEDOR',10) )
+   IMPRIME
+   SI ( $salida = 'EXCEL' )
+     _renglon := _renglon + 1
+     EXCEL( 'PON_VALOR', 1, _renglon, 'EMPPRIN':'CLAVE' )
+     EXCEL( 'PON_VALOR', 2, _renglon, 'EMPPRIN':'NOMBRE' )
+     DECIMALES := 2
+     EXCEL( 'PON_VALOR', 3, _renglon, .( 'EMPPRIN':'COSTO_COMEDOR' ) )
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. COSTO_COMEDOR'
+base_trabajadores
+
+SI ( $salida = 'EXCEL' )
+  EXCEL( 'PON_VALOR', 1, 1, 'CLAVE' )
+  EXCEL( 'PON_VALOR', 1, 2, 'NOMBRE' )
+  EXCEL( 'PON_VALOR', 1, 3, 'COSTO' )
+FIN_SI
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE( FECHA_HOY ) )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

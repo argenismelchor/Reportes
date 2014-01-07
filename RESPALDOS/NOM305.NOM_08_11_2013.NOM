@@ -1,0 +1,147 @@
+#IMPORTACION DE CREDITOS INFONAVIT
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte para importar creditos infonavit.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA' , 'PANTALLA', $salida)
+NUEVO_PARAMETRO_RUTA ( 'EXCEL' , '' , $ruta ) 
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR' , '' , _grabar ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( EXISTE_ARCHIVO ( $ruta ) = FALSO ) 
+     MENSAJE ( 'error, archivo no encontrado.')
+     TERMINA_REPORTE
+FIN_SI
+
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , $ruta ) 
+
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+
+
+# VARIABLES GLOBALES
+_filaexcel := 2
+$clave := '' ;; $nombre := '' ;; $credinfo := '' ;; $inifecinfo := '' ;; $tipodesc := '' ;; $valordesc := '' ;; $estado := '' ;; $tipo := '' ;; $tipodescant := '' ;; $mov := ''
+_inifecinfo := 0
+# SUBRUTINAS GLOBALES
+
+ENCABEZADO
+   LETRA ( 'LETRA ENFATISADA' ) ;; IMPRIME
+   IMP ( COL(5) , 'CLAVE' , COL(15) , 'NOMBRE' , COL(45) , 'CREDINFO' , COL(65) , 'INIFECINFO' , COL(85) , 'TIPODESC' , COL(105), 'VALORDESC' , COL(125), 'MOVIMIENTO' , COL(145), 'ESTADO', COL(185) ) 
+   IMPRIME
+   LETRA ( 'LETRA CONDENSADA')  ;; IMPRIME
+FIN_ENCABEZADO
+
+SUB_RUTINA importa_credinfo
+   DECIMALES:= 0 
+FIN_SUB_RUTINA
+
+EXCEL ( 'TRAE_VALOR' , 1 , _filaexcel , $clave       ) 
+EXCEL ( 'TRAE_VALOR' , 2 , _filaexcel , $nombre      ) 
+EXCEL ( 'TRAE_VALOR' , 3 , _filaexcel , $credinfo    ) 
+EXCEL ( 'TRAE_VALOR' , 4 , _filaexcel , $inifecinfo  ) 
+EXCEL ( 'TRAE_VALOR' , 5 , _filaexcel , $tipodesc    ) 
+DECIMALES:= 2
+EXCEL ( 'TRAE_VALOR' , 6 , _filaexcel , $valordesc   ) 
+
+MIENTRAS ( $clave <> '' ) 
+
+ $estado := ''
+ SI ( TRAE_REGISTRO ( 'EMPPRIN' , $clave ) ) 
+
+      $tipo := $tipodesc
+
+      SI ( $tipodesc  = '1' ) 
+           $tipodesc := 'Porc'
+      FIN_SI
+      SI ( $tipodesc = '2' ) 
+           $tipodesc := 'Monto'
+      FIN_SI
+      SI ( $tipodesc  = '3' ) 
+           $tipodesc := 'SalMin'
+      FIN_SI
+
+      $tipodescant := 'EMPPRIN':'TIPO DESCUENTO'
+      SI ( $tipodescant = '1' ) 
+           $tipodescant := 'Porc'           
+      FIN_SI
+      SI ( $tipodescant = '2' ) 
+           $tipodescant := 'Monto' 
+      FIN_SI
+      SI ( $tipodescant = '3' ) 
+           $tipodescant := 'Salmin'
+      FIN_SI
+
+      DECIMALES:= 0 
+
+      _inifecinfo :=  CALCULA_FECHA ( VALOR ( SUBSTR ( $inifecinfo , 7 , 4 ) ) , VALOR ( SUBSTR ( $inifecinfo , 4 , 2 ) ) , VALOR ( SUBSTR ( $inifecinfo , 1 , 2 ) ) )  
+
+      FORMATO_FECHA := 3
+      SI ( ( 'EMPPRIN':'INICIO DESCUENTO INF' <> '' )  AND (  FECHA ( 'EMPPRIN':'INICIO DESCUENTO INF'  )  <> FECHA ( _inifecinfo )    ) ) 
+           $estado := 'Fecha Ant :' + FECHA ( 'EMPPRIN':'INICIO DESCUENTO INF'  ) + ' Fecha Act: ' +  FECHA ( _inifecinfo ) 
+      FIN_SI
+
+      
+      DECIMALES:= 2
+      SI ( ( 'EMPPRIN':'VALOR DESCUENTO'<> 0 ) AND ('EMPPRIN':'VALOR DESCUENTO' <> VALOR ( $valordesc  )) )  
+           $estado := $estado + ' Monto Ant :' + .('EMPPRIN':'VALOR DESCUENTO') + ' Monto Act: ' +  $valordesc 
+      FIN_SI
+
+      SI ( ( 'EMPPRIN':'TIPO DESCUENTO' <> '' ) AND ( $tipodescant <> $tipodesc ) )
+           $estado := $estado + ' Tipdesc ant :' +  $tipodescant + ' Tipdesc act : ' +  $tipodesc
+      FIN_SI
+
+      SI ( $estado = '' ) 
+          $estado := 'Ya se habia importado este credito'
+      FIN_SI
+
+      SI  (( 'EMPPRIN':'VALOR DESCUENTO' =  0 ) AND  ( 'EMPPRIN':'TIPO DESCUENTO' = '' )  AND ( 'EMPPRIN':'INICIO DESCUENTO INF' = '' ) ) 
+            $estado := 'Nuevo Credito'
+      FIN_SI
+
+      SI ( $estado = '' ) 
+          $estado := 'Ya se habia importado este credito'
+      FIN_SI
+
+      SI ( _grabar = 1 ) 
+           'EMPPRIN':'CREDITO_INFONAVIT'     := $credinfo
+           'EMPPRIN':'INICIO DESCUENTO INF'  := _inifecinfo
+           DECIMALES:= 0
+           'EMPPRIN':'TIPO DESCUENTO'        := VALOR ( $tipo ) 
+            DECIMALES:= 2
+           'EMPPRIN':'VALOR DESCUENTO'       := VALOR ( $valordesc ) 
+           GRABA_BASE ( 'EMPPRIN')
+      FIN_SI
+
+ SI_NO
+      $estado := 'la clave no existe.'
+ FIN_SI
+
+ SI ( _grabar = 1 ) 
+      $mov := 'Importacion'
+ SI_NO
+      $mov := 'Consulta'
+ FIN_SI
+
+ IMP ( COL(5) , $clave , COL(15) , $nombre , COL(45) , $credinfo , COL(65) , $inifecinfo  , COL(85) , $tipodesc , COL(105),  $valordesc , COL(125), $mov ) 
+ IMPRIME
+ IMP ( COL(5), 'ESTADO =>' + $estado ) 
+ IMPRIME 
+   
+ _filaexcel := ( _filaexcel + 1 ) 
+ EXCEL ( 'TRAE_VALOR' , 1 , _filaexcel , $clave       ) 
+ EXCEL ( 'TRAE_VALOR' , 2 , _filaexcel , $nombre      ) 
+ EXCEL ( 'TRAE_VALOR' , 3 , _filaexcel , $credinfo    ) 
+ EXCEL ( 'TRAE_VALOR' , 4 , _filaexcel , $inifecinfo  ) 
+ EXCEL ( 'TRAE_VALOR' , 5 , _filaexcel , $tipodesc    ) 
+ EXCEL ( 'TRAE_VALOR' , 6 , _filaexcel , $valordesc   ) 
+FIN_MIENTRAS
+
+TERMINA_REPORTE

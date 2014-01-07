@@ -1,0 +1,70 @@
+#VALIDACION DE DSP
+#VERSION 2.5
+#USUARIO =*
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL', '', _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL', '', _ff )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'VALIDACION DE DSP DEL ' + FECHA( _fi ) + ' AL ' + FECHA( _ff )
+   encabezado_ini
+   IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+  pie_estandar
+FIN_PIE
+
+# PARAMETROS
+DECIMALES     := 2
+COLUMNAS      := 80
+RENGLONES     := 65
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   IMPRIME
+FIN_SUB_RUTINA
+
+
+_filtro := 0
+ABRE_BASE( 'EMPPRIN' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE( _fi, _ff ) )
+     _filtro := 0     
+     SI ( TRAE_REGISTRO( 'CENTROC', TRAE_DSP( 'D', _ff ) ) = FALSO )
+       _filtro := 1
+     FIN_SI
+     SI ( TRAE_REGISTRO( 'PUESTO', TRAE_DSP( 'P', _ff ) ) = FALSO )
+       _filtro := 1
+     FIN_SI
+     SI ( TRAE_REGISTRO( 'SUCURSAL', TRAE_DSP( 'S', _ff ) ) = FALSO )
+       _filtro := 1
+     FIN_SI
+
+     SI ( _filtro = 1 )
+       formato_trabajador
+     FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+TERMINA_REPORTE

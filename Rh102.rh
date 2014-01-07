@@ -1,0 +1,51 @@
+#IDIOMAS
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte despliega el catalogo de idiomas.
+#Imprime la clave y la descripcion del idioma.
+#FIN_DESCRIPCION
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+NUEVO_PARAMETRO_SEL ('ORDEN','CLAVE/DESCRIPCION',_orden)
+LEE_PARAMETROS
+
+FORMATO_FECHA := 1
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'TABLA DE IDIOMAS'
+   encabezado_ini
+   IMP ( COL(1), 'CLAVE', COL(11), 'DESCRIPCION');; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+### DEFINICION DE LA TABLA
+VAR_T ( sql )
+AGREGA_VALOR_COL ( sql, 0, 'SELECT *' )
+AGREGA_VALOR_COL ( sql, 0, 'FROM IDIOMA' ) 
+SI ( _orden = 0 )
+  AGREGA_VALOR_COL ( sql, 0, 'ORDER BY CLAVE' )
+SI_NO
+  AGREGA_VALOR_COL ( sql, 0, 'ORDER BY DESCRIPCION' )
+FIN_SI
+CREA_CONSULTA ( 'CONSULTA', sql )
+PRIMER_REGISTRO ( 'CONSULTA' )
+_total := 0
+
+MIENTRAS ( FIN_BASE ( 'CONSULTA' ) = FALSO )
+  IMP ( COL(1), 'CONSULTA':'CLAVE', COL(11), 'CONSULTA':'DESCRIPCION' ) ;; IMPRIME
+  _total := _total + 1
+  SIGUIENTE_REGISTRO ( 'CONSULTA' )
+FIN_MIENTRAS
+
+DECIMALES := 0
+IMPRIME
+IMP ( COL (10), 'TOTAL DE IDIOMAS : ', _total ) ;; IMPRIME
+

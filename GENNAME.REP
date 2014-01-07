@@ -1,0 +1,84 @@
+#CORRIGE NOMBRES
+#REPORTE ESTANDAR DE MUESTRA
+#USUARIO =*
+#VERSION 2.7
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como base en los reportes.
+#CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL/DISCO', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'RFC'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INGRESO'
+_longitud  := 12
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+
+_condensado := 0
+$titulo_reporte := 'REPORTE ESTANDAR DE TRABAJADORES'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   'EMPPRIN':'NOMBREN' := MAYUSCULAS('EMPPRIN':'NOMBREN') 
+   'EMPPRIN':'NOMBREP' := MAYUSCULAS('EMPPRIN':'NOMBREP') 
+   'EMPPRIN':'NOMBREM' := MAYUSCULAS('EMPPRIN':'NOMBREM') 
+
+   GRABA_BASE('EMPPRIN')
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+ABRE_BASE('EMPPRIN')
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+     datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+TERMINA_REPORTE

@@ -1,0 +1,679 @@
+[] ('NOCALC') ;; # 
+][
+[] ('FINI') ;; # NO EDITAR 
+   # ---------- Cálculo de Proporciones ( VACACIONES, PRIMA VACACIONAL y AGUINALDO )
+   SI (( CAP1 ('FINI') = 1 ) OR ( ( _baja_periodo = 1 ) AND ( CAP2 ('FINI') = 0 ) ) )   
+      SI ( _fecha_baja <> 0 )      
+         DECIMALES := 8
+         _ant := ( ( _fecha_baja - 'EMPPRIN':'INGRESO' ) + 1 ) / 365
+         _ant := TRUNCAR ( _ant + 1 )
+         SI ( _ant >= 0 )
+            SI ( TRAE_FACTOR( _fecha_baja, '', _ant ) )
+              _f_agdo := 'FACTOR':'DIAS DE AGUINALDO'       
+              _f_pvac := 'FACTOR':'PRIMA VACACIONAL' / 'FACTOR':'DIAS DE VACACIONES'
+            FIN_SI
+         FIN_SI
+         SI ( 'EMPPRIN':'INGRESO' > _inicio_año )
+            _f_agdo := _f_agdo * ( ( ( _fecha_baja - 'EMPPRIN':'INGRESO' ) + 1 ) / 365 ) * _sueldo_prom
+         SI_NO
+            _f_agdo := _f_agdo * ( ( ( _fecha_baja - _inicio_año ) + 1 ) / 365 ) * _sueldo_prom
+         FIN_SI
+         _f_vaca := SDO_VACACIONAL_X_PAGAR ( _fecha_baja ) * _sueldo_prom
+         SI ( $pv_automatica = 'S' )
+            _f_pvac := ( _vac_ultimo_año * _sueldo_prom ) * _f_pvac
+          SI_NO
+            _f_pvac := _f_vaca * _f_pvac
+         FIN_SI
+      FIN_SI
+   FIN_SI
+   # ---------- Cálculo de Liquidación ( INDEMNIZACION 20 DIAS X AÑO, INDEMNIZACION 3 MESES y PRIMA ANTIGUEDAD )
+   SI ( CAP2 ('FINI') = 1 )
+      SI ( _fecha_baja <> 0 )
+         _ant    := ( ( _fecha_baja - 'EMPPRIN':'INGRESO' ) + 1 ) / 365
+         DECIMALES := 2
+         _ant    := _ant + AJUSTA ( _ant , 1 )
+         DECIMALES := 8
+         _f_in3m := _sueldo_prom * 90
+         _f_in20 := _sueldo_prom * 20 * _ant
+         SI ( _sueldo_prom > ( _minimo * 2 ) )
+            _f_pant := _ant * 12 * _minimo * 2
+         SI_NO
+            _f_pant := _ant * 12 * _sueldo_prom
+         FIN_SI
+      FIN_SI
+   FIN_SI
+   SI ( _f_vaca <> 0 )
+      CAPTURA_CONCEPTO ('12')
+   FIN_SI
+   SI ( _f_pvac <> 0 )
+      CAPTURA_CONCEPTO ('13')
+   FIN_SI
+   SI ( _f_in3m <> 0 )
+      CAPTURA_CONCEPTO ('21')
+   FIN_SI
+   SI ( _f_in20 <> 0 )
+      CAPTURA_CONCEPTO ('22')
+   FIN_SI
+   SI ( _f_pant <> 0 )
+      CAPTURA_CONCEPTO ('23')
+   FIN_SI
+   SI ( _f_agdo <> 0 )
+      CAPTURA_CONCEPTO ('30')
+   FIN_SI
+][
+[] ('DIAS') ;; # NO EDITAR
+   DECIMALES := 8
+   TOTAL ('DIAS') := 0
+][
+[] ('DVIG') ;; # NO EDITAR
+   SI ( CAP1 ('DVIG') <> 0 )  
+     TOTAL ('DVIG') := CAP1 ('DVIG')
+   SI_NO
+    SI (CAP2('DVIG') <> 0 ) 
+      TOTAL ('DVIG') := (CAP2 ('DVIG') * _factor_dia)# - ( _faltas + _incapacidades)# + _vacaciones ) 
+     SI_NO
+      # Se aplican las incidencias, faltas, incapacidades, vacaciones, las vacaciones se toman solo las disfrutadas, ya que se puede dar el caso de que un empleado tome vacaciones
+      # pendientes que ya se le habian pagado previamente, es por eso que las que se aplican en el concepto 12, son las vac pagadas, puesto que te permiet pagarlas sin que el emppleado
+      # salga de vacaciones
+      # validacion de dias de pago  
+      TOTAL ('DVIG') := _dias_pago # - ( _faltas + _incapacidades + _vacaciones ) 
+      SI ( TOTAL ('DVIG' ) < 0 ) ;; TOTAL ( 'DVIG') := 0 ;; FIN_SI
+    FIN_SI
+   FIN_SI
+   _prop_7_dia := 0
+   SI ( 'PERIODO':'DIAS DE PAGO' <= 7 ) 
+      SI ( $sem_ing = 'S' )
+         _prop_7_dia := ( TOTAL ('DVIG') + _vacaciones ) / 2.5
+      SI_NO
+         _prop_7_dia := ( TOTAL ('DVIG') + (_vacaciones *1.2 ) ) / 6
+      FIN_SI
+      TOTAL ('DIAS') := TOTAL ('DVIG') + _prop_7_dia 
+     SI_NO
+      TOTAL ('DIAS') := TOTAL ('DVIG')
+   FIN_SI   
+   
+][
+[] ('01') ;; # NO EDITAR
+   $concepto_exen := '01'
+   SI (( CAP1 ('01') <> 0 ) O ( CAP2 ('01') <> 0 )) 
+      TOTAL ('01') := ( CAP1 ('01') * _sueldo_prom ) + CAP2 ('01') 
+   SI_NO
+      TOTAL ('01') := TOTAL ('DVIG') * _sueldo_prom
+   FIN_SI
+][
+[] ('02') ;; # NO EDITAR
+   $concepto_exen := '02'
+   SI (( CAP1 ('02') <> 0 ) O ( CAP2 ('02') <> 0 ))
+      TOTAL ('02') := ( CAP1 ('02') * _sueldo_prom ) + CAP2 ('02')
+   SI_NO
+      TOTAL ('02') := _prop_7_dia * _sueldo_prom
+   FIN_SI
+   CHECA_EXENTO
+][
+[] ('03') ;; #   
+   TOTAL ('03') := CAP1 ('03')   
+   $concepto_exen := '03'
+   CHECA_EXENTO
+][
+[] ('04') ;; # 
+   TOTAL ('04') := ( CAP1 ('04') * _sueldo_prom ) + CAP2 ('04')
+   $concepto_exen := '04'
+   CHECA_EXENTO
+][
+[] ('05') ;; # 
+   TOTAL ('05') := CAP1 ('05')
+   _nogr := _nogr + TOTAL ('05')
+   $concepto_exen := '05'
+   CHECA_EXENTO
+][
+[] ('06') ;; # 
+   TOTAL ('06') := CAP1 ('06')
+   $concepto_exen := '06'
+   CHECA_EXENTO
+][
+[] ('07') ;; # 
+   TOTAL ('07') := CAP1 ('07')
+   $concepto_exen := '07'
+   CHECA_EXENTO
+][
+[] ('08') ;; # 
+   TOTAL ('08') := CAP1 ('08')
+   $concepto_exen := '08'
+   CHECA_EXENTO
+][
+[] ('09') ;; # 
+   TOTAL ('09') := CAP1 ('09')
+   $concepto_exen := '09'
+   CHECA_EXENTO
+][
+[] ('10') ;; # NO EDITAR
+   SI ( CAP3 ('10') <> 0 )
+       TOTAL ('10') := CAP3 ('10')
+   SI_NO
+   
+   FORMULA_TIEMPO_EXTRA
+   
+   FIN_SI
+][
+[] ('11') ;; # NO EDITAR
+     $concepto_exen := '11'
+   
+      $hrsturn := 'EMPPRIN':'TURNO'
+   
+   
+   SI ($hrsturn = '001' )
+   TOTAL ('11') := ( _sueldo_prom / 7.5 * 3)* CAP1 ('11') + CAP2 ('11')
+   FIN_SI
+   
+   SI ($hrsturn = '002' )
+   TOTAL ('11') := (  _sueldo_prom / 7  * 3) * CAP1 ('11') + CAP2 ('11')
+   FIN_SI
+   
+   SI ($hrsturn = '003' )
+   TOTAL ('11') := (  _sueldo_prom / 6.4  * 3)* CAP1 ('11') + CAP2 ('11')
+   FIN_SI
+   
+     
+   #      TOTAL ('11') := ( _sueldo_prom / _hrsturn * 3) * ( CAP1 ('11') + CAP2 ('11'))
+   
+   
+   #TOTAL ('11') := ( CAP1 ('11') * ( _sueldo_prom / 8 ) * 3 ) + CAP2 ('11')
+   CAPTURA_CONCEPTO ('HEX3')
+   TOTAL ('HEX3') := CAP1 ('11')
+][
+[] ('12') ;; # NO EDITAR
+   SI ( $vac_automatica = 'S' ) # Si las vacaciones estan en automatico, se toman del kardex de ausentismo vacaciones, las que se aplican son las pagadas
+    TOTAL ('12') := _vac_pag * _sueldo_prom
+   FIN_SI
+   SI ( _f_vaca <> 0 ) 
+    TOTAL ('12') := TOTAL ( '12') + _f_vaca
+   FIN_SI
+   SI (( CAP1 ('12') <> 0 ) OR ( CAP2 ('12') <> 0 ))
+    TOTAL ('12') := ( CAP1 ('12') * _sueldo_prom ) + CAP2 ('12')
+   FIN_SI
+   SI (( CAP1 ('FINI') <> 1 ) OR (CAP1('12') <> 0))
+    CAPTURA_CONCEPTO ('DIAS')
+    TOTAL ('DIAS') := TOTAL ('DIAS') + ( TOTAL ('12') / _sueldo_prom )
+   FIN_SI
+   CAPTURA_CONCEPTO ('13')
+   $concepto_exen := '12'
+   CHECA_EXENTO
+][
+[] ('13') ;; # NO EDITAR
+   $concepto_exen := '13'     
+   SI ( $pv_automatica <> 'S')  # Si el calculo de prima vacacional es automatico, se paga en el aniversario, esto lo hace desde el ciclo principal la funcion valida_prima
+      TOTAL ('13') := TOTAL ('12') * _fpvac          
+   FIN_SI
+   SI ( _f_pvac <> 0 ) 
+      TOTAL ('13') := TOTAL ('13') + _f_pvac          
+   FIN_SI
+   SI ( CAP1 ('13') <> 0 ) 
+     TOTAL ('13') := CAP1 ('13')
+   FIN_SI
+   SI ( CAP3 ('13') = 1 )
+      TOTAL ('13') := 0
+   FIN_SI
+   SI ( TOTAL ('13') <> 0 )  
+      SI ( TRAE_REGISTRO ( 'CONCEPTO' , $concepto_exen ) )	
+          _aux1 := 'CONCEPTO':'EXENTO_PESOS' + ( 'CONCEPTO':'EXENTO_S_M' * _minimo )
+      FIN_SI	    
+      CAPTURA_CONCEPTO ('EX13')
+      SI ( _acumpv = 0 )
+         SI ( TOTAL ('13') > _aux1 )
+            _exento := _exento + _aux1
+            TOTAL ('EX13') := _aux1
+         SI_NO
+            _exento := _exento + TOTAL ('13')
+            TOTAL ('EX13') := TOTAL ('13')
+         FIN_SI
+      SI_NO
+         _dif := _aux1 - _acumpv
+         SI ( _dif > 0 )
+            SI ( TOTAL ('13') > _dif )
+               _exento := _exento + _dif
+               TOTAL ('EX13') := _dif
+            SI_NO
+               _exento := _exento + TOTAL ('13')
+               TOTAL ('EX13') := TOTAL ('13')
+            FIN_SI
+         SI_NO
+            _exento := _exento
+            TOTAL ('EX13') := 0
+         FIN_SI
+      FIN_SI
+   FIN_SI
+][
+[] ('14') ;; # 
+   TOTAL ('14') := ( CAP1 ('14') * _sueldo_prom * 2 ) + CAP2 ('14')
+   $concepto_exen := '14'
+   CHECA_EXENTO
+][
+[] ('15') ;; # 
+   TOTAL ('15') := ( CAP1 ('15') * _sueldo_prom * 2 ) + CAP2 ('15')
+   $concepto_exen := '15'
+   CHECA_EXENTO
+][
+[] ('16') ;; # NO EDITAR
+   $concepto_exen := '16'
+   TOTAL ('16') := ( CAP1 ('16') * _sueldo_prom * _prima_dominical ) + CAP2 ('16')
+   CAP3  ('16') := TOTAL ('16') / ( _sueldo_prom * _prima_dominical )
+   SI ( TRAE_REGISTRO ( 'CONCEPTO' , $concepto_exen  ) )
+      _aux1 := 'CONCEPTO':'EXENTO_PESOS' + ( 'CONCEPTO':'EXENTO_S_M' * _minimo * CAP3 ('16') )
+   FIN_SI
+   CAPTURA_CONCEPTO ('EX16')
+   SI ( TOTAL ('16') > _aux1 )
+      _exento := _exento + _aux1
+      TOTAL ('EX16') := _aux1
+   SI_NO
+      _exento := _exento + TOTAL ('16')
+      TOTAL ('EX16') := TOTAL ('16')
+   FIN_SI
+][
+[] ('17') ;; # 
+   TOTAL ('17') := TOTAL ('17')  + ( TOTAL ('HEX2') * ( _sueldo_bolsa / 4 ))
+   SI ( $vac_automatica = 'S' ) # Si las vacaciones estan en automatico, se toman del kardex de ausentismo vacaciones, las que se aplican son las pagadas
+    TOTAL ('17') := TOTAL ('17') + (( _vac_pag * _sueldo_bolsa ) * _fpvac )
+   FIN_SI
+   TOTAL ('17') := TOTAL ('17')  + ( (CAP1 ('12') * _sueldo_bolsa ) * _fpvac )
+   TOTAL ('17') := TOTAL ('17')  + ( CAP1 ('14') * _sueldo_bolsa * 2 )
+   TOTAL ('17') := TOTAL ('17')  + ( CAP1 ('15') * _sueldo_bolsa * 2 )
+   TOTAL ('17') := TOTAL ('17')  + ( CAP1 ('16') * _sueldo_bolsa * _prima_dominical ) 
+   $concepto_exen := '17'
+   CHECA_EXENTO
+][
+[] ('18') ;; # 
+   TOTAL ('18') := CAP1 ('18')
+   $concepto_exen := '18'
+   CHECA_EXENTO
+][
+[] ('19') ;; #      
+      SI ( CAP1 ('19') <> 0 ) 
+        TOTAL ('19') := CAP1 ('19')
+      SI_NO
+        SI ( _pago_puntualidad > 0 )
+          SI ( ( _retardos <= _retardos_puntualidad ) AND ( _faltas_premio <= _faltas_puntualidad ) AND ( _incapacidades <= _incap_puntualidad ) AND ( _vacaciones <= _vacac_puntualidad ) OR ( CAP1 ('DVIG') > 0 ) )
+            TOTAL ('19') := ( _pago_puntualidad * _sueldo_prom ) * TOTAL ('DIAS')
+          FIN_SI
+        FIN_SI
+      FIN_SI
+      SI ( CAP3('19') = 1 )
+        TOTAL('19') := 0
+      FIN_SI
+      SI ( TOTAL('19') > 0 )
+        CAPTURA_CONCEPTO ('XI19')
+        _tope := _sueldo_int * 0.10 * TOTAL ('DIAS')
+        SI ( TOTAL ('19') > _tope )
+           TOTAL ('XI19') := _tope
+        SI_NO
+           TOTAL ('XI19') := TOTAL ('19')
+        FIN_SI
+        $concepto_exen := '19'
+        CHECA_EXENTO
+      FIN_SI
+][
+[] ('20') ;; #  
+      SI ( CAP1 ('20') <> 0 ) 
+        TOTAL ('20') := CAP1 ('20')
+      SI_NO
+        SI ( _pago_asistencia > 0 )
+          SI ( ( _faltas_premio <= _faltas_asistencia ) AND ( _incapacidades <= _incap_asistencia ) AND ( _vacaciones <= _vacac_asistencia ) OR ( CAP1 ('DVIG') > 0 ) )
+            TOTAL ('20') := (_pago_asistencia * _sueldo_prom ) * TOTAL ('DIAS')
+          FIN_SI
+        FIN_SI
+      SI ( CAP3('20') = 1 )
+        TOTAL('20') := 0
+      FIN_SI
+      FIN_SI
+      SI ( TOTAL('20') > 0 )
+        CAPTURA_CONCEPTO ('XI20')
+        _tope := _sueldo_int * 0.10 * TOTAL ('DIAS')
+        SI ( TOTAL ('20') > _tope )
+           TOTAL ('XI20') := _tope
+        SI_NO
+           TOTAL ('XI20') := TOTAL ('20')
+        FIN_SI
+        $concepto_exen := '20'
+        CHECA_EXENTO
+      FIN_SI
+][
+[] ('21') ;; # 
+   SI ( _f_in3m > 0 )
+     TOTAL('21') := _f_in3m
+   FIN_SI
+   SI ( CAP1 ('21') <> 0 )
+      TOTAL ('21') := CAP1 ('21')
+   FIN_SI
+   SI ( CAP2 ('21') = 1 )
+      TOTAL ('21') := 0
+   FIN_SI
+   CAPTURA_CONCEPTO ('23')
+   $concepto_exen := '21'
+   CHECA_EXENTO
+][
+[] ('22') ;; # 
+   SI ( _f_in20 > 0 )
+     TOTAL ('22') := _f_in20
+   FIN_SI
+   SI ( CAP1 ('22') <> 1 )
+      TOTAL ('22') := CAP1 ('22')
+   FIN_SI
+   SI ( CAP2 ('22') = 1 )
+      TOTAL ('22') := 0
+   FIN_SI
+   CAPTURA_CONCEPTO ('23')
+   $concepto_exen := '22'
+   CHECA_EXENTO
+][
+[] ('23') ;; # NO EDITAR
+   $concepto_exen := '23'
+   SI ( CAP2 ('23') <> 1 )
+      TOTAL ('23') := CAP1 ('23') + _f_pant
+   FIN_SI
+   _ant := ( ( 'PERIODO':'FECHA FINAL' - 'EMPPRIN':'INGRESO' ) + 1 ) / 365
+   _ant := _ant + AJUSTA ( _ant , 1 )
+   SI ( TRAE_REGISTRO ( 'CONCEPTO' , $concepto_exen ) )
+      _aux1 := 'CONCEPTO':'EXENTO_PESOS' + ( 'CONCEPTO':'EXENTO_S_M' * _minimo * _ant )
+   FIN_SI
+   CAPTURA_CONCEPTO ('EX22')
+   CAPTURA_CONCEPTO ('EX23')
+   SI ( ( TOTAL ('21') + TOTAL ('22') + TOTAL ('23') ) > _aux1 )
+      _exento := _exento + _aux1
+      CAP1 ('EX23') := _aux1
+   SI_NO
+      _exento := _exento + ( TOTAL ('21') + TOTAL ('22') + TOTAL ('23') )
+      CAP1 ('EX23') := TOTAL ('21') + TOTAL ('22') + TOTAL ('23')
+   FIN_SI
+   # ---------- Desgloce de Exentos para Declaración Anual ( Exento PRIMA DE ANTIGUEDAD )
+   SI ( CAP1 ('EX23') > TOTAL ('23') )
+      TOTAL ('EX23') := TOTAL ('23')
+      CAP1  ('EX23') := CAP1  ('EX23') - TOTAL ('EX23')
+   SI_NO
+      TOTAL ('EX23') := CAP1  ('EX23')
+      CAP1  ('EX23') := 0
+   FIN_SI
+   # ---------- Desgloce de Exentos para Declaración Anual ( Exento INDEMNIZACION )
+   SI ( CAP1 ('EX23') > 0 )
+      TOTAL ('EX22') := CAP1 ('EX23')
+      CAP1  ('EX23') := 0
+   FIN_SI
+][
+[] ('24') ;; # 
+   TOTAL ('24') := CAP1 ('24')
+   $concepto_exen := '24'
+   CHECA_EXENTO
+][
+[] ('25') ;; # 
+   TOTAL ('25') := CAP1 ('25')
+   $concepto_exen := '25'
+   CHECA_EXENTO
+][
+[] ('26') ;; # 
+   TOTAL ('26') := CAP1 ('26')
+   SI ( CAP3('26') = 1 )
+      TOTAL ('26') := 0
+   FIN_SI
+   $concepto_exen := '26'
+   CHECA_EXENTO
+][
+[] ('27') ;; #    
+   TOTAL ('27') := CAP1 ('27') + CAP2 ('27') + CAP3 ('27')
+   $concepto_exen := '27'
+   CHECA_EXENTO   
+][
+[] ('29') ;; # 
+   FORMULA_VALES
+   $concepto_exen := '29'
+   CHECA_EXENTO
+][
+[] ('30') ;; # NO EDITAR
+   SI ( _f_agdo > 0 )
+     TOTAL ('30'):= _f_agdo
+   FIN_SI
+   SI ( ( CAP1 ('30') <> 0 ) OR ( CAP2 ('30') <> 0 ) )
+     TOTAL ('30'):= ( CAP1 ('30') * _sueldo_prom ) + CAP2 ('30')
+   FIN_SI
+   SI ( CAP3('30') = 1 )
+     TOTAL('30') := 0
+   FIN_SI
+   $concepto_exen := '30'
+   CHECA_EXENTO
+][
+[] ('31') ;; # 
+   TOTAL ('31'):= CAP1 ('31')
+   $concepto_exen := '31'
+   CHECA_EXENTO
+   CAPTURA_CONCEPTO ('XI31')
+   TOTAL ('XI31') := TOTAL ('31')
+][
+[] ('51') ;; # NO EDITAR
+   SI ( CAP1('51') <> 0 )
+       TOTAL ('51') :=  CAP1('51')
+   SI_NO
+   FORMULA_ISPT
+   SI ( CAP2('51') = 1 )
+       TOTAL ('51') := 0
+   FIN_SI
+   FIN_SI
+][
+[] ('51A') ;; # NO EDITAR
+   SI ( CAP1 ('51A') <> 0 )
+      TOTAL ('51A') := CAP1 ('51A')
+   SI_NO
+      TOTAL ('51A') := CAP3 ('51')
+   FIN_SI
+   SI ( TOTAL_PERCEPCIONES = 0 )
+      TOTAL ('51A') := 0
+   FIN_SI
+   SI ( CAP2('51A') = 1 )
+       TOTAL ('51A') := 0
+   FIN_SI
+][
+[] ('51B') ;; # NO EDITAR
+   SI ( CAP1 ( '51B') <> 0 ) 
+       TOTAL ( '51B' ) := CAP1 ( '51B' )
+   FIN_SI
+   $concepto_exen := '51B'
+   CHECA_EXENTO
+][
+[] ('51C') ;; # 
+   SI ( CAP1 ( '51C' ) <> 0 ) 
+       TOTAL ( '51C' ) := CAP1 ( '51C' )
+   FIN_SI
+   $concepto_exen := '51C'
+   CHECA_EXENTO
+][
+[] ('52') ;; # NO EDITAR
+   FORMULA_IMSS
+   IMSS_PATRONAL
+   SI ( CAP2('52') = 1 )
+       TOTAL ('52') := 0
+   FIN_SI
+][
+[] ('53') ;; # NO EDITAR
+   SI ( 'EMPPRIN':'CUOTA_SINDICAL' = 1 )
+   # ---------- Base de Cálculo para Cuota Sindical
+      _aux1 := TOTAL ('01') + TOTAL ('02')
+      TOTAL ('53') := _aux1 * _cuota_sindical%
+   FIN_SI
+][
+[] ('54') ;; # 
+   TOTAL ('54') := CAP1 ('54')
+][
+[] ('55') ;; # 
+   TOTAL ('55') := ( CAP1 ('55') * _sueldo_prom ) + CAP2 ('55')
+][
+[] ('56') ;; # 
+   TOTAL ('56') := ( CAP1 ('56') * _comida ) + CAP2('56')
+][
+[] ('57') ;; # 
+   SI ( CAP1 ('57') <> 0 )
+     TOTAL ('57') := CAP1 ('57')
+   SI_NO
+      SI ( 'EMPPRIN':'VALOR_MINUTO' > 0 )
+        TOTAL ('57') := 'EMPPRIN':'VALOR_MINUTO' * _retardos
+      SI_NO
+        TOTAL ('57') := ( _sueldo_prom / 480 ) * _retardos
+      FIN_SI
+   FIN_SI
+][
+[] ('59') ;; # 
+   FORMULA_PRESTAMO
+][
+[] ('60') ;; # 
+   FORMULA_PRESTAMO
+][
+[] ('62') ;; # 
+   FORMULA_PRESTAMO
+][
+[] ('63') ;; # 
+   FORMULA_PRESTAMO
+][
+[] ('64') ;; # 
+   FORMULA_PRESTAMO
+][
+[] ('64A') ;; # 
+][
+[] ('65') ;; # NO EDITAR  
+   SI ( CAP1 ('65') <> 0 )
+       TOTAL ('65') := CAP1 ('65')
+   SI_NO
+   
+   FORMULA_INFONAVIT
+   
+   FIN_SI
+][
+[] ('65A') ;; # 
+   FORMULA_PRESTAMO
+][
+[] ('65B') ;; # 
+   TOTAL ( '65B' ) := CAP1 ( '65B' )
+   $concepto_exen := '65B'
+   CHECA_EXENTO
+][
+[] ('66') ;; # 
+   SI ( CAP1 ('66') <> 0 ) 
+      TOTAL ( '66' ) := CAP1 ( '66' )
+    SI_NO
+      SEGURO_VIVIENDA
+   FIN_SI
+   $concepto_exen := '66'
+   CHECA_EXENTO
+][
+[] ('67') ;; # NO EDITAR 
+   FORMULA_FONDO
+][
+[] ('68') ;; # 
+   FORMULA_PRESTAMO
+][
+[] ('69') ;; # 
+   TOTAL ('69') := CAP1 ('69')
+][
+[] ('70') ;; # 
+   TOTAL ('70'):= (TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES) * CAP1 ('70')
+   #SI ( CAP1 ( '70' ) <> 0 )
+    # TOTAL ( '70' ) := CAP1 ( '70' )
+   #SI_NO
+   #SI (   
+    #TOTAL ( '70' ):= TOTAL ( 'TOTA' )* .3
+   #  Agregar aquí la fórmula
+   #FIN_SI
+   $concepto_exen := '70'
+   CHECA_EXENTO
+][
+[] ('AJUS') ;; # NO EDITAR 
+   DECIMALES := 2
+   TOTAL ('AJUS') := AJUSTA ( ( TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES ) , _ajuste ) * -1
+][
+[] ('VALE') ;; #  
+   FORMULA_VALES
+][
+[] ('C01') ;; # NO EDITAR 
+   DECIMALES := 8
+   TOTAL ('C01') := ( TOTAL_PERCEPCIONES + TOTAL ($concepto_vale) ) - ( TOTAL ('22') + TOTAL ('23') + TOTAL ('31') )
+   TOTAL ('C01') := TOTAL ('C01') * 0.02
+][
+[] ('C02') ;; # NO EDITAR 
+   TOTAL ('C02') := ( _sueldo_int * ( _dias_imss - _faltas ))  * 0.02
+][
+[] ('C03') ;; # NO EDITAR 
+   SI ( _sueldo_int  > 'MINIMO':'TOPE INFONAVIT' )
+      TOTAL ('C03') := 'MINIMO':'TOPE INFONAVIT' * _dias_imss * 0.05
+   SI_NO
+      TOTAL ('C03') := (_sueldo_int * _dias_imss )  * 0.05
+   FIN_SI
+][
+[] ('C04') ;; # 
+][
+[] ('C05') ;; # 
+][
+[] ('C06') ;; # 
+][
+[] ('C07') ;; # 
+][
+[] ('C08') ;; # 
+][
+[] ('C09') ;; # 
+][
+[] ('C10') ;; # 
+][
+[] ('C11') ;; # 
+][
+[] ('NOGR') ;; # 
+][
+[] ('PERC') ;; # NO EDITAR 
+   DECIMALES := 2
+   TOTAL ('PERC') := TOTAL_PERCEPCIONES
+][
+[] ('PGRA') ;; # NO EDITAR 
+   TOTAL ('PGRA') := TOTAL_PERCEPCIONES - _exento
+][
+[] ('EXEN') ;; # NO EDITAR 
+   TOTAL ('EXEN') := _exento
+][
+[] ('DEDU') ;; # NO EDITAR 
+   TOTAL ('DEDU') := TOTAL_DEDUCCIONES
+][
+[] ('TOTA') ;; # NO EDITAR 
+   TOTAL ('TOTA') := TOTAL ('PERC') - TOTAL ('DEDU')
+   DECIMALES := 2
+][
+[] ('HEX2') ;; # 
+][
+[] ('HEX3') ;; # 
+][
+[] ('HEXG') ;; # 
+][
+[] ('HEXE') ;; # 
+][
+[] ('HESS') ;; # 
+][
+[] ('EX10') ;; # 
+][
+[] ('EX13') ;; # 
+][
+[] ('EX16') ;; # 
+][
+[] ('EX22') ;; # 
+][
+[] ('EX23') ;; # 
+][
+[] ('EX24') ;; # 
+][
+[] ('EX30') ;; # 
+][
+[] ('EX31') ;; # 
+][
+[] ('IMPS') ;; # 
+][
+[] ('CRED') ;; # 
+][
+[] ('XI10') ;; # 
+][
+[] ('XI19') ;; # 
+][
+[] ('XI20') ;; # 
+][
+[] ('XI31') ;; # 
+][
+[] ('XIVD') ;; # 
+][

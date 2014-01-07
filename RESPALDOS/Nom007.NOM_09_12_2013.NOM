@@ -1,0 +1,125 @@
+#VALIDACION DE CAPTURA
+#VERSION 1.000
+#NO EDITAR
+#DESCRIPCION
+#Descripcion no disponible.
+#FIN_DESCRIPCION
+#
+FORMATO_FECHA := 2
+$mesa := SUBSTR ( FECHA ( 'PERIODO':'FECHA INICIAL' ) , 4 , 3 )
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA' , $salida )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_PESOS := 2
+FORMATO_FECHA := 3
+SALIDA        := $salida
+RENGLONES     := 65
+COLUMNAS      := 80
+DRAFT         := 'S'
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'Periodo ' + .('PERIODO':'NUMERO') + ' ' + 'TIPONOM':'CLAVE' + ' Del '+ FECHA ('PERIODO':'FECHA INICIAL')+ ' al ' + FECHA ('PERIODO':'FECHA FINAL')
+   encabezado_ini
+   IMP ( COL (1)  , 'CLAVE' , COL (10) , 'NOMBRE' ) ;; IMPRIME
+   IMP ( COL (10) , 'CONCEPTO' , COL (40) , DER ( 'CAP1' , 12 ) , COL (52) , DER ( 'CAP2' , 12 ) , COL (64) , DER ( 'CAP3' , 12 ) ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+#
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &totales )
+VAR_T ( &indices )
+_aux1    := 0
+_num_ind := 0
+$indice  := ''
+$tipo    := ''
+_cont    := 0
+_imp     := 0
+_saldo   := 0
+_anu     := 0
+
+SUB_RUTINA sumatoria
+  DECIMALES:=2
+  #Incremento de valores para los indices seleccionados
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+     LETRA ( 'LETRA NORMAL' )
+     FORMATO_FECHA := 3
+     DECIMALES := 2
+     IMP ( COL (1)  , 'EMPPRIN':'CLAVE' )
+     IMP ( COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 50 ) )
+     IMPRIME
+     MIENTRAS ( FIN_BASE ('NOMINA') = FALSO )
+         _aux1 := 'NOMINA':'CAP1' + 'NOMINA':'CAP2' + 'NOMINA':'CAP3'
+         SI (( _aux1 <> 0 ) AND ( 'NOMINA':'CLAVE' <> '51' ))
+            IMP ( COL (10) , 'NOMINA':'CLAVE' )
+            SI  ( TRAE_REGISTRO ( 'CONCEPTO' , 'NOMINA':'CLAVE' ) )
+               IMP ( COL (15) , 'CONCEPTO':'DESCRIPCION' )
+            FIN_SI
+            IMP ( COL (40) , DER ( $ ('NOMINA':'CAP1') , 12 ) , COL (52) , DER ( $ ('NOMINA':'CAP2') , 12 ) )
+            IMP ( COL (64) , DER ( $ ('NOMINA':'CAP3') , 12 ) ) ;; IMPRIME
+         FIN_SI   
+         SIGUIENTE_REGISTRO ('NOMINA')
+     FIN_MIENTRAS
+     IMPRIME
+     sumatoria
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA sub_totales
+  IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+SUB_RUTINA condiciones
+   SI ( FUE_VIGENTE ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' ) )
+      datos_trabajador
+   FIN_SI
+FIN_SUB_RUTINA
+
+_omitir_encabezados   := 0
+_omitir_sub_totales   := 0
+_reporte_nomina       := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+# Definicion de variables en base a los parametros
+SALIDA   := $salida
+$ind_act := ''
+$nom_ind := ''
+
+# Definicion de la tabla de indices utilizados
+REPITE
+   $nom_ind := TRAE_VALOR_TABLA ( &in , 2 , _num_ind )
+   $ind_act := TRAE_VALOR_TABLA ( &in , 0 , _num_ind )
+   SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+      AGREGA_VALOR_COL ( &indices , 0 , $nom_ind )
+   FIN_SI
+   _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL ( &indices , 0 , 'TOTAL' )
+
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPACUM' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO'  , 'CLAVE' )
+
+_fi := 'PERIODO':'FECHA INICIAL'
+_ff := 'PERIODO':'FECHA FINAL'
+
+PRIMER_REGISTRO ('EMPPRIN')
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   condiciones
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte
+
+$indice := 'TOTAL'
+sub_totales

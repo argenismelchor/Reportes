@@ -1,0 +1,811 @@
+#IMPORTACION DE EMPLEADOS
+#NO EDITAR
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#PARA CONOCER LA ESTRUCTURA DEL LAY OUT ES NECESARIO DAR CLIC SOBRE EL SIGNO ! ABRIRA UNA PAGINA DE EXCEL DONDE PONDRA LOS ENCABEZADOS
+#PARA INDICAR DE QUE MANERA TIENEN QUE SER CAPTURADDOS
+#FIN_DESCRIPCION
+
+#ELABORO: JAVIER FLORES REYNOSO
+
+$archivo :=    LEE_INI ( 'ARCHIVO' , 'ULTFILEIMPORTADO' , '' )
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/INFO', $salida)
+NUEVO_PARAMETRO_RUTA ( 'ARCHIVO A IMPORTAR',$archivo , $archivo )
+NUEVO_PARAMETRO_SEL  ( 'GRABAR', 'NO/SI', _grabar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+ESCRIBE_INI ( 'ARCHIVO' , 'ULTFILEIMPORTADO' , $archivo )
+
+SI ( $salida = 'INFO')
+   $salida := 'EXCEL'
+FIN_SI
+
+$desc_depto := ''
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'A. PATERNO'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'A. MATERNO'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE (S)'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'F.INGRESO DD/MM/AAAA'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CAL. DIAS INH'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'DEPTO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'PUESTO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SUCURSAL'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'S. DIARIO'
+_longitud  := 10
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'V. IMSS'
+_longitud  := 10
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INT. IMSS'
+_longitud  := 10
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'RFC SIN GUIONES'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CURP SIN GUIONES'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TIPO EMP. (P o E)'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TIPO NOM QUI O SEM'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TIPO PAGO EFE,TAR,CHE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'VALOR MIN'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CTA. CHEQUES'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CTA. TARJETA'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'DERECHO PTU'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'DESC. CUOTA SIND.'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TURNO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TURNO ROTATIVO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TURNO INTELIGENTE'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SEM REDUCIDA 1=1'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'JORNADA RED 1=1'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NUM. IMSS SIN GUIONES'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NUM CRED INFO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'F. INI DESC INFO'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TIPO DESCUENTO 1 = % 2 = MONTO 3 = VSM'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'V. DESCUENTO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'A. ADICIONAL'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SAR BANCO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SAR CONT. INTERNO'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SAR SUCURSAL'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'APORT. ADICIONAL'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'FECHA NAC DD/MM/AAAA'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'LUGAR NAC (MUNICIPIO)'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ESTADO NAC (EJEMPLO: JAL)'
+_longitud  := 2
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SEXO (M O F)'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'EDO CIVIL (SOL,CAS,VIU,DIV,ULI)'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ESCOLARIDAD'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ULTIMO GRADO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CALLE'
+_longitud  := 30
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NUMERO SIN #'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INTERIOR SIN #'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'COLONIA'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SEC'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CP'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'MUNICIPIO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ESTADO (EJEMPLO: JAL)'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TEL 1'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TEL 2'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TEL CEL.'
+_longitud  := 18
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CONTACTO EMERG.'
+_longitud  := 20
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'RELACION (EJEMPLO: PADRE)' 
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TEL EMERG.'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+_condensado := 0
+$titulo_reporte := 'REPORTE DE IMPORTACION DE EMPLEADOS'
+define_encabezado
+
+
+SI ( $salida = 'EXCEL')
+   MENSAJE ('FORMATO IMPRESO EN EXCEL, ESTE LAY OUT SIRVE PARA HACER LA IMPORTACION MASIVA DE EMPLEADOS A GIRO')
+   TERMINA_REPORTE
+FIN_SI
+
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+$clave         := ''	$paterno       := ''	$materno       := ''	$nombre        := ''
+$fingreso      := ''	$caldias       := ''	$depto         := ''	$puesto        := ''
+$sucursal      := ''	_diario        := 0	_vimss         := 0	_intimss       := 0
+$rfc           := ''	$curp          := ''	$tipoemp       := ''	$tiponom       := ''
+$tipopago      := ''	_valormin      := 0	$ctacheques    := ''	$ctatarjeta    := ''
+_ptu           := 0	_descsind      := 0	$turno         := ''	$turnorot      := ''
+$turnoint       := ''	_semred        := 0	_jornada       := 0	$numimss       := ''
+$numcred       := ''	$finiinfo      := ''	_tipodesc      := 0	_vdescuento    := 0
+_aadicional    := 0	$sarbanco      := ''	$sarcontint    := ''	$sarsucursal   := ''
+_saradicional  := 0	$datosrh       := ''	$fechanac      := ''	$lugarnac      := ''
+$estadonac     := ''	$sexo          := ''	$edocivil      := ''	$escolaridad   := ''
+$ultimogrado   := ''	$calle         := ''	$numero        := ''	$interior      := ''
+$colonia       := ''	$sec           := ''	$cp            := ''	$municipio     := ''
+$estado        := ''	$tel1          := ''	$tel2          := ''	$telcel        := ''
+$contemerg     := ''    $relacion      := ''	$telemerg      := ''	_renglon       := 3
+$sueldo_men    := '' 
+_errores       := 0
+
+
+#VARIABLES DATOS EXTRAS
+
+$sueldo_men   := ''   $nom_banco    := ''   $num_banco    := ''   $transf_elect := ''
+
+
+SUB_RUTINA limpia_variables
+$clave         := ''
+$paterno       := ''
+$materno       := ''
+$nombre        := ''
+$fingreso      := ''
+$caldias       := ''
+$depto         := ''
+$puesto        := ''
+$sucursal      := ''
+_diario        := 0
+_vimss         := 0
+_intimss       := 0
+$rfc           := ''
+$curp          := ''
+$tipoemp       := ''
+$tiponom       := ''
+$tipopago      := ''
+_valormin      := 0
+$ctacheques    := ''
+$ctatarjeta    := ''
+_ptu           := 0
+_descsind      := 0
+$turno         := ''
+$turnorot      := ''
+$turnoint       := ''
+_semred        := 0
+_jornada       := 0
+$numimss       := ''
+$numcred       := ''
+$finiinfo      := ''
+_tipodesc      := 0
+_vdescuento    := 0
+_aadicional    := 0
+$sarbanco      := ''
+$sarcontint    := ''
+$sarsucursal   := ''
+_saradicional  := 0
+$datosrh       := ''
+$fechanac      := ''
+$lugarnac      := ''
+$estadonac     := ''
+$sexo          := ''
+$edocivil      := ''
+$escolaridad   := ''
+$ultimogrado   := ''
+$calle         := ''
+$numero        := ''
+$interior      := ''
+$colonia       := ''
+$sec           := ''
+$cp            := ''
+$municipio     := ''
+$estado        := ''
+$tel1          := ''
+$tel2          := ''
+$telcel        := ''
+$contemerg     := ''          
+$relacion      := ''
+$telemerg      := ''
+$sueldo_men    := ''
+_errores       := 0
+$sueldo_men    := ''   
+$nom_banco     := ''   
+$num_banco     := ''   
+$transf_elect  := ''
+
+
+FIN_SUB_RUTINA
+
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , $archivo )
+
+SUB_RUTINA carga_valores
+
+EXCEL ( 'TRAE_VALOR' , 1, _renglon ,  $clave )
+EXCEL ( 'TRAE_VALOR' , 2, _renglon ,  $paterno )
+EXCEL ( 'TRAE_VALOR' , 3, _renglon ,  $materno )
+EXCEL ( 'TRAE_VALOR' , 4, _renglon ,  $nombre )
+EXCEL ( 'TRAE_VALOR' , 5, _renglon ,  $fingreso )
+EXCEL ( 'TRAE_VALOR' , 6, _renglon ,  $caldias )
+EXCEL ( 'TRAE_VALOR' , 7, _renglon ,  $depto )
+EXCEL ( 'TRAE_VALOR' , 8, _renglon ,  $puesto )
+EXCEL ( 'TRAE_VALOR' , 9, _renglon ,  $sucursal )
+EXCEL ( 'TRAE_VALOR' , 10, _renglon ,  _diario )
+EXCEL ( 'TRAE_VALOR' , 11, _renglon ,  _vimss )
+EXCEL ( 'TRAE_VALOR' , 12, _renglon ,  _intimss )
+EXCEL ( 'TRAE_VALOR' , 13, _renglon ,  $rfc )
+EXCEL ( 'TRAE_VALOR' , 14, _renglon ,  $curp )
+EXCEL ( 'TRAE_VALOR' , 15, _renglon ,  $tipoemp )
+EXCEL ( 'TRAE_VALOR' , 16, _renglon ,  $tiponom )
+EXCEL ( 'TRAE_VALOR' , 17, _renglon ,  $tipopago )
+EXCEL ( 'TRAE_VALOR' , 18, _renglon ,  _valormin )
+EXCEL ( 'TRAE_VALOR' , 19, _renglon ,  $ctacheques )
+EXCEL ( 'TRAE_VALOR' , 20, _renglon ,  $ctatarjeta )
+EXCEL ( 'TRAE_VALOR' , 21, _renglon ,  _ptu )
+EXCEL ( 'TRAE_VALOR' , 22, _renglon ,  _descsind )
+EXCEL ( 'TRAE_VALOR' , 23, _renglon ,  $turno )
+EXCEL ( 'TRAE_VALOR' , 24, _renglon ,  $turnorot )
+EXCEL ( 'TRAE_VALOR' , 25, _renglon ,  $turnoint )
+EXCEL ( 'TRAE_VALOR' , 26, _renglon ,  _semred )
+EXCEL ( 'TRAE_VALOR' , 27, _renglon ,  _jornada )
+EXCEL ( 'TRAE_VALOR' , 28, _renglon ,  $numimss )
+EXCEL ( 'TRAE_VALOR' , 29, _renglon ,  $numcred )
+EXCEL ( 'TRAE_VALOR' , 30, _renglon ,  $finiinfo )
+EXCEL ( 'TRAE_VALOR' , 31, _renglon ,  _tipodesc )
+EXCEL ( 'TRAE_VALOR' , 32, _renglon ,  _vdescuento )
+EXCEL ( 'TRAE_VALOR' , 33, _renglon ,  _aadicional )
+EXCEL ( 'TRAE_VALOR' , 34, _renglon ,  $sarbanco )
+EXCEL ( 'TRAE_VALOR' , 35, _renglon ,  $sarcontint )
+EXCEL ( 'TRAE_VALOR' , 36, _renglon ,  $sarsucursal )
+EXCEL ( 'TRAE_VALOR' , 37, _renglon ,  _saradicional )
+EXCEL ( 'TRAE_VALOR' , 38, _renglon ,  $fechanac )
+EXCEL ( 'TRAE_VALOR' , 39, _renglon ,  $lugarnac )
+EXCEL ( 'TRAE_VALOR' , 40, _renglon ,  $estadonac )
+EXCEL ( 'TRAE_VALOR' , 41, _renglon ,  $sexo )
+EXCEL ( 'TRAE_VALOR' , 42, _renglon ,  $edocivil )
+EXCEL ( 'TRAE_VALOR' , 43, _renglon ,  $escolaridad )
+EXCEL ( 'TRAE_VALOR' , 44, _renglon ,  $ultimogrado )
+EXCEL ( 'TRAE_VALOR' , 45, _renglon ,  $calle )
+EXCEL ( 'TRAE_VALOR' , 46, _renglon ,  $numero )
+EXCEL ( 'TRAE_VALOR' , 47, _renglon ,  $interior )
+EXCEL ( 'TRAE_VALOR' , 48, _renglon ,  $colonia )
+EXCEL ( 'TRAE_VALOR' , 49, _renglon ,  $sec )
+EXCEL ( 'TRAE_VALOR' , 50, _renglon ,  $cp )
+EXCEL ( 'TRAE_VALOR' , 51, _renglon ,  $municipio )
+EXCEL ( 'TRAE_VALOR' , 52, _renglon ,  $estado )
+EXCEL ( 'TRAE_VALOR' , 53, _renglon ,  $tel1 )
+EXCEL ( 'TRAE_VALOR' , 54, _renglon ,  $tel2 )
+EXCEL ( 'TRAE_VALOR' , 55, _renglon ,  $telcel )
+EXCEL ( 'TRAE_VALOR' , 56, _renglon ,  $contemerg )
+EXCEL ( 'TRAE_VALOR' , 57, _renglon ,  $relacion )
+EXCEL ( 'TRAE_VALOR' , 58, _renglon ,  $telemerg )
+EXCEL ( 'TRAE_VALOR' , 59, _renglon ,  $sueldo_men )
+EXCEL ( 'TRAE_VALOR' , 60, _renglon ,  $nom_banco )
+EXCEL ( 'TRAE_VALOR' , 61, _renglon ,  $num_banco )
+EXCEL ( 'TRAE_VALOR' , 62, _renglon ,  $transf_elect )
+
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA graba_datos
+
+SI ( TRAE_REGISTRO ('EMPPRIN' , $clave ) = VERDADERO )
+      #
+   SI_NO
+      AGREGA_REGISTRO ('EMPPRIN')
+FIN_SI
+
+'EMPPRIN':'CLAVE'                       := $clave       
+'EMPPRIN':'NOMBREP'                     := $paterno
+'EMPPRIN':'NOMBREM'                     := $materno
+'EMPPRIN':'NOMBREN'                     := $nombre
+'EMPPRIN':'INGRESO'                     := CALCULA_FECHA ( VALOR (SUBSTR ( $fingreso , 7 , 4 ))  ,  VALOR ( SUBSTR ( $fingreso , 4 , 2 ) ) , VALOR ( SUBSTR ( $fingreso , 1 , 2 ) ) )
+'EMPPRIN':'PLANTA'                      := CALCULA_FECHA ( VALOR (SUBSTR ( $fingreso , 7 , 4 ))  ,  VALOR ( SUBSTR ( $fingreso , 4 , 2 ) ) , VALOR ( SUBSTR ( $fingreso , 1 , 2 ) ) )
+'EMPPRIN':'FOTO'                        := $clave + '.jpg'
+'EMPPRIN':'PE'                          := $tipoemp
+'EMPPRIN':'RFC'                         := $rfc
+'EMPPRIN':'TIPO_NOM'                    := $tiponom
+'EMPPRIN':'TIPO_PAGO'                   := $tipopago
+'EMPPRIN':'TURNO'                       := $turno
+'EMPPRIN':'CTA_TARJETA'                 := $ctatarjeta
+'EMPPRIN':'PTU'                         := _ptu
+'EMPPRIN':'CUOTA_SINDICAL'              := _descsind
+'EMPPRIN':'VALOR_MINUTO'                := _valormin
+'EMPPRIN':'AFILIACION'                  := $numimss
+'EMPPRIN':'BANCO_SAR'                   := $sarbanco
+'EMPPRIN':'SUCURSAL'                    := $sarsucursal
+'EMPPRIN':'CTA_CHEQUES'                 := $ctacheques
+'EMPPRIN':'CONTROL_INTERNO'             := $sarcontint
+'EMPPRIN':'APORTACION_SAR'              := _saradicional
+'EMPPRIN':'APORTACION_INFONAVIT'        := _aadicional
+'EMPPRIN':'CREDITO_INFONAVIT'           := $numcred    
+'Empprin':'INICIO DESCUENTO INF'        := CALCULA_FECHA ( VALOR (SUBSTR ( $finiinfo , 7 , 4 )) ,  VALOR ( SUBSTR ( $finiinfo , 4 , 2 ) ) , VALOR ( SUBSTR ( $finiinfo , 1 , 2 ) ) )
+'Empprin':'TIPO DESCUENTO'              := _tipodesc
+'EMPPRIN':'VALOR DESCUENTO'             := _vdescuento
+'EMPPRIN':'CURP'                        := $curp
+'EMPPRIN':'JORNADA REDUCIDA'            := _jornada
+'EMPPRIN':'SEMANA REDUCIDA'             := _semred
+'EMPPRIN':'CALENDARIO'                  := $caldias
+'EMPPRIN':'COSTO_COMEDOR'               := 0
+'EMPPRIN':'BLOQUEAR_COMEDOR'            := 0
+#'EMPPRIN':'FECHA_CAPTURA'               := FECHA_HOY
+#'EMPPRIN':'SDO_VAC_INI'                 := 0
+#'EMPPRIN':'SDO_VAC_INI_PRIMA'           := 0
+#'EMPPRIN':'TURNO_ROTATIVO'              
+#'EMPPRIN':'TURNOINT'
+#'EMPPRIN':'SUPERVISOR_RELOJ'
+#'EMPPRIN':'CHECADORES'
+
+SI ( _grabar )
+   GRABA_BASE ('EMPPRIN')
+FIN_SI
+
+SI ( TRAE_REGISTRO ('EMPSDO' , $clave ) = VERDADERO )
+      #
+   SI_NO
+      AGREGA_REGISTRO ('EMPSDO')
+FIN_SI
+
+'EMPSDO':'CLAVE'                        := $clave
+'EMPSDO':'FECHA'                        := CALCULA_FECHA ( VALOR (SUBSTR ( $fingreso , 7 , 4 ) ) , VALOR ( SUBSTR ( $fingreso , 4 , 2 ) ) , VALOR ( SUBSTR ( $fingreso , 1 , 2 ) ) )
+'EMPSDO':'TIPO'                         := 'A'
+'EMPSDO':'SDO1'                         := _diario
+'EMPSDO':'SDO2'                         := _vimss
+'EMPSDO':'SDO3'                         := _intimss
+'EMPSDO':'SDO4'                         := _vimss
+'EMPSDO':'SDO5'                         := _intimss
+'EMPSDO':'FECHA SALIDA'                := CALCULA_FECHA ( 2099 , 01, 01) 
+#'EMPSDO':'FECHA_CAPTURA'                := FECHA_HOY
+SI ( _grabar )
+   GRABA_BASE ('EMPSDO')
+FIN_SI
+
+SI ( TRAE_REGISTRO ('EMPDEP' , $clave ) = VERDADERO )
+      #
+   SI_NO
+      AGREGA_REGISTRO ('EMPDEP')
+FIN_SI
+
+'EMPDEP':'CLAVE'                        := $clave
+'EMPDEP':'FECHA ENTRADA'                := CALCULA_FECHA ( VALOR (SUBSTR ( $fingreso , 7 , 4 ) ) , VALOR ( SUBSTR ( $fingreso , 4 , 2 ) ) ,  VALOR ( SUBSTR ( $fingreso , 1 , 2 ) ) )
+'EMPDEP':'FECHA SALIDA'                 := CALCULA_FECHA ( 2099 , 01 ,01)
+'EMPDEP':'CATALOGO'                     := $depto
+#'EMPDEP':'FECHA_CAPTURA'                := FECHA_HOY
+SI ( _grabar )
+   GRABA_BASE ('EMPDEP')
+FIN_SI
+
+SI ( TRAE_REGISTRO ('EMPPUES' , $clave ) = VERDADERO )
+      #
+   SI_NO
+      AGREGA_REGISTRO ('EMPPUES')
+FIN_SI
+
+'EMPPUES':'CLAVE'                       := $clave
+'EMPPUES':'FECHA ENTRADA'               := CALCULA_FECHA ( VALOR (SUBSTR ( $fingreso , 7 , 4 ) ) , VALOR ( SUBSTR ( $fingreso , 4 , 2 ) ) , VALOR ( SUBSTR ( $fingreso , 1 , 2 ) ) )
+'EMPPUES':'FECHA SALIDA'                := CALCULA_FECHA ( 2099 , 01 ,01)
+'EMPPUES':'CATALOGO'                    := $puesto
+#'EMPPUES':'FECHA_CAPTURA'               := FECHA_HOY
+SI ( _grabar )
+   GRABA_BASE ('EMPPUES')
+FIN_SI
+
+SI ( TRAE_REGISTRO ('EMPSUC' , $clave ) = VERDADERO )
+      #
+   SI_NO
+      AGREGA_REGISTRO ('EMPSUC')
+FIN_SI
+
+'EMPSUC':'CLAVE'                        := $clave            
+'EMPSUC':'FECHA ENTRADA'                := CALCULA_FECHA ( VALOR (SUBSTR ( $fingreso , 7 , 4 )) , VALOR ( SUBSTR ( $fingreso , 4 , 2 )) , VALOR ( SUBSTR ( $fingreso , 1 , 2 ) ) )
+'EMPSUC':'FECHA SALIDA'                 := CALCULA_FECHA ( 2099 , 01 ,01)
+'EMPSUC':'CATALOGO'                     := $sucursal
+#'EMPSUC':'NOTA'                         := ''
+#'EMPSUC':'FECHA_CAPTURA'                := FECHA_HOY
+SI ( _grabar )
+   GRABA_BASE ('EMPSUC')
+FIN_SI
+
+SI ( TRAE_REGISTRO ('EMPRH' , $clave ) = VERDADERO )
+      #
+   SI_NO
+      AGREGA_REGISTRO ('EMPRH')
+FIN_SI
+
+'EMPRH':'CLAVE'                         := $clave
+'EMPRH':'CALLE'                         := $calle
+'EMPRH':'NUMERO'                        := $numero
+'EMPRH':'INTERIOR'                      := $interior
+'EMPRH':'COLONIA'                       := $colonia
+'EMPRH':'SECTOR'                        := $sec
+'EMPRH':'CP'                            := $cp
+'EMPRH':'MUNICIPIO'                     := $municipio  
+'EMPRH':'ESTADO'                        := $estado
+'EMPRH':'TELEFONO_1'                    := $tel1   
+'EMPRH':'TELEFONO_2'                    := $tel2
+'EMPRH':'FECHA_NACIMIENTO'              := CALCULA_FECHA ( VALOR (SUBSTR ( $fechanac , 7 , 4 ) ) , VALOR ( SUBSTR ( $fechanac , 4 , 2 ) ) , VALOR ( SUBSTR ( $fechanac , 1 , 2 ) ) )       
+'EMPRH':'LUGAR_NACIMIENTO'              := $lugarnac
+'EMPRH':'ESTADO_CIVIL'                  := $edocivil
+'EMPRH':'ESCOLARIDAD'                   := $escolaridad
+'EMPRH':'SEXO'                          := $sexo
+'EMPRH':'TELEFONO_CELULAR'              := $telcel
+'EMPRH':'GRADUACION'                    := ''
+'EMPRH':'EMERGENCIA_CONTACTO'           := $contemerg
+'EMPRH':'EMERGENCIA_PARENTESCO'         := $relacion
+'EMPRH':'EMERGENCIA_TELEFONO'           := $telemerg
+
+
+SI ( _grabar )
+   GRABA_BASE ('EMPRH')
+FIN_SI
+
+#SI ( TRAE_REGISTRO ('EMPEXT' , $clave ) = VERDADERO )
+#      #
+#   SI_NO
+#      AGREGA_REGISTRO ('EMPEXT')
+#FIN_SI
+
+#DECIMALES := 2 
+
+#   'EMPEXT':'CLAVE'    := $clave
+#   'EMPEXT':'S_MENSUAL' := VALOR ( $sueldo_men )
+#   'EMPEXT':'NOMBRE_BANCO' := $nom_banco
+#   'EMPEXT':'NUM_BANCO' := VALOR ( $num_banco )
+#   'EMPEXT':'TRANSF_ELECTRONICA' := VALOR ( $transf_elect )
+
+
+#SI ( _grabar )
+#   GRABA_BASE ('EMPEXT')
+#FIN_SI
+
+$valor := $clave
+imprime_columna
+
+$valor := $paterno
+imprime_columna
+
+$valor := $materno
+imprime_columna
+
+$valor := $nombre
+imprime_columna
+
+$valor := 'IMPORTADO'
+imprime_columna
+
+imprime_renglon
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA validacion
+
+SI ( TRAE_REGISTRO ( 'PUESTO'   , $puesto   ) = FALSO )
+   _errores := 1   
+   MENSAJE ('TRABAJADOR ' + $clave + ' CON PUESTO INVALIDO EN LA CAPTURA, VALIDE!!!! E INTENTELO DE NUEVO')
+FIN_SI
+SI ( TRAE_REGISTRO ( 'DEPTO'    , $depto    ) = FALSO )
+   #_errores := 1   
+   #MENSAJE ('TRABAJADOR ' + $clave + ' CON DEPTO INVALIDO EN LA CAPTURA, VALIDE!!!! E INTENTELO DE NUEVO')
+
+   NUEVO_PARAMETRO ( 'NOMBRE DEPTO' , '' , $desc_depto )
+   LEE_PARAMETROS   
+   BORRA_PARAMETROS    
+
+   AGREGA_REGISTRO('DEPTO')
+   'DEPTO':'CLAVE' := $depto
+   'DEPTO':'DESCRIPCION' := $desc_depto
+   GRABA_BASE('DEPTO')
+FIN_SI
+SI ( TRAE_REGISTRO ( 'SUCURSAL' , $sucursal ) = FALSO )
+   _errores := 1   
+   MENSAJE ('TRABAJADOR ' + $clave + ' CON SUCURSAL INVALIDO EN LA CAPTURA, VALIDE!!!! E INTENTELO DE NUEVO')
+FIN_SI
+SI ( $numimss  = '' )
+   #_errores := 1 
+FIN_SI
+
+FIN_SUB_RUTINA
+
+ABRE_BASE ('EMPPRIN')
+ABRE_BASE ('EMPDEP')
+ABRE_BASE ('EMPPUES')
+ABRE_BASE ('EMPSUC')
+ABRE_BASE ('EMPRH')
+ABRE_BASE ('EMPSDO')
+ABRE_BASE ('PUESTO')
+ABRE_BASE ('DEPTO')
+ABRE_BASE ('SUCURSAL')
+#ABRE_BASE ('EMPEXT')
+
+REPITE
+
+  limpia_variables
+  carga_valores
+  SI ( $clave <> '' ) 
+     validacion
+  FIN_SI
+  SI (( $clave <> '' ) AND ( _errores = 0 ))
+     graba_datos
+  FIN_SI
+
+_renglon := _renglon + 1
+
+HASTA ( $clave = '' )
+
+INCLUYE UTIL2.DAT
+
+termina_reporte
+
+TERMINA_REPORTE

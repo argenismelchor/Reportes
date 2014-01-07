@@ -1,0 +1,101 @@
+#IMPORTACION DE CURP Y RFC
+#NO EDITAR
+#USUARIO =*
+#IMPORTACION DE DSP
+#VERSION 2.500
+#DESCRIPCION
+#Importacion datos de una archivo de texto RFC.TXT para actualizar CURP y RFC. La opcion de reemplazar si no se marca solamente va a reemplazar los valores siempre y cuando el valor actual del campo sea vacio.
+#CAMPO       COL LON JUST. FORMATO
+#CLAVE         1  10  IZQ
+#CURP         11  18  IZQ
+#RFC          31  13  IZQ
+#FIN          51  1   IZQ #
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO      ( 'ARCHIVO', DIRECTORIO_TRABAJO + '\RFC.PRN', $archivo )
+NUEVO_PARAMETRO_CHEQ ( 'REEMPLAZAR', '', _remplazar )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 2
+
+CREA_BASE_TXT ( 'TABLA', $archivo, 'FIJO' )
+
+DEFINE_CAMPO_TXT ( 'TABLA' , 'CLAVE'   , 1   , 10  )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'CURP'    , 11  , 18  )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'RFC'     , 31  , 13  )
+ABRE_BASE_TXT ( 'TABLA', 'EDICION' )
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ('IMPORTACION DE CURP')) ;; IMPRIME
+   IMP ( REPITETXT('=',90)) ;; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), 'RFC', COL(65), 'CURP' );; IMPRIME
+   IMP ( REPITETXT('-',90) );; IMPRIME;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+ABRE_BASE  ( 'EMPPRIN' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPRH', 'CLAVE' )
+_act := 0
+_nacimiento := 0
+
+# DECLARACION DE VARIABLES  GLOBALES
+$clave   := ''
+$rfc := ''
+PRIMER_REGISTRO ( 'TABLA' )
+MIENTRAS ( FIN_BASE ( 'TABLA' ) = FALSO )
+
+#######################################################    ASIGNACION CLAVE
+
+  $clave := QUITA_CARACTER( ' ', 'TABLA':'CLAVE' )
+  $rfc   := 'TABLA':'CURP'
+  $rfc   := SUBSTR( $rfc, 5, 6 )
+  _nacimiento := CALCULA_FECHA( 1900 + VALOR( SUBSTR( $rfc, 1, 2 ) ), VALOR( SUBSTR( $rfc, 3, 2 )), VALOR( SUBSTR( $rfc, 5, 2 )) )
+  SI ( TRAE_REGISTRO( 'EMPPRIN', $clave ) )    
+    SI ( _remplazar = 1 )
+      'EMPPRIN':'CURP' := 'TABLA':'CURP'
+      'EMPPRIN':'RFC'  := 'TABLA':'RFC'
+    SI_NO
+      SI ( 'EMPPRIN':'CURP' = '' )
+        'EMPPRIN':'CURP' := 'TABLA':'CURP'
+      FIN_SI
+      SI ( 'EMPPRIN':'RFC' = '' )
+        'EMPPRIN':'RFC' := 'TABLA':'RFC'
+      FIN_SI
+    FIN_SI
+    SI ( 'EMPRH':'FECHA_NACIMIENTO' <> _nacimiento )
+      'EMPRH':'FECHA_NACIMIENTO' := _nacimiento
+      GRABA_BASE( 'EMPRH' )
+    FIN_SI
+    IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN' )
+    IMP ( COL(50), 'EMPPRIN':'RFC', COL(65), 'EMPPRIN':'CURP', COL(85), FECHA( _nacimiento ) )
+    IMPRIME
+    _act := _act + 1
+    GRABA_BASE( 'EMPPRIN' )
+  SI_NO  
+    IMP ( 'EMPLEADO NO ENCONTRADO : ', $clave ) ;; IMPRIME
+  FIN_SI
+
+################################################################
+
+  SIGUIENTE_REGISTRO( 'TABLA' )
+FIN_MIENTRAS
+
+IMPRIME ;; IMPRIME
+DECIMALES := 0
+IMP ( 'REGISTROS ACTUALIZADOS : ', _act ) ;; IMPRIME
+
+TERMINA_REPORTE

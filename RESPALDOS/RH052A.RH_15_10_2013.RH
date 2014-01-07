@@ -1,0 +1,248 @@
+#CALCULO ANUAL DE INFONAVIT
+#NO EDITAR
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Este reporte muestra el calculo anual del credito infonavit y hace un comparativo contra lo retenido.
+#CAMPOS A IMPRIMIR: CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL/DISCO', $salida)
+NUEVO_PARAMETRO     ( 'CONCEPTO INFONAVIT', '65', $concepto_infonavit )
+NUEVO_PARAMETRO_CHEQ( 'SOLO VIGENTES', '', _vigentes )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 8
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'AFILIACION'
+_longitud  := 11
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NO. CREDITO'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TIPO'
+_longitud  := 5
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'DESCUENTO'
+_longitud  := 9
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ANUAL ' + $concepto_infonavit
+_longitud  := 12
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CALCULO'
+_longitud  := 12
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'DIFERENCIA'
+_longitud  := 12
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+_condensado := 1
+$titulo_reporte := 'CALCULO ANUAL DE INFONAVIT AL ' + FECHA( FECHA_HOY )
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+VAR_T ( &mes )
+_fi_info    := 0
+_ff_info    := 0
+_fecha      := FECHA_HOY
+_tot_info   := 0
+_mes_ini    := 0
+_mes_fin    := 0
+_mes_aux    := 0
+_sdo_int    := 0
+_dias_info  := 0
+_calc_info  := 0
+_ingreso    := 0
+_anual_info := 0
+_aux1       := 0
+_tot_info   := 0
+_dedu       := 0
+_acum_info  := 0
+
+# SUBRUTINAS GLOBALES
+
+SUB_RUTINA calcula_infonavit
+    _ingreso := 'EMPPRIN':'INGRESO'
+    SI (( 'EmpPrin':'CREDITO_INFONAVIT' <> '' ) AND ( 'EmpPrin':'INICIO DESCUENTO INF' <= _fecha ) AND ( 'EmpPrin':'VALOR DESCUENTO' > 0 ))
+      _fi_info := _ingreso
+      SI ( 'EmpPrin':'INICIO DESCUENTO INF' > _ingreso )
+        _fi_info := 'EmpPrin':'INICIO DESCUENTO INF'
+      FIN_SI
+      SI ( _fi_info < CALCULA_FECHA ( AÑO( _fecha ), 01, 01 ) )
+        _fi_info := CALCULA_FECHA ( AÑO( _fecha ), 01, 01 )
+      FIN_SI
+      _tot_info := 0
+      _mes_fin := MES ( _fecha )
+      _mes_ini := MES ( _fi_info )
+      _mes_aux := MES ( _fi_info )
+      SI ( 'EmpPrin':'TIPO DESCUENTO' = '3' )
+         DECIMALES := 4
+         MIENTRAS ( _mes_aux <= _mes_fin )
+           _fi_info   := CALCULA_FECHA ( AÑO( _fecha ), _mes_aux, 01 )
+           _ff_info   := CALCULA_FECHA ( AÑO( _fecha ), _mes_aux, 31 )
+           _sdo_int   := INT_IMSS_ACTUAL ( _fi_info, _ff_info )
+           _dias_info := FUE_VIGENTE( _fi_info, _ff_info )
+           SI ( 'EmpPrin':'INICIO DESCUENTO INF' <= _ff_info )
+             SI (( _fecha >= _fi_info ) AND ( _fecha <= _ff_info ))
+               _calc_info := 'MINIMO':'MINIMO A' * 'EMPPRIN':'VALOR DESCUENTO' / 30.4 * _dias_info
+             SI_NO
+               _calc_info := 'MINIMO':'MINIMO A' * 'EMPPRIN':'VALOR DESCUENTO'
+             FIN_SI
+             _tot_info := _tot_info + _calc_info
+           FIN_SI
+           _mes_aux := _mes_aux + 1
+         FIN_MIENTRAS
+       FIN_SI
+       SI ( 'EmpPrin':'TIPO DESCUENTO' = '1' )
+         TRAE_MOV_FECHA( _fi_info )
+         _ff_info := 'EMPSDO':'FECHA SALIDA'
+         MIENTRAS(( FIN_BASE('EMPSDO') = FALSO ) AND ( _ff_info <= _fecha ))
+          SI ( 'EMPSDO':'TIPO' <> 'B' )
+            _dias_info := _ff_info - _fi_info + 1
+            _dias_info := _dias_info - TRAE_INCAPACIDADES ( _fi_info, _ff_info, '*' )
+            _dias_info := _dias_info - TOTAL_FALTAS ( _fi_info, _ff_info, 'S' )
+            _sdo_int   := 'EMPSDO':'SDO3'
+            SIGUIENTE_REGISTRO( 'EMPSDO' )
+            SI ( 'EMPSDO':'TIPO' = 'B' )
+              _dias_info := _dias_info + 1
+            FIN_SI
+            _calc_info := _sdo_int * ( 'EmpPrin':'VALOR DESCUENTO' / 100 ) * _dias_info
+            _tot_info := _tot_info + _calc_info
+          SI_NO
+            SIGUIENTE_REGISTRO( 'EMPSDO' )
+          FIN_SI         
+           _fi_info := 'EMPSDO':'FECHA'
+           _ff_info := 'EMPSDO':'FECHA SALIDA'
+         FIN_MIENTRAS       
+       FIN_SI
+       _anual_info := 0
+       _mes_aux := _mes_ini
+       MIENTRAS( _mes_aux <= _mes_fin )
+         _anual_info := _anual_info + ACUM_MENSUAL( TRAE_VALOR_TABLA( &mes, 0, _mes_aux - 1 ), $concepto_infonavit )
+         _mes_aux := _mes_aux + 1
+       FIN_MIENTRAS
+       
+       _aux1 := _tot_info - _anual_info
+       #SI (_aux1 > 0)
+       #   IMP ('INFONAVIT' , COL(49), DER($(_aux1), 10))
+       #FIN_SI
+    FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'AFILIACION'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'CREDITO_INFONAVIT'
+   imprime_columna
+
+   SI ( 'EMPPRIN':'TIPO_DESCUENTO' = '1' )
+     $valor := '%'
+     DECIMALES := 2
+   FIN_SI
+   SI ( 'EMPPRIN':'TIPO_DESCUENTO' = '2' )
+     $valor := '$'
+     DECIMALES := 2
+   FIN_SI
+   SI ( 'EMPPRIN':'TIPO_DESCUENTO' = '3' )
+     $valor := 'S.M.'
+     DECIMALES := 5
+   FIN_SI
+   imprime_columna
+
+   $valor := $( 'EMPPRIN':'VALOR_DESCUENTO' )
+   imprime_columna
+
+   DECIMALES := 2
+   _acum_info := ACUM_ANUAL( $concepto_infonavit ) 
+   $valor := $( _acum_info )
+   imprime_columna
+
+   calcula_infonavit
+
+   DECIMALES := 2
+   $valor := $( _tot_info )
+   imprime_columna
+
+   $valor := $( _acum_info - _tot_info )
+   imprime_columna
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+SI ( TRAE_REGISTRO_VIG ( 'MINIMO', FECHA_HOY ) = FALSO )
+  MENSAJE( 'NO HAY SALARIOS MINIMOS A LA FECHA ESPECIFICADA.' )
+  TERMINA_REPORTE
+FIN_SI
+
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. CREDITO_INFONAVIT, E. INICIO_DESCUENTO_INF, E. TIPO_DESCUENTO, E. VALOR_DESCUENTO, E. AFILIACION'
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ACUM_ANUAL( $concepto_infonavit ) <> 0 )
+     SI (( _vigentes = 0 ) OR ( ES_VIGENTE( FECHA_HOY ) = VERDADERO ) )
+       datos_trabajador
+     FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+TERMINA_REPORTE

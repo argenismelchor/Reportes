@@ -1,0 +1,62 @@
+#CAUSAS DE BAJA
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte despliega el catalogo de causas de baja.
+#Este reporte imprime la clave ,la descripcion y el origen de la causa de baja.
+#FIN_DESCRIPCION
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_SEL ( 'ORDEN' , 'CLAVE/DESCRIPCION' , $orden )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+SALIDA        := $salida
+INCLUYE ENCPIE.DAT
+
+SI ( $salida = 'DISCO' )
+   SALIDA_REPORTE ( DIRECTORIO_TRABAJO + '\TABBAJA.TXT' )
+FIN_SI
+
+ENCABEZADO
+   $titulo_reporte := 'Causas de Baja'
+   encabezado_ini
+   IMP ( COL (1) , 'Clave' , COL (11) , 'DESCRIPCION' , COL (45) , 'ORIGEN' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+### DEFINICION DE LA TABLA
+VAR_A( $origen )
+VAR_T ( sql )
+PON_VALOR_TABLA ( sql, 0, 0, 'SELECT *' )
+PON_VALOR_TABLA ( sql, 0, 1, 'FROM BAJA' ) 
+SI ($orden='CLAVE')
+  PON_VALOR_TABLA ( sql, 0, 2, 'ORDER BY CLAVE' ) 
+SI_NO
+  PON_VALOR_TABLA ( sql, 0, 2, 'ORDER BY DESCRIPCION' ) 
+FIN_SI
+CREA_CONSULTA ( 'BAJAS', sql )
+_total := 0
+$con_goce := ''
+
+MIENTRAS ( FIN_BASE ( 'BAJAS' ) = FALSO )
+  SI ('BAJAS':'ORIGEN'='E')
+    $con_goce := 'EMPLEADO'
+  SI_NO
+    $con_goce := 'PATRON'
+  FIN_SI
+  IMP ( COL(1), 'BAJAS':'CLAVE', COL(11), 'BAJAS':'DESCRIPCION', COL(45), $con_goce);; IMPRIME
+  _total := _total + 1
+  SIGUIENTE_REGISTRO ( 'BAJAS' )
+FIN_MIENTRAS
+
+DECIMALES := 0
+IMPRIME
+IMPRIME
+IMP ( COL (10), 'TOTAL DE TIPOS DE BAJA : ', _total ) ;; IMPRIME

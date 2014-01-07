@@ -1,0 +1,176 @@
+#IMPORTACION DE CUENTAS
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte para importar CUENTAS.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+
+$clave :=''
+$modo := ''
+$cta   :=''
+$banco := ''
+$nombre := ''
+$cta_ant := ''
+$rfc     := ''
+$rfcact  := ''
+$status  := ''
+_error   := 0
+_renglon_excel   := 2
+_graba_cta       := 0
+#_columna_excel   := 1
+_pregunta := 0 
+_nueva_tar := 0
+ENCABEZADO
+   LETRA ( 'LETRA ENFATISADA' )   ;; IMPRIME
+   IMP ( COL( 5 ) , 'CLAVE' , COL(15 ) , 'NOMBRE' , COL(55) , 'MODO' , COL(75) , 'ESTADO' , COL(150)  , ' ')
+   IMPRIME
+   LETRA ( 'LETRA CONDENSADA' )   ;; IMPRIME
+FIN_ENCABEZADO
+
+ABRE_BASE ('EMPPRIN')
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT' , 'CLAVE' ) 
+
+NUEVO_PARAMETRO_RUTA ('RUTA','',$archivo)
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR' , '' , _grabar ) 
+NUEVO_PARAMETRO_SEL ( 'ALTA_TARJETA' , 'DESACTIVAR/ACTIVAR' , _desactiva ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+EXCEL   ( 'AGREGA_HOJA_PLANTILLA' , 0,0, $archivo )
+
+ABRE_BASE ( 'EMPPRIN')
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT' , 'CLAVE' ) 
+
+   EXCEL ( 'TRAE_VALOR' , 1 , _renglon_excel , $clave )
+   EXCEL ( 'TRAE_VALOR' , 2 , _renglon_excel , $cta )
+   EXCEL ( 'TRAE_VALOR' , 3 , _renglon_excel , $banco )
+   EXCEL ( 'TRAE_VALOR' , 4 , _renglon_excel , $rfc )
+
+   MIENTRAS ( $clave <> '' )  
+   
+  SI ( TRAE_REGISTRO ( 'EMPPRIN' , $clave ))
+   
+
+   $nombre  := 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN'
+   $cta_ant := 'EMPPRIN':'CTA_TARJETA'
+   $rfcact  := 'EMPPRIN':'RFC'
+
+   $status := ''   
+
+   _error := 0
+   SI ( $rfc <> $rfcact  ) 
+        $status := $status + ' La clave no coincide con el RFC. rfc kardex ' + 'EMPPRIN':'RFC' + ' rfc archivo ' + $rfc  
+
+        SI ( _grabar = 1 )
+             'EMPPRIN':'RFC':= $rfc
+             GRABA_BASE ( 'EMPPRIN')
+             _error := 0
+             $status := ''
+        FIN_SI
+   
+        _error := 1
+   FIN_SI
+
+   SI ( $cta = ''  ) 
+        $status := $status + ' No viene una cuenta en el archivo'
+        _error := 1
+   FIN_SI
+
+   SI ( $banco = '' ) 
+       $status := $status + ' En el archivo no viene el Banco'
+       _error := 1
+   FIN_SI
+
+
+    SI (_error = 0 )
+
+      $status := ''
+
+     _nueva_tar := 0 
+
+      SI ( 'EMPPRIN':'CTA_TARJETA' = '' ) 
+           $status := 'alta de tarjeta ' + $cta
+          _nueva_tar := 1
+      FIN_SI
+
+      SI ( ($cta <> 'EMPPRIN':'CTA_TARJETA' ) AND  ( 'EMPPRIN':'CTA_TARJETA' <> '' ) ) 
+           $status := '(REPOSICION DE TARJETA) cuenta anterior ' + 'EMPPRIN':'CTA_TARJETA' + ' cuenta actual ' + $cta
+          _nueva_tar := 1
+      FIN_SI
+
+      SI ( $cta = 'EMPPRIN':'CTA_TARJETA' ) 
+           $status := 'misma cuenta'
+          _nueva_tar := 1
+      FIN_SI
+
+
+      'EMPPRIN':'CTA_TARJETA':= $cta
+
+      SI ( TRAE_REGISTRO ( 'EMPEXT' , $clave )  = FALSO ) 
+         AGREGA_REGISTRO ( 'EMPEXT')
+        'EMPEXT':'CLAVE' :=  $clave
+      FIN_SI
+
+     SI ( 'EMPEXT':'BANCO' = '' ) 
+         $status := $status + ' asignacion del banco ' + $banco
+     FIN_SI
+
+     SI (( $banco <> 'EMPEXT':'BANCO' ) AND  ( 'EMPEXT':'BANCO' <> '' ) ) 
+          $status := $status + ' (CAMBIO DE BANCO) banco anterior ' + 'EMPEXT':'BANCO' + ' banco actual ' + $banco
+     FIN_SI
+
+
+     'EMPEXT':'BANCO' := $banco 
+     SI ( _nueva_tar = 1 ) 
+ 
+       SI ( _desactiva  = 0  ) 
+           'EMPEXT':'ALTA_TARJETA' :=  0
+       FIN_SI
+
+       SI ( _desactiva  = 1  ) 
+           'EMPEXT':'ALTA_TARJETA' :=  1
+       FIN_SI
+
+     FIN_SI
+
+   SI ( _grabar = 1 ) 
+     GRABA_BASE ( 'EMPPRIN')
+     GRABA_BASE ('EMPEXT')
+   FIN_SI
+
+     SI ( $status = '' )
+          $status := 'Ya se habia importado'
+     FIN_SI
+
+
+    SI ( $modo = '' ) 
+         $modo := 'IMPORTACION'
+    FIN_SI
+ FIN_SI
+
+    SI ( _grabar = 1 ) 
+        $modo := 'IMPORTACION'
+    SI_NO
+        $modo := 'CONSULTA'
+    FIN_SI 
+
+    IMP ( COL( 5 ) , $clave , COL(15 ) , $nombre   , COL(55) , $modo , COL(75) , $status )
+    IMPRIME
+ 
+ FIN_SI
+
+   _renglon_excel := _renglon_excel + 1
+   EXCEL ( 'TRAE_VALOR' , 1 , _renglon_excel , $clave )
+   EXCEL ( 'TRAE_VALOR' , 2 , _renglon_excel , $cta )
+   EXCEL ( 'TRAE_VALOR' , 3 , _renglon_excel , $banco ) 
+   EXCEL ( 'TRAE_VALOR' , 4 , _renglon_excel , $rfc )  
+  
+FIN_MIENTRAS
+
+TERMINA_REPORTE

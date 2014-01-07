@@ -1,0 +1,157 @@
+#EXPORTACION NOMINAS A EXCEL
+#VERSION 1.0
+#USUARIO =*
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'EXCEL' , $salida)
+NUEVO_PARAMETRO      ( 'PERIODO INICIAL' , '1', _pi )
+NUEVO_PARAMETRO      ( 'PERIODO FINAL'   , '1', _pf )
+NUEVO_PARAMETRO_CHEQ ( 'SOLO CON TOTALES', '' , _solo_totales )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA  := 2
+SALIDA         := $salida
+_ren_act       := 5
+_col_act       := 0
+_no_periodos   := 0
+_pact          := 0
+$cve_empleado  := ''
+$cve_concepto  := ''
+$desc_concepto := ''
+VAR_T ( &empleados )
+VAR_T ( &conceptos )
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'REPORTE DE NOMINAS POR EXCEL' )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( 'CLAVE            NOMBRE' ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   IMPRIME
+   DECIMALES := 2
+   $cve_empleado := 'EMPPRIN':'CLAVE'
+
+   SI ( TRAE_INDICE_COL ( &empleados, 1, $cve_empleado ) < 0 )
+      AGREGA_VALOR_COL ( &empleados, 1, $cve_empleado )
+   FIN_SI
+   _ren_act := ( TRAE_INDICE_COL ( &empleados, 1, $cve_empleado ) * ( _no_periodos )) + 3
+
+   EXCEL ( 'PON_VALOR', 1, _ren_act, '"' + 'EMPPRIN':'CLAVE' )
+   EXCEL ( 'PON_VALOR', 2, _ren_act, 'EMPPRIN':'NOMBRE' )
+   SI ( CD_DC = 0 )
+      SI ( TRAE_REGISTRO ( 'DEPTO', 'EMPPRIN':'DEP_CLAVE' ))
+         EXCEL ( 'PON_VALOR', 3, _ren_act, 'EMPPRIN':'DEP_CLAVE' + ' [' + 'DEPTO':'DESCRIPCION' + ']' )
+      SI_NO
+         EXCEL ( 'PON_VALOR', 3, _ren_act, 'EMPPRIN':'DEP_CLAVE' )
+      FIN_SI
+   SI_NO
+      SI ( TRAE_REGISTRO ( 'CENTROC', 'EMPPRIN':'DEP_CLAVE' ))
+         EXCEL ( 'PON_VALOR', 3, _ren_act, 'EMPPRIN':'DEP_CLAVE' + ' [' + 'CENTROC':'DESCRIPCION' + ']' )
+      SI_NO
+         EXCEL ( 'PON_VALOR', 3, _ren_act, 'EMPPRIN':'DEP_CLAVE' )
+      FIN_SI
+   FIN_SI
+   _ren_act := _ren_act + ( _pact - _pi )
+
+   DECIMALES := 0
+   EXCEL ( 'PON_VALOR', 4, _ren_act, . ( _pact ))
+
+   DECIMALES := 2
+   PRIMER_REGISTRO ( 'CONCEPTO' )
+   MIENTRAS ( FIN_BASE ( 'CONCEPTO' ) = FALSO )
+      $cve_concepto := 'CONCEPTO':'CLAVE'
+      SI ( TRAE_INDICE_COL ( &conceptos, 1, $cve_concepto ) < 0 )
+         AGREGA_VALOR_COL ( &conceptos, 1, $cve_concepto )
+         _col_act := TRAE_INDICE_COL ( &conceptos, 1, $cve_concepto ) + 5
+         SI ( TRAE_REGISTRO ( 'CONCEPTO', $cve_concepto ))
+            $desc_concepto := 'CONCEPTO':'DESCRIPCION'
+         SI_NO
+            $desc_concepto := ''
+         FIN_SI
+         EXCEL ( 'PON_VALOR', _col_act, 1, '"' + $cve_concepto + '[' + $desc_concepto + ']')
+      FIN_SI
+      _col_act := TRAE_INDICE_COL ( &conceptos, 1, $cve_concepto ) + 5
+      EXCEL ( 'PON_VALOR', _col_act, _ren_act, TOTAL ( $cve_concepto ))
+      SIGUIENTE_REGISTRO ( 'CONCEPTO' )
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_encabezado    := 1
+_omitir_sub_totales   := 1
+_omitir_sub_total     := 1
+
+lee_parametros_seleccion
+lee_parametros_indices
+_reporte_nomina := 1
+_incluir_dep    := 1 
+
+_pact        := _pi
+_no_periodos := ( _pf - _pi ) + 1
+
+ABRE_BASE ( 'TIPONOM' )
+ABRE_BASE ( 'PERIODO' )
+
+EXCEL ( 'PON_VALOR', 1, 1, 'CLAVE'   )
+EXCEL ( 'PON_VALOR', 2, 1, 'NOMBRE'  )
+SI ( CD_DC = 0 )
+   EXCEL ( 'PON_VALOR', 3, 1, 'DEPARTAMENTO'    )
+   ABRE_BASE ( 'DEPTO' )
+SI_NO
+   EXCEL ( 'PON_VALOR', 3, 1, 'CENTRO DE COSTO' )
+   ABRE_BASE ( 'CENTROC' )
+FIN_SI
+EXCEL ( 'PON_VALOR', 4, 1, 'PERIODO' )
+
+_reporte_nomina := 0
+
+MIENTRAS ( _pact <= _pf )
+   base_trabajadores
+   SI ( CAMBIA_PERIODO ( 'EMPPRIN':'TIPO_NOM', _pact, 0 ))
+      _ren_act := 5
+      PRIMER_REGISTRO ( 'EMPPRIN' )
+      MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+         PRIMER_REGISTRO ( 'NOMINA' )
+         SI ( _solo_totales )
+            SI (( TOTAL ( 'TOTA' ) > 0 ) OR ( TOTAL ( 'PERC' ) > 0 ))
+               datos_trabajador
+            FIN_SI
+         SI_NO
+            datos_trabajador
+         FIN_SI
+         SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+      FIN_MIENTRAS
+      CIERRA_BASE ( 'EMPNOM'   )
+      CIERRA_BASE ( 'EMPPRIN'  )
+   SI_NO
+      MENSAJE ( 'NO SE PUDO CONSULTAR EL PERIODO ' + . ( _pact ))
+   FIN_SI
+   _pact := _pact + 1
+FIN_MIENTRAS
+
+termina_reporte

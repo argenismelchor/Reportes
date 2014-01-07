@@ -1,0 +1,125 @@
+#PAGOS CON CHEQUE
+#VERSION 1.000
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Detalle de Pagos con CHEQUE a trabajadores.
+#FIN_DESCRIPCION
+#
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+
+FORMATO_PESOS := 2
+FORMATO_FECHA := 3
+SALIDA        := $salida
+RENGLONES     := 65
+COLUMNAS      := 80
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   DECIMALES := 0
+   $titulo_reporte := 'Periodo ' + .('PERIODO':'NUMERO') + ' ' + 'TIPONOM':'CLAVE' + ' Del ' + FECHA ('PERIODO':'FECHA INICIAL') + ' al ' + FECHA ('PERIODO':'FECHA FINAL')
+   encabezado_ini
+   IMP ( COL (1)  , 'CLAVE' , COL (10) , 'NOMBRE' , COL (68) , DER ( 'IMPORTE' , 12 ) ) ;; IMPRIME
+   encabezado_fin
+   DECIMALES := 2
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &subtotales )
+VAR_T ( &totales    )
+VAR_T ( &indices    )
+_num_ind := 0
+$indice  := ''
+$tipo    := ''
+_cont    := 0
+_imp     := 0
+$cta     := ''
+$depa    := ''
+$cdep    := ''
+_norm    := 0
+_dobl    := 0
+_trip    := 0
+_prom    := 0
+_banc    := 0
+
+
+SUB_RUTINA sumatoria
+   DECIMALES := 2
+   # Incremento de valores para los indices seleccionados
+   _num_ind := 0
+   REPITE
+      _num_ind := _num_ind + 1
+   HASTA ( TRAE_VALOR_TABLA ( &indices , 0 , _num_ind ) = '' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   DECIMALES := 2
+   IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 33 ) )
+   IMP ( COL (68) , DER ( $ (TOTAL ('TOTA')) , 12 ) )
+   IMPRIME
+# Incremento de valores para los indices seleccionados
+   _num_ind := 0
+   REPITE
+      DECIMALES := 2
+      INCREMENTA_TABLA ( &subtotales , TRAE_VALOR_TABLA ( &indices , 0 , _num_ind ) , 'TOTAL' , TOTAL ('TOTA') )
+      _num_ind := _num_ind + 1
+      DECIMALES := 2
+   HASTA ( TRAE_VALOR_TABLA ( &indices , 0 , _num_ind ) = '' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+   DECIMALES := 2 
+   IMPRIME
+   IMP ( COL (13)  , 'Total ' + $indice )
+   IMP ( COL (68)  , DER ( $ (VALOR_TABLA ( &subtotales , $indice , 'TOTAL' )) , 12 ) )
+   IMPRIME 
+   ASIGNA_VALOR_TABLA ( &subtotales , $indice , 'TOTAL' , 0 )
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 0
+_reporte_nomina       := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+
+# Definicion de variables en base a los parametros
+SALIDA   := $salida
+$ind_act := ''
+$nom_ind := ''
+
+# Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA ( &in , 2 , _num_ind )
+  $ind_act := TRAE_VALOR_TABLA ( &in , 0 , _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+     AGREGA_VALOR_COL ( &indices , 0 , $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA( $nom_ind = '' )
+AGREGA_VALOR_COL ( &indices , 0 , 'TOTAL' )
+
+$campos_extras := 'E. TIPO_PAGO'
+base_trabajadores
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   SI (( TOTAL ('TOTA') <> 0 ) AND ( 'EMPPRIN':'TIPO_PAGO' = 'CHE' ))
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte
+
+IMPRIME ;; IMPRIME
+$indice := 'TOTAL'
+$cdep   := ''
+$depa   := 'TOTAL GENERAL'
+sub_totales

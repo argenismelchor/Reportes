@@ -1,0 +1,91 @@
+#FAMILIARES DE EMPLEADOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra los familiares de los empleados teniendo la posibilidad de seleccionar el tipo de parentesco. 
+#Este reporte pide si son vigentes o no los empleados.
+#Este reporte imprime de los trabajadores la clave, nombre, fecha ingreso y antiguedad, de los familiares imprime el nombre, parentesco, sexo y fecha nacimiento.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC  ( 'FECHA' , '' , _fi )
+NUEVO_PARAMETRO_CHEQ ( 'VIGENTES' , '' , _vig )
+NUEVO_PARAMETRO_CHEQ ( 'PARENTESCO', 'ABUELO' , _abuelo )
+NUEVO_PARAMETRO_CHEQ ( ''          , 'PADRE'  , _padre )
+NUEVO_PARAMETRO_CHEQ ( ''          , 'CONYUGE', _conyuge )
+NUEVO_PARAMETRO_CHEQ ( ''          , 'HERMANO', _hermano )
+NUEVO_PARAMETRO_CHEQ ( ''          , 'HIJO'   , _hijo )
+NUEVO_PARAMETRO_CHEQ ( ''          , 'NIETO'  , _nieto )
+NUEVO_PARAMETRO_CHEQ ( ''          , 'SOBRINO', _sobrino )
+NUEVO_PARAMETRO_CHEQ ( ''          , 'NINGUNO', _ninguno )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'FAMILIARES DE EMPLEADOS AL ' + FECHA (_fi)
+   encabezado_ini
+   IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' , COL (50) , 'INGRESO' , COL (65) , 'ANT' ) ;; IMPRIME
+   IMP ( COL (5) , 'NOMBRE' , COL (37) , 'PARENTESCO' , COL  (60) , 'SEXO' , COL (65) , 'NACIMIENTO' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+
+#Variables Globales
+$ant_trab := ''
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+   SI ( $ant_trab <> 'EMPPRIN':'CLAVE' )
+      IMPRIME
+      IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 38 ) , COL (50) , FECHA  ('EMPPRIN':'INGRESO') )
+      IMP ( COL (65) , DER( .( (FECHA_HOY - 'EMPPRIN':'INGRESO' ) / 365 ) ,  5 ) ) ;; IMPRIME
+      $ant_trab := 'EMPPRIN':'CLAVE'
+   FIN_SI
+   IMP ( COL (5) , SUBSTR ( 'EMPPRIN':'NOMBRE_FAM' , 1 , 30 ) , COL (37) , 'EMPPRIN':'PARENTESCO' , COL (60) , 'EMPPRIN':'SEXO' , COL (65) , FECHA ('EMPPRIN':'NACIMIENTO') ) ;; IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+$campos_extras := 'F. NOMBRE AS NOMBRE_FAM, F. PARENTESCO, F. SEXO, F. NACIMIENTO'
+$bases_extras := 'EMPFAM F'
+$condiciones_extras := 'F. CLAVE = E. CLAVE'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO' , 'CLAVE' )
+
+MUESTRA_AVANCE ( 'EMPPRIN' , 'PROGRESO...' )
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+    SI (( _vig = 0 ) OR ( ES_VIGENTE ( _fi ) = 1 ))
+      SI ((( 'EMPPRIN':'PARENTESCO' = 'ABUELO'  ) Y ( _abuelo  )) O
+          (( 'EMPPRIN':'PARENTESCO' = 'PADRE'   ) Y ( _padre   )) O
+          (( 'EMPPRIN':'PARENTESCO' = 'CONYUGE' ) Y ( _conyuge )) O
+          (( 'EMPPRIN':'PARENTESCO' = 'HERMANO' ) Y ( _hermano )) O
+          (( 'EMPPRIN':'PARENTESCO' = 'HIJO'    ) Y ( _hijo    )) O
+          (( 'EMPPRIN':'PARENTESCO' = 'NIETO'   ) Y ( _nieto   )) O
+          (( 'EMPPRIN':'PARENTESCO' = 'SOBRINO' ) Y ( _sobrino )) O
+          (( 'EMPPRIN':'PARENTESCO' = 'NINGUNO' ) Y ( _ninguno )))
+         datos_trabajador
+      FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte

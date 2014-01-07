@@ -1,0 +1,60 @@
+#IMPORTACION DE RFC'S ( PROGRAMA HACIENDA )
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.5
+#DESCRIPCION
+#Importacion de RFC apartir de un archivo DBF.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO     ( 'ARCHIVO DBF', 'C:\', $archivo )
+NUEVO_PARAMETRO_CHEQ( 'GRABAR', '', _grabar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'IMPORTACION DE RFC AL ' + FECHA( FECHA_HOY )
+   encabezado_ini
+   IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE', COL(50), 'NACIMIENTO', COL(65), 'RFC' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+  pie_estandar
+FIN_PIE
+
+# PARAMETROS
+DECIMALES     := 2
+COLUMNAS      := 80
+RENGLONES     := 65
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+$clave := ''
+
+ABRE_BASE ( 'EMPPRIN' )
+ABRE_BASE( $archivo )
+PRIMER_REGISTRO( $archivo )
+MIENTRAS( FIN_BASE( $archivo ) = FALSO )
+  $clave := QUITA_CARACTER( ' ', $archivo:'CODIGO' )
+  SI ( TRAE_REGISTRO( 'EMPPRIN', $clave ) )
+    IMP ( COL(1), $clave, COL(10), $archivo:'PATERNO' + ' ' + $archivo:'MATERNO' + ' ' + $archivo:'NOMBRE11' )
+    IMP ( COL(50), FECHA( $archivo:'FECHA11' ), COL(65), $archivo:'RFC11' )
+    IMPRIME
+    SI ( _grabar = 1 )
+      'EMPPRIN':'RFC' := QUITA_CARACTER( ' ', $archivo:'RFC11' )
+      GRABA_BASE( 'EMPPRIN' )
+    FIN_SI
+  SI_NO
+    IMP ( 'EL EMPLEADO CON CLAVE ' + $clave + ' NO EXISTE EN LA BASE DE DATOS' )
+    IMPRIME
+  FIN_SI
+  SIGUIENTE_REGISTRO( $archivo )
+FIN_MIENTRAS
+
+TERMINA_REPORTE

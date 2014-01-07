@@ -1,0 +1,75 @@
+#TRABAJADORES VIGENTES
+#NO EDITAR
+#VERSION 2.000
+#DESCRIPCION
+#Este reporte muestra los trabajadores vigentes de la empresa, este reporte permite filtrar la informacion en base al registro patronal, la sucursal, el centro de costo,
+#el departamento, el puesto, el tipo de empleado. Este reporte permite elegir los indices a considerar y si lo desea puede
+#alterar el orden del los mismos.
+#Este reporte imprime la clave, el nombre y tiene la opción de imprimir los sueldos del trabajador.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , '' , _fi ) 
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL'   , '' , _ff )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+
+ENCABEZADO   
+   $titulo_reporte := 'Trabajadores vigentes del ' + FECHA (_fi) + ' al ' + FECHA (_ff)
+   encabezado_ini
+   IMP ( COL (1)   , 'No.' , COL (11) , 'Nombre' , COL (42) , 'Puesto' , COL (67) , 'RFC' , COL (84) , 'No. IMSS' )
+   IMP ( COL (102) , 'F.Alta' , COL (114) , DER ( 'S.Dia' , 8 ) , COL (122) , DER ( 'S.Int' , 8 ) )
+   IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+COLUMNAS      := 130
+RENGLONES     := 65
+
+#Variables Globales
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+   SI ( TRAE_REGISTRO ( 'PUESTO' , 'EMPPRIN':'PUE_CLAVE' ) ) ;; FIN_SI
+   IMP ( COL (1)   , 'EMPPRIN':'CLAVE' , COL (11) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 30 ) , COL (42) , SUBSTR ( 'PUESTO':'DESCRIPCION' , 1 , 23 ) )
+   IMP ( COL (67)  , FORMATO ( 'EMPPRIN':'RFC' , 'XXXX-XXXXXX-XXX' ) , COL (84) , FORMATO ( 'EMPPRIN':'AFILIACION' , 'XXXX-XX-XXXX-X' ) )
+   IMP ( COL (102) , FECHA ( 'EMPPRIN':'INGRESO' ) )
+   DECIMALES := 2
+   IMP ( COL (114) , DER ( $ ( SUELDO_ACTUAL   ( _ff , _ff )) , 8 ) )
+   IMP ( COL (122) , DER ( $ ( INT_IMSS_ACTUAL ( _ff , _ff )) , 8 ) )
+   DECIMALES := 0
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+# Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_pue := 1
+$campos_extras := 'E.CTA_CHEQUES, E.RFC, E.AFILIACION'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+ACTUALIZA_BASES
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE ( _fi, _ff ) )
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte

@@ -1,0 +1,176 @@
+#PAGO SANTANDER
+#VERSION 2.000
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra los trabajadores vigentes de la empresa, este reporte permite filtrar la informacion en base al registro patronal, la sucursal, el centro de costo,
+#el departamento, el puesto, el tipo de empleado. Este reporte permite elegir los indices a considerar y si lo desea puede
+#alterar el orden del los mismos.
+#Este reporte imprime la clave, el nombre y tiene la opción de imprimir los sueldos del trabajador.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'DISCO', $salida )
+NUEVO_PARAMETRO_FEC ('FECHA APLICACION','',_fa)
+NUEVO_PARAMETRO       ('CUENTA','',$cuenta)
+NUEVO_PARAMETRO_RUTA     ('ARCHIVO: ', 'C:\SANTANDER.TXT', $archivo)
+
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+BORRA_PARAMETROS
+
+
+$tipo_nomina := ''
+
+
+ MODO_IMPRESION ( 'DIRECTO' )
+ SALIDA_REPORTE( $archivo )
+ FORMATO_FECHA := 2
+ FORMATO_PESOS := 3
+ RELLENO := '0'
+
+
+#Variables Globales
+$nombre := ''
+$clave := ''
+_trab := 0
+_total := 0
+$nombre1 := ''
+$nombre2 := ''
+_l := 0
+_aux1 := 0
+_cont2:= 0
+$nombre := ''
+$clave  := ''
+$cve_servicio:= 'NE'
+
+$ano := ''
+$mes := ''
+$dia := ''
+$formato_fecha_gen := ''
+$formato_fecha_apli := ''
+
+SUB_RUTINA fechaa
+    FORMATO_FECHA := 6
+    $ano := SUBSTR ( FECHA ( _fa) , 5, 4 ) 
+    $mes := SUBSTR ( FECHA ( _fa) , 3, 2 ) 
+    $dia  := SUBSTR ( FECHA ( _fa) , 1, 2 ) 
+    $formato_fecha_apli := $mes + $dia + $ano
+FIN_SUB_RUTINA
+
+SUB_RUTINA fechag
+    FORMATO_FECHA := 6
+    $ano := SUBSTR ( FECHA (FECHA_HOY) , 5, 4 ) 
+    $mes := SUBSTR ( FECHA (FECHA_HOY) , 3, 2 ) 
+    $dia  := SUBSTR ( FECHA (FECHA_HOY) , 1, 2 ) 
+    $formato_fecha_gen := $mes + $dia + $ano 
+FIN_SUB_RUTINA
+
+#Subrutina diversas
+
+$aux1 := ''
+$total := ''
+_nren := 1
+_cont := 2
+
+SUB_RUTINA formato_trabajador
+       #$tipo_nomina := .(TOTAL ('TOTA'))
+       #$aux1 := ''
+       DECIMALES := 2
+       _aux1:= TOTAL ('TOTA')
+       DECIMALES := 0
+       IMP ( COL (1) , '2' )                                           #TIPO DE REGISTRO
+       RELLENO := '0'
+       IMP ( COL (2) , DER(_cont,5) )                                  #NUMERO DE SECUENCIA 
+       RELLENO := '' 
+       IMP ( COL(7), SUBSTR ('EMPPRIN':'CLAVE', 1 , 7 ))               #NUMERO DE EMPLEADO
+       IMP ( COL(14), 'EMPPRIN':'NOMBREP' )                            #PATERNO
+       IMP ( COL(44), 'EMPPRIN':'NOMBREM' )                            #MATERNO
+       IMP ( COL(64), 'EMPPRIN':'NOMBREN' )                            #NOMBRE
+       IMP ( COL(94), 'EMPPRIN':'CTA_TARJETA')                         #NUMERO DE CUENTA  
+       DECIMALES:= 2
+       RELLENO := '0'
+       $aux1 := QUITA_CARACTER ('.', .( _aux1 ) )
+       IMP (COL(110), DER ($aux1,18 ))
+       DECIMALES:= 0
+       IMPRIME
+       _cont := _cont + 1
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_aux1:= 0
+
+$campos_extras := 'E. NOMBREN, E. NOMBREP, E.NOMBREM, E. CTA_TARJETA, E. RFC, E. TIPO_PAGO'
+base_trabajadores
+USA_ARCHIVO ('EMPPRIN','EMPSDO','CLAVE')
+USA_ARCHIVO ('EMPPRIN' , 'EMPEXT' , 'CLAVE' ) 
+
+#   ENCABEZADO  
+
+
+#$total_de_nomina := ''
+
+ABRE_BASE ( 'EMPPRIN' )
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+      _aux1:= TOTAL ('TOTA')
+#  SI  ( FUE_VIGENTE(_fi,_ff)  AND ( 'EMPPRIN':'CTA_TARJETA' <> '' ) AND (_aux1 <> 0 )   )
+ # SI  ( ( 'EMPPRIN':'CTA_TARJETA' <> '' ) AND (_aux1 <> 0)  AND ( 'EMPEXT':'NOMBRE_BANCO' = 'SANTANDER' ))
+  #      DECIMALES := 2     
+   #     _total := _total + TOTAL ('TOTA') 
+    #    _cont2 := _cont2 + 1
+  #FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+  FORMATO_FECHA := 0 
+  DECIMALES := 0
+  IMP( COL (1), '1')                   # TIPO DE REGISTRO 
+  IMP( COL (2),'00001')                # NUMERO DE SECUENCIA         
+  IMP( COL (7),'E')                    # SENTIDO                     
+  fechag
+  IMP( COL (8), $formato_fecha_gen )   #FECHA DE GENERACION
+  IMP( COL (16), $cuenta)         #CUENTA DE CARGO
+  fechaa
+  IMP( COL (32), $formato_fecha_apli )   #FECHA DE APLICACION
+  IMPRIME
+#_total := 0
+#_trab := 0
+ 
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   _aux1:= TOTAL ('TOTA')
+  # SI (( 'EMPPRIN':'CTA_TARJETA' <> '' )  AND ( 'EMPEXT':'NOMBRE_BANCO' = 'SANTANDER' ) )
+     SI ((_aux1 <> 0))
+        datos_trabajador
+     FIN_SI
+   #FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+IMP (COL(1), '3'  )                                 #TIPO DE REGISTRO
+RELLENO := '0'
+IMP ( COL (2) , DER(_cont,5) )                      #NUMERO DE SECUENCIA 
+IMP (COL(7), DER(_cont - 2, 5 ))                    #TOTAL DE REGISTRO
+DECIMALES := 2
+$total := QUITA_CARACTER ('.', .( _total ) )
+IMP (COL(12), DER ($total,18))                      #IMPRIME TOTAL         
+IMPRIME
+
+
+termina_reporte

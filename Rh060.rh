@@ -1,0 +1,127 @@
+#EMPLEADOS A EVALUAR PARA CAMBIO DE SALARIO
+#NO EDITAR
+#USUARIO =*
+#VERSION 1.0
+#DESCRIPCION
+#Este reporte permite desplegar a los empleados que dentro del rango especificado en las fechas cumplen N meses con el mismo sueldo.
+#FIN_DESCRIPCION
+
+FORMATO_FECHA := 6
+_mes := VALOR( SUBSTR( FECHA( FECHA_HOY ), 3, 2 ) )
+_ano := VALOR( SUBSTR( FECHA( FECHA_HOY ), 5, 4 ) )
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_FEC ( 'INICIO', FECHA( CALCULA_FECHA( _ano, _mes, 01 ) ), _fi )
+NUEVO_PARAMETRO_FEC ( 'TERMINO', FECHA( CALCULA_FECHA( _ano, _mes, 31 ) ), _ff )
+NUEVO_PARAMETRO     ( 'MESES', '6', _meses )
+NUEVO_PARAMETRO_SEL( 'TIPO', 'ALTAS/MODIFICACIONES', _filtro )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   DECIMALES := 0
+   IMP ( CENTRA ( 'EMPLEADOS A EVALUAR SUELDO DEL ' + FECHA( _fi ) + ' AL ' + FECHA( _ff ) + ' PERIODO DE ' + .( _meses ) + ' MESES' )) IMPRIME
+   DECIMALES := 2
+   IMP ( REPITETXT( '=',85 )) IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), 'ULTIMO MOD.', COL(65), DER( 'SUELDO', 10), COL(75), DER('TIPO',10) ) IMPRIME
+   IMP ( REPITETXT ('-', 85 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+#VARIABLES
+_fecha   := 0
+_sueldo  := 0
+_ano     := 0
+_mes     := 0
+_dia     := 0
+_le_toca := 0
+_ultima  := 0
+_tipo    := 0
+$tipo    := ''
+FORMATO_FECHA := 6
+
+SUB_RUTINA formato_trabajador   
+   SI ( _tipo = 1 )
+     $tipo := 'ANTIG.'
+   FIN_SI
+   SI ( _tipo = 2 )
+     $tipo := 'EVAL.'
+   FIN_SI
+   SI ( _tipo = 3 )
+     $tipo := 'PROM.'
+   FIN_SI
+   FORMATO_FECHA := 3
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE', COL(50), FECHA( _ultima ), COL(65), DER( $( _sueldo ), 10), COL(75), DER( $tipo, 10) )
+   IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA checa_empleado
+   _le_toca := 0
+   _ultima  := 0
+   _tipo    := 0
+   SI ( _filtro = 1 )
+     ULTIMO_REGISTRO( 'EMPSDO' )
+     _sueldo := 'EMPSDO':'SDO1'
+     _fecha  := 'EMPSDO':'FECHA'
+     MIENTRAS(( INICIO_BASE( 'EMPSDO' ) = FALSO ) AND ( _sueldo = 'EMPSDO':'SDO1' ))
+       _fecha := 'EMPSDO':'FECHA'
+       REGISTRO_ANTERIOR( 'EMPSDO' )
+     FIN_MIENTRAS
+   FIN_SI
+   SI ( _filtro = 0 )
+     PRIMER_REGISTRO( 'EMPSDO' )
+     _fecha := 'EMPSDO':'FECHA'
+     _sueldo := 'EMPSDO':'SDO1'
+   FIN_SI
+   _ultima  := _fecha
+   FORMATO_FECHA := 6
+   _ano := VALOR( SUBSTR( FECHA( _fecha ), 5, 4 ) )
+   _mes := VALOR( SUBSTR( FECHA( _fecha ), 3, 2 ) )
+   _dia := VALOR( SUBSTR( FECHA( _fecha ), 1, 2 ) )
+   _mes := _mes + _meses
+   MIENTRAS( _mes > 12 )
+     _ano := _ano + 1
+     _mes := _mes - 12
+   FIN_MIENTRAS
+   _fecha := CALCULA_FECHA( _ano, _mes, _dia )
+   SI (( _fecha >= _fi ) AND ( _fecha <= _ff ))
+     _le_toca := 1
+     _tipo    := 1
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI( ES_VIGENTE( FECHA_HOY ) )
+     checa_empleado
+     SI ( _le_toca = 1 )
+       datos_trabajador
+     FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

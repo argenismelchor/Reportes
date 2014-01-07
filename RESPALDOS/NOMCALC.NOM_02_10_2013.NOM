@@ -1,0 +1,29 @@
+$tipo_nomina := 'BM'
+
+# Esta utileria denomina comun se rencuentra en la carpeta de reportes, y es una utileria que comparten todos los calculod de nomina, por lo que ahi podemos hacer cambios de manera general
+# en ella podemos encontrar sub rutinas del calculo, impuestos, primas, etc, esto permite un cambio general y reduce el tiempo de programacion en empresa con bastatentes tipos de nomina
+  INCLUYE COMUN
+
+# validaciones
+  validaciones_de_calculo
+
+# Dentro de esta utileria esta contenidos todos los parametros de la nomina, esta utileria es individual, para poder configurar cada tipo de nomina
+  INCLUYE _param
+   
+# Dialogo de empleados, se mudo a COMUN
+  parametros
+
+# Consulta SQL para la seleccion y filtrado de empleados, en esta consulta, se integrara ya el campo "ACTIVO" de la tabla empprin, con la intencion de disminuir el tiempo de calculo de nomina
+  consulta_de_empleados 
+
+# Relacion de tablas y apertura de las tablas necesarias
+  apertura_de_tablas 
+
+# Auxiliares de calculo como, mes de acumulacion, fecha inicial de periodo, fecha final de periodo, etc.
+  auxiliares_de_calculo
+
+# Ciclo principal de empleados, dentro de este ciclo estan todas la condicionantes que valida el calculo para determinar si se calcula o no a un empleado
+  ciclo_de_empleados
+   
+# Esta es la parte final del calculo, donde se imprimen totales y contadores
+  termino_de_reporte

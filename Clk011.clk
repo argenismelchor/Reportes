@@ -1,0 +1,215 @@
+#INCIDENCIAS DEL PERSONAL
+#ASISTENCIAS, FALTAS Y RETARDOS
+#USUARIO =*
+#NO EDITAR
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra los trabajadores de la empresa, indicando la hora de entrada, retardo o falta y que pertenescan al Registro Patronal,sucursal y turno especificado.
+#Este reporte puede ser general, departamental/centro de costo o por puesto y puede ser indexado por clave o nombre.
+#imprime la clave, el nombre, la sucursal, el departamento y el puesto del trabajador. Y los horarios de entradas y salidas.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','',_fi)
+NUEVO_PARAMETRO_FEC ('FECHA FINAL'  ,'',_ff)
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+COLUMNAS := 95
+DECIMALES   := 12
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE')) ;; IMPRIME
+   IMP ( CENTRA ('ACCESOS DEL '+ FECHA ( _fi ) + ' ' + ' AL ' + FECHA ( _ff ) ));; IMPRIME
+   IMP ( REPITETXT('=', COLUMNAS ) ) ;; IMPRIME
+   SI ( CD_DC = 0 )
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), DER('SUCURSAL', 10), COL(60), DER('DEPTO', 10), COL(70), DER('PUESTO', 10) );; IMPRIME
+   SI_NO
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), DER('SUCURSAL', 10), COL(60), DER('C.C.', 10), COL(70), DER('PUESTO',10) );; IMPRIME
+   FIN_SI
+   IMP ( COL(3), 'FECHA', COL(15), 'ENTRADA', COL(25), 'SAL. COM', COL(35), 'REG. COM', COL(45), 'SALIDA', COL(55), 'DESCRIPCION INCIDENCIA' ) ;; IMPRIME
+   IMP ( REPITETXT('-', COLUMNAS ) );; IMPRIME;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 12
+FIN_PIE
+
+FORMATO_FECHA := 3
+
+#PARAMETROS
+_fm         := 0.000694444444
+_tolerancia := 10 * _fm
+_tolerancia_com := 5 * _fm
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &grafica )
+VAR_N ( _col )
+VAR_N ( _ren )
+$aux      := ''
+_aux      := 0
+_ii       := 0
+$notas    := ''
+_primero  := 0
+$saux     := ''
+_faux     := 0
+_retardo  := 0
+$mensaje  := ''
+$saux     := ''
+_tiempo_comida := 0
+_real_comida   := 0
+_te       := 0
+
+SUB_RUTINA formato_trabajador
+    IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 30) )
+    IMP ( COL(50), DER('EMPPRIN':'SUC_CLAVE', 10), COL(60), DER('EMPPRIN':'DEP_CLAVE', 10), COL(70), DER('EMPPRIN':'PUE_CLAVE', 10) )
+    IMPRIME
+    DECIMALES:=0   
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+#lee_parametros_seleccion
+#lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+
+$campos_extras:='E.TURNO, E.CALENDARIO'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPRELOJ', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPINC', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPVACA', 'CLAVE' )
+
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+    _primero := 0
+    _faux := _fi
+    MIENTRAS ( _faux <= _ff )
+       SI ( FUE_VIGENTE ( _faux, _faux ) > 0 ) 
+          $mensaje := ''
+          _retardo := 0
+          $saux := 'EMPPRIN':'CLAVE' 
+          SI (( TRAE_REGISTRO ( 'EMPRELOJ', $saux, _faux ) = 0 ) O (( 'EMPRELOJ':'ENTRADA_REAL_P' = 0 ) Y ( 'EMPRELOJ':'SALIDA_REAL_P' = 0 )))
+             SI ( TRAE_INCAPACIDADES ( _faux, _faux, '*' ) > 0 )
+                $mensaje := 'I N C A P A C I T A D O'
+             SI_NO
+                SI ( DIAS_INHABILES ( _faux, _faux, 'EMPPRIN':'CALENDARIO', 0, 0 ) = 1 )
+                  $mensaje := 'I N H A B I L, '
+                  SI (( TRAE_REGISTRO ( 'EMPRELOJ', $saux, _faux )))
+                    SI ( FRAC( 'EMPRELOJ':'ENTRADA_REAL_P ) > 0 )
+                      _te := FRAC('EMPRELOJ':'SALIDA_REAL_P' ) - FRAC('EMPRELOJ':'ENTRADA_REAL_P' )
+                      $mensaje := 'TIEMPO EXTRA ' + .( _te ) + ' Min.'
+                    FIN_SI
+                  FIN_SI
+                SI_NO
+                  SI (( TRAE_REGISTRO ( 'EMPRELOJ', $saux, _faux )) Y ( 'EMPRELOJ':'ENTRADA_P' = 0 ))
+                     $mensaje := 'D E S C A N S O'
+                  SI_NO
+                     SI ( TRAE_VACACIONES ( _faux, _faux, VERDADERO ) = 1 )
+                        $mensaje := 'V A C A C I O N E S'
+                     SI_NO
+                        $mensaje := 'F A L T A'
+                     FIN_SI
+                  FIN_SI
+                FIN_SI
+             FIN_SI
+          SI_NO
+             FORMATO_HORA := 6
+             DECIMALES    := 12
+             #Checa retardo en la Entrada principal
+             SI ( ( FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ) - _tolerancia > 'EMPRELOJ':'ENTRADA_P' ) )
+               _retardo := FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ) - 'EMPRELOJ':'ENTRADA_P' - _tolerancia
+             SI_NO
+               SI ( HORA ( 'EMPRELOJ':'ENTRADA_REAL_P' ) = '' )
+                  $mensaje := $mensaje + 'NO CHECO ENTRADA, '
+               FIN_SI
+             FIN_SI
+             #Checa retardo en la salida de comer
+             DECIMALES := 12
+             SI ( ( FRAC ( 'EMPRELOJ':'SALIDA_REAL_S' ) > 0 ) AND ( FRAC ( 'EMPRELOJ':'ENTRADA_REAL_S' ) > 0 ) )
+               _tiempo_comida := 'EMPRELOJ':'SALIDA_S' - 'EMPRELOJ':'ENTRADA_S' + _tolerancia_com
+               _real_comida   := FRAC ( 'EMPRELOJ':'SALIDA_REAL_S' ) - FRAC ( 'EMPRELOJ':'ENTRADA_REAL_S' )
+               SI ( _real_comida > _tiempo_comida )
+                 _retardo := _retardo + ( _real_comida - _tiempo_comida ) + _tolerancia_com
+               FIN_SI
+             SI_NO
+                 SI ( HORA ( 'EMPRELOJ':'ENTRADA_REAL_S' ) = '' )
+                    $mensaje := $mensaje + 'NO CHECO SAL. COMER, '
+                 FIN_SI
+                 SI ( HORA ( 'EMPRELOJ':'SALIDA_REAL_S' ) = '' )
+                    $mensaje := $mensaje + 'NO CHECO REG. COMER, '
+                 FIN_SI
+             FIN_SI
+             #IMP( COL(60), HORA('EMPRELOJ':'SALIDA_REAL_P') )
+             SI (( 'EMPRELOJ':'SALIDA_P' - FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' )) > 0 )
+               SI ( HORA ( 'EMPRELOJ':'SALIDA_REAL_P' ) = '' )
+                  $mensaje := $mensaje + 'NO CHECO SALIDA, '
+               SI_NO
+                  SI ( FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' ) < 'EMPRELOJ':'SALIDA_P' )
+                    _retardo := _retardo + 'EMPRELOJ':'SALIDA_P' - FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' )
+                  FIN_SI
+               FIN_SI
+             FIN_SI
+             DECIMALES := 12
+             SI ( _retardo * 1000 > 0 )
+               $mensaje := $mensaje + 'RETARDO ' + HORA( _retardo ) + ' Min., '
+             FIN_SI
+          FIN_SI
+          SI ( $mensaje <> '' )
+            SI ( _primero = 0 )
+              datos_trabajador
+            FIN_SI
+            $saux := SUBSTR( $mensaje, LONGITUD( $mensaje ), 1 )
+            MIENTRAS ( ( $saux = '' ) OR ( $saux = ',' ) )
+              $mensaje := ELIMINA ( $mensaje, LONGITUD( $mensaje ), 1 )
+              $saux := SUBSTR( $mensaje, LONGITUD( $mensaje ), 1 )
+            FIN_MIENTRAS
+            IMP ( COL ( 3 ), FECHA ( _faux ) )
+            DECIMALES := 12
+            FORMATO_HORA := 4
+            IMP ( COL(15), HORA( FRAC( 'EMPRELOJ':'ENTRADA_REAL_P' ) ) )
+            IMP ( COL(25), HORA( FRAC( 'EMPRELOJ':'ENTRADA_REAL_S' ) ) )
+            IMP ( COL(35), HORA( FRAC( 'EMPRELOJ':'SALIDA_REAL_S' ) ) )
+            IMP ( COL(45), HORA( FRAC( 'EMPRELOJ':'SALIDA_REAL_P' ) ) )
+            IMP ( COL ( 55 ), $mensaje )
+            IMPRIME
+            IMPRIME
+          FIN_SI
+       FIN_SI
+       _primero := 1
+       _faux := _faux + 1
+    FIN_MIENTRAS
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+
+
+SI (( 'EMPRELOJ':'SALIDA_P' - FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' )) > 0 )
+FORMATO_HORA := 6
+SI ( HORA ( 'EMPRELOJ':'SALIDA_REAL_P' ) = '' )
+IMP ( COL ( 74 ), 'NO CHECO SALIDA' )
+SI_NO
+SI ( FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' ) < 'EMPRELOJ':'SALIDA_P' )
+#IMP ( COL ( 60 ), HORA( 'EMPRELOJ':'SALIDA_P' - FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' )), ' Min.' )
+IMP ( COL(74), 'R E T A R D O' )                     
+FIN_SI
+FIN_SI
+FORMATO_HORA := 0
+FIN_SI

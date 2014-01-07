@@ -1,0 +1,131 @@
+#HIJOS DE EMPLEADOS
+#FAMILIARES DE EMPLEADOS
+#USUARIO =*
+#NO EDITAR
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra los familiares de los empleados teniendo la posibilidad de seleccionar el tipo de parentesco. 
+#Este reporte pide si son vigentes o no los empleados.
+#Este reporte imprime de los trabajadores la clave, nombre, fecha ingreso y antiguedad, de los familiares imprime el nombre, parentesco, sexo y fecha nacimiento.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC  ( 'FECHA' , '' , _fi )
+NUEVO_PARAMETRO_CHEQ ( 'VIGENTES' , '' , _vig )
+NUEVO_PARAMETRO      ( 'MENORES DE', '99', _menores )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+NUEVO_PARAMETRO_SEL  ( 'SEXO', 'AMBOS/MASCULINO/FEMENINO', _sexo )
+NUEVO_PARAMETRO_SEL  ( 'FILTRO', 'AMBOS/MAMAS/PAPAS', _filtro )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_lv := 0
+
+ENCABEZADO
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   _lv := LONGITUD ( VERSION_GIRO )
+   IMP ( COL (1) , NOMBRE_REPORTE , COL (COLUMNAS - _lv) , VERSION_GIRO ) ;; IMPRIME
+   IMP ( COL (1) , CLAVE_REPORTE , CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ('Reporte al ' + FECHA (_fi) ) ) ;; IMPRIME
+   IMP ( REPITETXT ( '=' , 80 ) ) ;; IMPRIME
+   IMP ( COL (1) , 'Clave' , COL (10) , 'Nombre' , COL (50) , 'INGRESO' , COL (65) , 'ANT' ) ;; IMPRIME
+   IMP ( COL (5) , 'NOMBRE' , COL (37) , 'PARENTESCO' , COL  (50) , 'SEXO' , COL (55) , 'NACIMIENTO', COL(70), 'EDAD' ) ;; IMPRIME
+   IMP ( REPITETXT ( '-' , 80 ) ) ;; IMPRIME ;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' ) ;; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   IMP ( COL (1) , 'Fecha : ' , FECHA (FECHA_HOY) , '    ' , 'Hora : ' , HORA (HORA_ACTUAL) , COL (65) , 'PAGINA : ' , PAGINA ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' ) ;; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+
+#Variables Globales
+$ant_trab := ''
+_no_hijos := 0
+_edad     := 0
+_meses    := 0
+$edad     := ''
+
+#Subrutina diversas
+
+
+SUB_RUTINA formato_trabajador
+   SI ( $ant_trab <> 'EMPPRIN':'CLAVE' )
+      IMPRIME
+      IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 38 ) , COL (50) , FECHA  ('EMPPRIN':'INGRESO') )
+      IMP ( COL (65) , DER( .( (FECHA_HOY - 'EMPPRIN':'INGRESO' ) / 365 ) ,  5 ) ) ;; IMPRIME
+      $ant_trab := 'EMPPRIN':'CLAVE'
+   FIN_SI
+   SI ( _edad = 1 )
+     $edad := '1 AÑO'
+   SI_NO
+     DECIMALES := 0
+     $edad := .(_edad ) + ' AÑOS'
+   FIN_SI
+   SI ( _meses = 1 )
+     $edad := $edad + ' 1 MES'
+   SI_NO
+     DECIMALES := 0
+     $edad := $edad + ' ' + .( _meses ) + ' MESES'
+   FIN_SI
+   IMP ( COL (5) , SUBSTR ( 'EMPPRIN':'NOMBRE_FAM' , 1 , 30 ) , COL (37) , 'EMPPRIN':'PARENTESCO' , COL (50) , 'EMPPRIN':'SEXO' , COL (55) , FECHA ('EMPPRIN':'NACIMIENTO'), COL(70), $edad ) ;; IMPRIME
+   _no_hijos := _no_hijos + 1
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+$campos_extras := 'F. NOMBRE AS NOMBRE_FAM, F. PARENTESCO, F. SEXO, F. NACIMIENTO'
+$bases_extras := 'EMPFAM F'
+$condiciones_extras := 'F. CLAVE = E. CLAVE AND F. PARENTESCO = "HIJO"'
+SI ( _sexo = 1 )
+  $condiciones_extras := $condiciones_extras + ' AND F. SEXO = "M"'
+FIN_SI
+SI ( _sexo = 2 )
+  $condiciones_extras := $condiciones_extras + ' AND F. SEXO = "F"'
+FIN_SI
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPRH' , 'CLAVE' )
+
+MUESTRA_AVANCE ( 'EMPPRIN' , 'PROGRESO...' )
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI (( _vig = 0 ) OR ( ES_VIGENTE ( _fi ) = 1 ))
+     DECIMALES := 2
+     _edad := ( _fi - 'EMPPRIN':'NACIMIENTO' ) / 365
+     SI ( _edad < _menores )
+       _meses := FRAC( _edad ) * 12
+       _edad := TRUNCAR( _edad )
+       SI (( _filtro = 0 ) OR ( ( _filtro = 1 ) AND ( 'EMPRH':'SEXO' = 'F' ) ) OR ( ( _filtro = 2 ) AND ( 'EMPRH':'SEXO' = 'M' ) ))
+          datos_trabajador
+       FIN_SI
+     FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+IMPRIME
+IMPRIME
+DECIMALES := 2
+IMP ( 'NO. TOTAL DE HIJOS : ', .( _no_hijos ) )
+IMPRIME
+TERMINA_REPORTE

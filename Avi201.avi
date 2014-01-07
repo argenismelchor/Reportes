@@ -1,0 +1,416 @@
+#AVISOS DE BAJAS INDIVIDUAL
+#AVISOS DE BAJA
+#USUARIO =*
+#VERSION 2.605
+#DESCRIPCION
+#Este reporte genera los avisos afiliatorios de baja, puede generar la salida por pantalla, impresora o disco magnetico con el formato necesario para el envio al IMSS.
+#Por impresora imprime con el formato de las formas del IMSS y por pantalla un formato propio.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+$ruta_archivo:='C:\BAJAS02.DAT'
+NUEVO_PARAMETRO_SAL ('SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida)
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','',_fi) 
+NUEVO_PARAMETRO_FEC ('FECHA FINAL','',_ff)
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+_ajuste_x  := 0
+_ajuste_y  := 0
+_inix      := 0
+_iniy      := 0
+_ubicacion := 0
+_ceja      := 0
+_tipo      := 0
+$firma     := ''
+_info      := 0
+_filtro    := 0
+SI ($salida = 'IMPRESORA')
+  BORRA_PARAMETROS
+  NUEVO_PARAMETRO_SEL ('TIPO', 'GENERAL/INDIVIDUAL', _filtro )
+  NUEVO_PARAMETRO_CHEQ ('DATOS UBICACION', '', _ubicacion )
+  NUEVO_PARAMETRO_CHEQ ('CEJA', '', _ceja )
+  NUEVO_PARAMETRO_CHEQ ('GRAFICO', '', _tipo )
+  NUEVO_PARAMETRO      ('FIRMA', '', $firma )
+  LEE_PARAMETROS
+
+  BORRA_PARAMETROS
+
+  SALIDA := 'P'
+  SI (_tipo=1)
+    DECIMALES := 0
+    _inix := VALOR( LEE_INI( TRAE_IMPRESORA, 'AJUSTE_X_AVISOS_BAJA_GRAFICO', '0' ) )
+    _iniy := VALOR( LEE_INI( TRAE_IMPRESORA, 'AJUSTE_Y_AVISOS_BAJA_GRAFICO', '0' ) )
+    NUEVO_PARAMETRO ( 'AJUSTE X', .(_inix), _ajuste_x )
+    NUEVO_PARAMETRO ( 'AJUSTE Y', .(_iniy), _ajuste_y )
+    LEE_PARAMETROS
+
+    BORRA_PARAMETROS
+    #GRABA EL NUEVO VALOR DE AJUSTE EN EL INI
+    SI (( _ajuste_x <> _inix ) OR ( _ajuste_y <> _iniy ))
+      ESCRIBE_INI( TRAE_IMPRESORA, 'AJUSTE_X_AVISOS_BAJA_GRAFICO', .(_ajuste_x) )
+      ESCRIBE_INI( TRAE_IMPRESORA, 'AJUSTE_Y_AVISOS_BAJA_GRAFICO', .(_ajuste_y) )
+    FIN_SI
+
+    MODO_IMPRESION('GRAFICO')
+    SI (_ceja = 0)
+      TAMAÑO_HOJA(1270,2030)
+    SI_NO
+      TAMAÑO_HOJA(1397,2030)
+    FIN_SI
+   LETRA ( 'LETRA NORMAL' )
+  SI_NO
+    DECIMALES := 0
+    _inix := VALOR( LEE_INI( TRAE_IMPRESORA, 'AJUSTE_X_AVISOS_BAJA_DIRECTO', '0' ) )
+    _iniy := VALOR( LEE_INI( TRAE_IMPRESORA, 'AJUSTE_Y_AVISOS_BAJA_DIRECTO', '0' ) )
+    NUEVO_PARAMETRO ( 'AJUSTE X', .(_inix), _ajuste_x )
+    NUEVO_PARAMETRO ( 'AJUSTE Y', .(_iniy), _ajuste_y )
+    LEE_PARAMETROS
+
+    BORRA_PARAMETROS
+    #GRABA EL NUEVO VALOR DE AJUSTE EN EL INI
+    SI (( _ajuste_x <> _inix ) OR ( _ajuste_y <> _iniy ))
+      ESCRIBE_INI( TRAE_IMPRESORA, 'AJUSTE_X_AVISOS_BAJA_DIRECTO', .(_ajuste_x) )
+      ESCRIBE_INI( TRAE_IMPRESORA, 'AJUSTE_Y_AVISOS_BAJA_DIRECTO', .(_ajuste_y) )
+    FIN_SI
+
+    MODO_IMPRESION('DIRECTO')
+    DRAFT:='S'
+    SI (_ceja = 0)
+      TAMAÑO_HOJA(1270,2030)
+      RENGLONES:=30 + _ajuste_x
+    SI_NO
+      TAMAÑO_HOJA(1397,2030)
+      RENGLONES:=32 + _ajuste_x
+    FIN_SI
+    LETRA ( 'LETRA NORMAL' )
+  FIN_SI
+SI_NO
+  SALIDA:=SUBSTR($salida, 1, 1)
+FIN_SI
+
+SI ( $salida = 'DISCO' )
+  BORRA_PARAMETROS
+  NUEVO_PARAMETRO ('ARCHIVO SALIDA',$ruta_archivo,$ruta_archivo)
+  NUEVO_PARAMETRO_SEL ('TIPO', 'GENERAL/INDIVIDUAL', _filtro )
+  NUEVO_PARAMETRO_SEL ('INFORMACION','FORMATO/LISTADO', _info)
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+  SI (_info=0)
+    COLUMNAS:=166
+    MODO_IMPRESION('DIRECTO')
+    SALIDA := 'D'
+    SALIDA_REPORTE($ruta_archivo)   
+  SI_NO
+    COLUMNAS:=137
+    SALIDA := 'P'
+    SI (_tipo=1)
+      MODO_IMPRESION('GRAFICO')
+    FIN_SI
+  FIN_SI
+FIN_SI
+
+#VARIABLES GLOBALES
+$mov      := 'B'
+$tipo_empleado:=''
+$tipo_mov := ''
+$jreducida:= ''
+$auxfecha := ''
+$tipo_trab:= ''
+_tipomov  := 0
+$saux     := ''
+$aux      := ''
+_tot_reg  := 0
+$guia     := ''
+$ant_trab := ''
+$paterno  := ''
+$materno  := ''
+$nombre   := ''
+_sueldo   := 0
+_primera  := 0
+_reng     := 0
+_lv       := 0
+
+SI ( $salida = 'PANTALLA' )
+  ENCABEZADO   
+     FORMATO_FECHA := 3
+     LETRA ( 'LETRA ENFATISADA' )
+     IMPRIME 
+     _lv := LONGITUD ( VERSION_GIRO )
+     IMP ( COL (1) , NOMBRE_REPORTE , COL (80 - _lv) , VERSION_GIRO ) ;; IMPRIME
+     IMP ( COL (1) , CLAVE_REPORTE , CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+     IMP ( CENTRA ('Bajas de Trabajadores') ) ;; IMPRIME
+     IMP ( CENTRA ('Del ' + FECHA (_fi) + ' al ' + FECHA (_ff) ) ) ;; IMPRIME 
+     IMP ( REPITETXT( '=' , 80 ) ) ;; IMPRIME
+     SI ( CD_DC = 0 )
+       IMP ( COL (1) , 'Clave' , COL(10) , 'Nombre' , COL(50), DER('SUCURSAL',8), COL(60), DER('DEPTO',8), COL(70), DER('PUESTO',8) );; IMPRIME
+     SI_NO
+       IMP ( COL (1) , 'Clave' , COL(10) , 'Nombre' , COL(50), DER('SUCURSAL',8), COL(60), DER('C.C.',8), COL(70), DER('PUESTO',8) );; IMPRIME
+     FIN_SI
+     IMP ( COL (8) , 'MOV', COL (12), DER('FECHA',12), COL(27), DER('SUELDO',10), COL(37), DER('VAR IMSS',10), COL (47), DER('INT IMSS',10), COL (57), DER('VAR INF',10), COL (67), DER('INT INF',10) ) ;; IMPRIME
+     IMP ( REPITETXT ( '-' , 80 ) ) ;; IMPRIME
+     LETRA ( 'LETRA NORMAL' )
+     IMPRIME 
+  FIN_ENCABEZADO
+  PIE
+     FORMATO_FECHA := 3
+     IMPRIME
+     DECIMALES := 0
+     LETRA ( 'LETRA ENFATISADA' )
+     IMP ( COL (1) , 'Fecha : ', FECHA (FECHA_HOY), '    ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA : ' , PAGINA ) ;; IMPRIME
+     LETRA ( 'LETRA NORMAL' );; IMPRIME
+     DECIMALES := 2
+  FIN_PIE 
+FIN_SI
+
+#SUBRUTINAS DIVERSAS
+
+SUB_RUTINA checa_punto
+  $nombre:=REEMPLAZA('.', ' ', 'EMPPRIN':'PRIMER')
+  $paterno:=REEMPLAZA('.', ' ', 'EMPPRIN':'PATERNO')
+  $materno:=REEMPLAZA('.', ' ', 'EMPPRIN':'MATERNO')
+  $nombre:=REEMPLAZA('Ñ', '&', $nombre)
+  $paterno:=REEMPLAZA('Ñ', '&', $paterno)
+  $materno:=REEMPLAZA('Ñ', '&', $materno)
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+  #################################################### SALIDA POR PANTALLA ###############################################################
+  SI ($salida='PANTALLA')  
+    FORMATO_FECHA := 2
+    SI ( $ant_trab <> 'EMPPRIN':'CLAVE' )
+       IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 38 ) )
+       IMP ( COL (50) , DER(TRAE_DSP('S', FECHA_HOY ),8), COL(60), DER(TRAE_DSP('D', FECHA_HOY ),8), COL(70), DER(TRAE_DSP('P', FECHA_HOY ),8)) ;; IMPRIME
+    FIN_SI
+    IMP( COL (8)  , 'EMPPRIN':'TIPO' , COL (12) , DER(FECHA('EMPPRIN':'FECHA'),12), COL(27), DER($('EMPPRIN':'SDO1'),10), COL(37), DER($('EMPPRIN':'SDO2'),10), COL(47), DER($('EMPPRIN':'SDO3'),10), COL(57), DER($('EMPPRIN':'SDO4'),10) )
+    IMP( COL (67) , DER($('EMPPRIN':'SDO5'),10) ) ;; IMPRIME
+  FIN_SI
+  #################################################### SALIDA POR DISCO FORMATO Y LISTADO #################################################
+  SI ($salida='DISCO')
+    FORMATO_FECHA:=0
+    RELLENO:='0'
+    SI ('EMPPRIN':'PE'='P')
+      $tipo_empleado:='1'
+    SI_NO
+      $tipo_empleado:='0'  
+    FIN_SI
+    SI (( 'EMPPRIN':'SDO1' <> 0 ) AND ( 'EMPPRIN':'SDO2' <> 0 ))
+       $tipo_mov := '3'
+    SI_NO
+      SI (( 'EMPPRIN':'SDO1' = 0 ) AND ( 'EMPPRIN':'SDO2' <> 0 ))
+        $tipo_mov := '1'
+      SI_NO
+        $tipo_mov := '0' 
+      FIN_SI 
+    FIN_SI
+    SI ('EMPPRIN':'JORNADA REDUCIDA'>0)
+      $jreducida:='6'
+    SI_NO
+      $jreducida:='0'
+    FIN_SI
+    DECIMALES:=0
+    $guia := DER( 'PATRONAL':'GUIA MAGNETICA', 5 )
+    DECIMALES:=2
+    SI (_info=0)
+      DECIMALES:=2
+      FORMATO_PESOS := 3
+      FORMATO_FECHA := 6
+      IMP( COL(1), 'PATRONAL':'REGISTRO PATRONAL', COL(12), 'EMPPRIN':'AFILIACION', COL(23), 'EMPPRIN':'PATERNO', COL(50), 'EMPPRIN':'MATERNO', COL(77), 'EMPPRIN':'PRIMER' ) 
+      IMP( COL(118), $jreducida, COL(119), FECHA('EMPPRIN':'FECHA') )
+      IMP( COL(132), '02', $guia, COL(139), 'EMPPRIN':'CLAVE', COL(150), 'EMPPRIN':'CURP', COL(168), '9' )
+    SI_NO
+      FORMATO_PESOS:=1
+      DECIMALES:=2
+      IMP( SUBSTR('EMPPRIN':'AFILIACION',1,10), COL(13), SUBSTR('EMPPRIN':'AFILIACION',11,1), COL(16), 'EMPPRIN':'CURP', COL(36), 'EMPPRIN':'NOMBRE' )
+      IMP( COL(90), FECHA('EMPPRIN':'FECHA') )
+      IMPRIME
+    FIN_SI
+    IMPRIME
+    RELLENO:=' '
+    _tot_reg := _tot_reg + 1
+  FIN_SI
+  #################################################### SALIDA POR FORMATOS ##################################################
+  SI ($salida='IMPRESORA')
+    ############################ REPORTE GRAFICO ###############################
+    SI (_tipo=1)
+      VE_XY(1500 + _ajuste_x,100 + _ajuste_y) ;; IMP ( FORMATO( SUBSTR('EMPPRIN':'AFILIACION',1,10), 'XX-XX-XX-XXXX') ) ;; IMPRIME
+      VE_XY(1940 + _ajuste_x,100 + _ajuste_y) ;; IMP ( SUBSTR('EMPPRIN':'AFILIACION',11,1) ) ;; IMPRIME
+
+
+      VE_XY(70 + _ajuste_x, 210 + _ajuste_y) ;; IMP ( 'EMPPRIN':'CLAVE' ) ;; IMPRIME
+      SI ( _ubicacion = 1 )
+        VE_XY(750 + _ajuste_x,210 + _ajuste_y) ;; IMP ( FORMATO( SUBSTR('PATRONAL':'REGISTRO PATRONAL',1,10), 'X-XX-XXXXX-XX') ) ;; IMPRIME
+        VE_XY(1240 + _ajuste_x,210 + _ajuste_y) ;; IMP ( SUBSTR('PATRONAL':'REGISTRO PATRONAL',11,1) ) ;; IMPRIME
+      FIN_SI
+
+      SI ( 'EMPPRIN':'CURP' <> '' )
+        VE_XY(1500 + _ajuste_x,210 + _ajuste_y) ;; IMP ( 'EMPPRIN':'CURP' ) ;; IMPRIME
+      SI_NO
+        VE_XY(1500 + _ajuste_x,210 + _ajuste_y) ;; IMP ( FORMATO('EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX') ) ;; IMPRIME
+      FIN_SI
+      VE_XY(120 + _ajuste_x,330 + _ajuste_y)  ;; IMP ( 'EMPPRIN':'PATERNO' ) ;; IMPRIME
+      VE_XY(600 + _ajuste_x,330 + _ajuste_y)  ;; IMP ( 'EMPPRIN':'MATERNO' ) ;; IMPRIME
+      VE_XY(1100 + _ajuste_x,330 + _ajuste_y) ;; IMP ( 'EMPPRIN':'PRIMER' ) ;; IMPRIME
+      FORMATO_FECHA := 6
+      $auxfecha:=FECHA('EMPPRIN':'FECHA')
+      SI ( _ubicacion = 1 )
+        VE_XY(150 + _ajuste_x,470 + _ajuste_y)  ;; IMP ( 'EMPRESA':'NOMBRE' ) ;; IMPRIME    
+        VE_XY(150 + _ajuste_x,590 + _ajuste_y)  ;; IMP ( 'PATRONAL':'CALLE' ) ;; IMPRIME
+        VE_XY(750 + _ajuste_x,590 + _ajuste_y)  ;; IMP ( 'PATRONAL':'NUMERO' ) ;; IMPRIME
+        VE_XY(1100 + _ajuste_x,590 + _ajuste_y) ;; IMP ( 'PATRONAL':'COLONIA' ) ;; IMPRIME
+        VE_XY(150 + _ajuste_x,660 + _ajuste_y)  ;; IMP ( 'PATRONAL':'MUNICIPIO' ) ;; IMPRIME
+        VE_XY(850 + _ajuste_x,660 + _ajuste_y)  ;; IMP ( 'PATRONAL':'ESTADO' ) ;; IMPRIME
+        VE_XY(1200 + _ajuste_x,660 + _ajuste_y) ;; IMP ( 'PATRONAL':'C P' ) ;; IMPRIME
+      FIN_SI
+      VE_XY(180 + _ajuste_x,800 + _ajuste_y)  ;; IMP ( SUBSTR($auxfecha, 1, 2) ) ;; IMPRIME
+      VE_XY(420 + _ajuste_x,800 + _ajuste_y)  ;; IMP ( SUBSTR($auxfecha, 3, 2) ) ;; IMPRIME
+      VE_XY(650 + _ajuste_x,800 + _ajuste_y)  ;; IMP ( SUBSTR($auxfecha, 5, 4) ) ;; IMPRIME    
+      SI (TRAE_REGISTRO('BAJA', 'EMPPRIN':'CAUSA BAJA'))
+          VE_XY(900 + _ajuste_x,820 + _ajuste_y)  ;; IMP ( 'BAJA':'DESCRIPCION' ) ;; IMPRIME
+      FIN_SI
+      SI ( $firma = '' )
+        VE_XY(300 + _ajuste_x,970 + _ajuste_y) ;; IMP ( 'PATRONAL':'REPRESENTANTE' ) ;; IMPRIME
+        VE_XY(300 + _ajuste_x,1030 + _ajuste_y) ;; IMP ( 'REPRESENTANTE LEGAL' ) ;; IMPRIME
+      SI_NO
+        VE_XY(300 + _ajuste_x,970 + _ajuste_y) ;; IMP ( $firma ) ;; IMPRIME
+      FIN_SI
+      AVANZA_HOJA
+      IMPRIME
+    FIN_SI
+    ######################################### REPORTE DIRECTO #############################################
+    SI (_tipo=0)
+      _reng := 0
+      MIENTRAS( _reng < _ajuste_y )
+        IMPRIME
+        _reng := _reng + 1
+      FIN_MIENTRAS
+      SI ('EMPPRIN':'PE'='P')
+        $tipo_empleado:='1'
+      SI_NO
+        $tipo_empleado:='0'  
+      FIN_SI
+      IMPRIME
+      IMP ( COL(67 + _ajuste_x), FORMATO( SUBSTR('EMPPRIN':'AFILIACION',1,10), 'XX-XX-XX-XXXX'), COL(88 + _ajuste_x), SUBSTR('EMPPRIN':'AFILIACION',11,1) ) ;; IMPRIME
+      IMPRIME ;; IMPRIME
+      IMP ( COL(1 + _ajuste_x), 'EMPPRIN':'CLAVE' )
+      SI ( _ubicacion = 1 )      
+        IMP ( COL(35 + _ajuste_x), FORMATO( SUBSTR('PATRONAL':'REGISTRO PATRONAL',1,10), 'X-XX-XXXXX-XX'), COL(58 + _ajuste_x), SUBSTR('PATRONAL':'REGISTRO PATRONAL',11,1) )
+      FIN_SI
+      SI ( 'EMPPRIN':'CURP' <> '' )
+        $saux := 'EMPPRIN':'CURP'
+      SI_NO
+        $saux := FORMATO('EMPPRIN':'RFC','XXXX-XXXXXX-XXX')
+      FIN_SI
+      IMP ( COL(67 + _ajuste_x), $saux )
+      IMPRIME ;; IMPRIME ;; IMPRIME
+      IMP ( COL(4 + _ajuste_x), 'EMPPRIN':'PATERNO', COL(27 + _ajuste_x), 'EMPPRIN':'MATERNO', COL(50 + _ajuste_x),'EMPPRIN':'PRIMER' ) ;; IMPRIME
+      IMPRIME ;; IMPRIME ;; IMPRIME
+      SI ( _ubicacion = 1 )
+        IMP ( COL(4 + _ajuste_x), 'EMPRESA':'NOMBRE' )
+      FIN_SI
+      IMPRIME ;; IMPRIME ;; IMPRIME
+      SI ( _ubicacion = 1 )
+        IMP ( COL(4 + _ajuste_x), 'PATRONAL':'CALLE', COL(35 + _ajuste_x), 'PATRONAL':'NUMERO', COL(51 + _ajuste_x), 'PATRONAL':'COLONIA' ) ;; IMPRIME
+        IMPRIME
+        IMP ( COL(4 + _ajuste_x), 'PATRONAL':'MUNICIPIO', COL(30 + _ajuste_x), 'PATRONAL':'ESTADO', COL(43 + _ajuste_x), 'PATRONAL':'C P' ) ;; IMPRIME
+      SI_NO
+        IMPRIME ;; IMPRIME ;; IMPRIME
+      FIN_SI
+      IMPRIME ;; IMPRIME ;; IMPRIME
+      FORMATO_FECHA := 6
+      $auxfecha:=FECHA('EMPPRIN':'FECHA')
+      IMP ( COL(6 + _ajuste_x), SUBSTR($auxfecha, 1, 2), COL(18 + _ajuste_x), SUBSTR($auxfecha, 3, 2), COL(30 + _ajuste_x), SUBSTR($auxfecha, 5, 4) )
+      SI (TRAE_REGISTRO('BAJA', 'EMPPRIN':'CAUSA BAJA'))
+          IMP ( COL(41 + _ajuste_x), 'BAJA':'DESCRIPCION' )
+      FIN_SI
+      IMPRIME ;; IMPRIME ;; IMPRIME
+      SI ( $firma = '' )
+        IMP ( COL ( 25 + _ajuste_x ), 'PATRONAL':'REPRESENTANTE' ) ;; IMPRIME
+      SI_NO
+        IMP ( COL ( 25 + _ajuste_x ), $firma ) ;; IMPRIME
+      FIN_SI
+      AVANZA_HOJA
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+$indice       := ''
+$indice_valor := ''
+
+SUB_RUTINA encabezados
+  SI ( $indice = 'REGISTRO PATRONAL' )
+    SI ( TRAE_REGISTRO( 'PATRONAL', $indice_valor ) = FALSO )
+      MENSAJE( 'REGISTRO PATRONAL INEXISTENTE' )
+    FIN_SI    
+  FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+SI ( _filtro = 0 )
+  lee_parametros_seleccion
+  lee_parametros_indices
+FIN_SI
+
+INCLUYE VALPAT.DAT
+
+SI ( $salida <> 'PANTALLA' )
+  _omitir_encabezados   := 1
+  _omitir_sub_totales   := 1
+  _omitir_total_general := 1
+SI_NO
+  _incluir_suc := 1
+  _incluir_dep := 1
+  _incluir_pue := 1
+FIN_SI
+
+$clave := ''
+VAR_T( &clave )
+MIENTRAS( $clave <> '"FIN"' )
+  SI ( _filtro = 1 )
+    BORRA_PARAMETROS
+    NUEVO_PARAMETRO_TAB( 'EMPLEADO (FIN=TERMINAR)', 'EMPPRIN/CLAVE/EMPLEADOS', &clave )
+    LEE_PARAMETROS
+  SI_NO
+    $clave := 'FIN'
+  FIN_SI
+
+  #Definicion de variables en base a los parametros
+  $campos_extras := 'E. NOMBREP AS PATERNO, E.NOMBREM AS MATERNO, E. NOMBREN AS PRIMER, E. AFILIACION, E. PE, E. "JORNADA REDUCIDA", E. CURP, E. RFC, S. TIPO, S. SDO1, S. SDO2, S. SDO3, S. SDO4, S. SDO5, S. FECHA, S. "CAUSA BAJA"'
+  $bases_extras := 'EMPSDO S'
+  $condiciones_extras := 'S.CLAVE = E.CLAVE AND S.TIPO= :m_tipo AND S. FECHA>= :FINI AND S. FECHA<= :FFIN'
+  SI ( _filtro = 1 )
+    $clave := TRAE_SELECCION( &clave )
+    $condiciones_extras := $condiciones_extras + ' AND E. CLAVE IN ( ' + $clave + ' )'
+  FIN_SI  
+   
+  base_trabajadores
+  PARAMETRO_SQL( 'EMPPRIN', 'FINI', _fi )
+  PARAMETRO_SQL( 'EMPPRIN', 'FFIN', _ff )
+  PARAMETRO_SQL( 'EMPPRIN', 'm_tipo', $mov )
+  
+  MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+     datos_trabajador
+     $ant_trab := 'EMPPRIN':'CLAVE'
+     SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+  FIN_MIENTRAS
+  termina_reporte
+  inicializa
+FIN_MIENTRAS
+
+DECIMALES:=0
+RELLENO:='0'
+SI ($salida='DISCO')
+  SI (_info=1)
+    IMPRIME
+  FIN_SI
+  IMP ( REPITETXT('*', 13), REPITETXT(' ', 43), DER(.(_tot_reg), 6), REPITETXT(' ', 69), DER(.('PATRONAL':'GUIA MAGNETICA'), 5) )
+  SI (_info=0)
+    IMP (REPITETXT(' ', 31), '9')
+  FIN_SI
+  IMPRIME
+FIN_SI
+
+TERMINA_REPORTE

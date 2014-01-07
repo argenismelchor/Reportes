@@ -1,0 +1,709 @@
+#NOTA: Es necesario que exista en el archivo principal una subrutina llamada formato_trabajador, sub_totales y encabezados
+#donde se manda llamar para la impresion de datos, encabezados e impresion de subtotales de departamento, sucursal.
+#para los subtotales y los encabezados el indicados es la variable _orden2 donde
+# Reg --> _orden2:=0   Suc --> _orden2:=1   Tip_Nom -->  _orden2:=2   DP -->  _orden2:=3  CD -->  _orden2:=4
+#Si en las subrutinas de encabezado o subtotales la variables _orden2 = -1 omite la impresion del encabezado o el subtotal por default
+VAR_T ( &tabla ) ;; #variable donde se define el SQL
+VAR_T ( &reg )   ;; #Tabla de registro patronales
+$dp:=''          ;; #Variable que identifica el depto o el puesto
+$dsp:=''         ;; #Lista de departamentos o puestos seleccionados.
+$tnom := ''      ;; #Lista de tipo de nomina.
+$dc:=''          ;; #Lista de centros de costo
+$sucursales:=''  ;; #Variable donde se guarda la concatenacion de las sucursales del registro patronal
+$val_tabla:=''   ;; #Variable auxiliar de la rutina trae_sucursales
+$registro:=''    ;; #Variable que guarda el registro patronal
+$id_dep:=''      ;; #identificador del departamento del trabajador
+$id_pue:=''      ;; #identificador del puesto del trabajador
+$id_suc:=''      ;; #identificador de la sucursal del trabajador
+$id_tip:=''      ;; #identificador del tipo de nomina del trabajador
+$id_dp:=''       ;; #Variable que contiene la sucursal, departamento o puesto del trabajador segun el parametro orden1
+$id_cd:=''       ;; #Variable que contiene el Centro de costo o el depto segun el tipo cd
+$ant_suc:=''     ;; #Variable que contiene la sucursal del trabajador anterior
+$ant_tip:=''     ;; #Variable que contiene el tipo de nomina del trabajador anterior
+$ant_dp:=''      ;; #Variable que contiene el dep, puesto o suc del trabajador anterior
+$ant_clave:=''   ;; #Variable que contiene la clave del trabajador anterior
+$ant_cd:=''      ;; #Variable que contiene el Centro Costo o Depto del trabajador anterior
+$tnom:=''        ;; #Variable que guarda los tipos de nomina
+_i:=0            ;; #Variable auxiliar de la rutina trae_sucursales
+_fiaux := 0      ;; #Variable auxiliar de fecha inicial
+_ffaux := 0      ;; #Variable auxiliar de fecha final
+_trab_suc:=0     ;; #Variable que guarda el contador de trabajadores de la sucursal actual
+_trab_tip:=0     ;; #Variable que guarda el contador de trabajadores del tipo de nomina actual
+_trab_dp:=0      ;; #Variable que guarda el contador de trabajadores de el dep, pue o suc actual
+_trab_reg:=0     ;; #Variable que guarda el total de trabajadores en el registro patronal actual
+_trab_cd:=0      ;; #Variable que guarda el total de trabajadores en el centro de costo
+_dp_suc:=0       ;; #Variable que almacena el total de dep o puestos de la sucursal actual
+_dp_tip:=0       ;; #Variable que almacena el total de dep o puestos del tipo de nomina actual
+_agrupar_cd:=1   ;; #Determina si el reporte es por centro de costo o depto segun el tipo
+_tot_suc:=0      ;; #Variable que almacena el total sucursales
+_tot_reg:=0      ;; #Variable que almacena el total sucursales
+_tot_trab:=0     ;; #Variable que almacena el total trabajadores
+_rep_nomina:=0   ;; #Bandera que indica si es reporte de nomina, 0 cuando no sea. Por default es 0. No cambiar aqui el valor.
+_cam_suc:=0      ;; #Bandera que indica si hay cambio de sucursal
+_cam_tip:=0      ;; #Bandera que indica si hay cambio de tipo de nomina
+_cam_dp:=0       ;; #Bandera que indica si hay cambio de puesto o departamento.
+_cam_cd:=0       ;; #Bandera que indica si hay cambio de centro de costo o depto
+_ant_ord2:=0     ;; #Variable auxiliar del orden 1 anterior
+#variables que determinan el comportamiento de la impresion
+_final:=0          ;; #_final esta es uno cuando finaliza el reporte
+_encabeza:=0       ;; #Variable auxiliar para imprimir un renglon despues de cada encabezado
+_colores:=1        ;; #Si es 0 imprime en negro
+_imp_subtotales:=1 ;; #Si es 0 no imprime subtotales de cada division
+_imp_encabezado:=1 ;; #Si es 0 no imprime los encabezados de cada division
+_omitir:=0         ;; #Si es 1 omite la impresión del enbezado o el subtotal por default
+_solo_dep:=0       ;; #Si es 0 toma en cuenta el Centro de Costo para el indice de los contrario solo los deptos.
+#variables que determinan el contenido de la bases de datos
+$campos_extras:=''         ;; #Variable que contiene campos extras a la base original.
+$bases_extras:=''          ;; #Variable que contiene bases extras a las originales.
+$condiciones_extras:=''    ;; #Variable que contiene condiciones extras a las originales.
+$sal:=''                   ;; #Variable de Salida
+$act_nom:=''               ;; #Define el tipo de nomina actual
+_indices := 1              ;; #Define todos los indices, 0 solo deja los indices por nombre o clave
+
+$tipon := TRAE_VALOR_TABLA ( &tipon , 0, 0 )
+SI ( $tipon <> '' )
+  SI ( $tipon = '*' )
+    ABRE_BASE( 'TIPONOM' )
+    PRIMER_REGISTRO( 'TIPONOM' )
+    $tipon := 'TIPONOM':'CLAVE'
+  SI_NO
+    SI ( TRAE_REGISTRO ( 'TIPONOM', $tipon ) = 0 ) 
+       TERMINA_REPORTE
+    FIN_SI
+  FIN_SI
+  SI ( TRAE_REGISTRO ( 'PERIODO', $tipon, 'TIPONOM':'ACTUAL' ) = 0 )
+     TERMINA_REPORTE
+  FIN_SI
+  _fiaux := _fi
+  _ffaux := _ff
+  SI ( _fiaux = 0 )
+    _fi := 'PERIODO':'FECHA INICIAL'
+  FIN_SI
+  SI ( _ffaux = 0 )
+    _ff := 'PERIODO':'FECHA FINAL'
+  FIN_SI
+FIN_SI
+
+SUB_RUTINA carga_tipo_nomina
+  SI (( 'EMPPRIN':'TIPO_NOM' <> '' ) AND ( $act_nom <> 'EMPPRIN':'TIPO_NOM' ))
+    $act_nom := 'EMPPRIN':'TIPO_NOM'
+    SI ( TRAE_REGISTRO( 'TIPONOM', 'EMPPRIN':'TIPO_NOM' ) )
+      SI ( TRAE_REGISTRO ( 'PERIODO', 'TIPONOM':'CLAVE', 'TIPONOM':'ACTUAL' ) )
+        SI ( _fiaux = 0 )
+          _fi := 'PERIODO':'FECHA INICIAL'
+        FIN_SI
+        SI ( _ffaux = 0 )
+          _ff := 'PERIODO':'FECHA FINAL'
+        FIN_SI
+        USA_ARCHIVO ( 'EMPPRIN', 'EMPNOM', 'CLAVE' )
+      FIN_SI
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SI (( $salida = 'DISCO' ) AND ( IMPRESION_DIRECTA = 1 ) AND ( ARCHIVO_SALIDA = '' ))
+  _imp_subtotales:=0
+  _imp_encabezado:=0
+  _colores:=0
+  BORRA_PARAMETROS
+  NUEVO_PARAMETRO ( 'ARCHIVO', DIRECTORIO_TRABAJO+'\SALIDA.TXT', $sal )
+  LEE_PARAMETROS
+  SALIDA_REPORTE( $sal )
+FIN_SI
+
+SUB_RUTINA color_marino
+  SI (_colores=1)
+    COLOR('MARINO')
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA color_negro
+  SI (_colores=1)
+    COLOR('NEGRO')
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA color_rojo
+  SI (_colores=1)
+    COLOR('ROJO')
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA color_verde
+  SI (_colores=1)
+    COLOR('VERDE')
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA color_azul
+  SI (_colores=1)
+    COLOR('AZUL')
+  FIN_SI
+FIN_SUB_RUTINA
+
+#Rutina que se ejecuta cada vez que se imprime el encabezado del registro
+SUB_RUTINA enc_registro
+  _ant_ord2:=_orden2
+  _orden2:=0
+  encabezados
+  SI ( _orden2 = -1 ) ;; _omitir:=1 ;; FIN_SI
+  _orden2:=_ant_ord2
+  SI (( _imp_encabezado=1 ) AND (_omitir=0))
+    SI ( _tot_reg > 0 )
+      AVANZA_HOJA
+    FIN_SI
+    color_marino
+    IMP('***** REGISTRO PATRONAL ', $registro, ' : ', 'PATRONAL':'NOMBRE' ) ;; color_negro ;; IMPRIME
+  FIN_SI
+  _omitir:=0
+  _encabeza:=1
+FIN_SUB_RUTINA
+
+#Rutina que se ejecuta cada vez que se imprime el encabezado de la sucursal
+SUB_RUTINA enc_sucursal
+  _ant_ord2:=_orden2
+  _orden2:=1
+  encabezados
+  SI ( _orden2 = -1 ) ;; _omitir:=1 ;; FIN_SI
+  _orden2:=_ant_ord2
+  SI ( TRAE_REGISTRO( 'SUCURSAL', $id_suc) )
+    SI ( _salto1 = 1 )
+      AVANZA_HOJA
+    FIN_SI  
+    SI (( _imp_encabezado=1 ) AND (_omitir=0))
+      IMPRIME
+      color_rojo 
+      IMP (' **** SUCURSAL: ', 'SUCURSAL':'CLAVE', ' --- ', 'SUCURSAL':'NOMBRE' ) ;; color_negro ;; IMPRIME
+      _encabeza:=1
+    FIN_SI
+  FIN_SI
+  _omitir:=0
+  $ant_suc:=$id_suc
+  _cam_suc:=1
+FIN_SUB_RUTINA
+
+#Rutina que se ejecuta cada vez que se imprime el encabezado del centro de costo o departamento
+SUB_RUTINA enc_cd
+  _ant_ord2:=_orden2
+  _orden2:=4
+  encabezados
+  SI ( _orden2 = -1 ) ;; _omitir:=1 ;; FIN_SI
+  _orden2:=_ant_ord2
+  SI ((_salto2=1) AND (_tot_trab>0))
+    AVANZA_HOJA
+  FIN_SI  
+  SI (( _imp_encabezado=1 ) AND (_omitir=0))
+    IMPRIME
+    color_azul
+    #SI (_orden1=1)
+      SI ( CD_DC = 1 )
+        SI (TRAE_REGISTRO('DEPTO', $id_cd))
+          IMP('  *** DEPARTAMENTO : ', $id_cd, ' --- ', 'DEPTO':'DESCRIPCION' ) ;; color_negro ;; IMPRIME
+        SI_NO
+          IMP('  *** DEPARTAMENTO ('+$id_cd+'): Desconocido' ) ;; color_negro ;; IMPRIME
+        FIN_SI
+      SI_NO
+        SI (TRAE_REGISTRO('CENTROC', $id_cd))
+          IMP('  *** CENTRO DE COSTO : ', $id_cd, ' --- ', 'CENTROC':'DESCRIPCION' ) ;; color_negro ;; IMPRIME
+        SI_NO
+          IMP('  *** CENTRO DE COSTO ('+$id_cd+'): Desconocido' ) ;; color_negro ;; IMPRIME
+        FIN_SI
+      FIN_SI
+    #FIN_SI
+    _encabeza:=1
+  FIN_SI
+  _omitir:=0
+  $ant_cd:=$id_cd
+  _cam_cd:=1  
+FIN_SUB_RUTINA
+
+#Rutina que se ejecuta cada vez que se imprime el encabezado del tipo de nomina
+SUB_RUTINA enc_tipo_nomina
+  _ant_ord2:=_orden2
+  _orden2:=2
+  encabezados
+  SI ( _orden2 = -1 ) ;; _omitir:=1 ;; FIN_SI
+  _orden2:=_ant_ord2
+  SI ( TRAE_REGISTRO( 'TIPONOM', $id_tip) )
+    carga_tipo_nomina
+    SI ((_salto1=3) AND (_tot_trab>0))
+      AVANZA_HOJA
+    FIN_SI
+    SI (( _imp_encabezado=1 ) AND (_omitir=0))
+      color_verde
+      IMPRIME
+      IMP ('   ** TIPO DE NOMIMA: ', 'TIPONOM':'CLAVE', ' --- ', 'TIPONOM':'DESCRIPCION' ) ;; color_negro ;;  IMPRIME
+      color_negro
+      _encabeza:=1
+    FIN_SI
+  FIN_SI
+  _omitir:=0
+  $ant_tip:=$id_tip
+  _cam_tip:=1
+FIN_SUB_RUTINA
+
+#Rutina que se ejecuta cada vez que se imprime el encabezado del departamento o puesto
+SUB_RUTINA enc_departamental
+  _ant_ord2:=_orden2
+  _orden2:=3
+  encabezados
+  SI ( _orden2 = -1 ) ;; _omitir:=1 ;; FIN_SI
+  _orden2:=_ant_ord2
+  SI ((_salto4=1) AND (_tot_trab>0))
+    AVANZA_HOJA
+  FIN_SI
+  SI (( _imp_encabezado=1 ) AND (_omitir=0))
+    IMPRIME
+    color_marino
+    SI (_orden1=1)
+      SI ( CD_DC = 0 )
+        SI (TRAE_REGISTRO('DEPTO', $id_dp))
+          IMP('    * DEPARTAMENTO : ', $id_dp, ' --- ', 'DEPTO':'DESCRIPCION' ) ;; color_negro ;; IMPRIME
+        SI_NO
+          IMP('    * DEPARTAMENTO : Desconocido' ) ;; color_negro ;; IMPRIME
+        FIN_SI
+      SI_NO
+        SI (TRAE_REGISTRO('CENTROC', $id_dp))
+          IMP('    * CENTRO DE COSTO : ', $id_dp, ' --- ', 'CENTROC':'DESCRIPCION' ) ;; color_negro ;; IMPRIME
+        SI_NO
+          IMP('    * CENTRO DE COSTO : Desconocido' ) ;; color_negro ;; IMPRIME
+        FIN_SI
+      FIN_SI
+    FIN_SI
+    SI (_orden1=2)
+      SI (TRAE_REGISTRO('PUESTO', $id_dp))
+        IMP('    * PUESTO : ', $id_dp, ' --- ', 'PUESTO':'DESCRIPCION' ) ;; color_negro ;; IMPRIME
+      SI_NO
+        IMP('    * PUESTO : Desconocido' ) ;; color_negro ;; IMPRIME
+      FIN_SI
+    FIN_SI
+    _encabeza:=1
+  FIN_SI
+  _omitir:=0
+  $ant_dp:=$id_dp
+  _cam_dp:=1
+FIN_SUB_RUTINA
+
+#Rutina que se ejecuta cada vez que se imprime el subtotal de la sucursal
+SUB_RUTINA sub_total_sucursal
+  _ant_ord2:=_orden2
+  _orden2:=1
+  SI ( $salida <> 'DISCO' )
+    sub_totales
+  FIN_SI
+  SI ( _orden2 = -1 ) ;; _omitir:=1 ;; FIN_SI
+  _orden2:=_ant_ord2
+  SI ((_imp_subtotales=1) AND (_omitir=0))
+    IMPRIME
+    DECIMALES:=0
+    color_rojo
+    IMP(' ---- SUBTOTALES SUCURSAL ('+$ant_suc+')') ;; color_negro ;; IMPRIME
+    color_negro
+    SI (_rep_nomina=0)
+      SI ( _orden1=1 )
+        SI ( CD_DC = 0 )
+          IMP(' ---- Total Deptos : ', .( _dp_suc ) ) ;; color_negro ;; IMPRIME
+        SI_NO
+          IMP(' ---- Total Centros de Costo : ', .( _dp_suc ) ) ;; color_negro ;; IMPRIME
+        FIN_SI
+      FIN_SI
+      SI ( _orden1=2 )
+        IMP(' ---- Total Puestos : ', .( _dp_suc ) ) ;; color_negro ;; IMPRIME
+      FIN_SI
+    FIN_SI
+    IMP(' ---- Total trabajadores: ', .( _trab_suc ) ) ;; color_negro ;; IMPRIME
+  FIN_SI
+  _omitir:=0
+FIN_SUB_RUTINA
+
+#Rutina que se ejecuta cada vez que se imprime el subtotal del centro de costo
+SUB_RUTINA sub_total_cd
+  _ant_ord2:=_orden2
+  _orden2:=4
+  SI ( $salida <> 'DISCO' )
+    sub_totales
+  FIN_SI
+  SI ( _orden2 = -1 ) ;; _omitir:=1 ;; FIN_SI
+  _orden2:=_ant_ord2
+  SI ((_imp_subtotales=1) AND (_omitir=0))
+    DECIMALES:=0
+    color_azul
+    #SI (_orden1=1)
+      SI ( CD_DC = 1 )
+        IMP('  --- Total Trabajadores Depto('+$ant_cd+'):  ', .( _trab_cd ) ) ;; color_negro ;; IMPRIME
+      SI_NO
+        IMP('  --- Total Trabajadores Centro de Costo('+$ant_cd+'):  ', .( _trab_cd ) ) ;; color_negro ;; IMPRIME
+      FIN_SI
+    #FIN_SI   
+    DECIMALES:=2
+  FIN_SI
+  _omitir:=0
+FIN_SUB_RUTINA
+
+#Rutina que se ejecuta cada vez que se imprime el subtotal del tipo de nomina
+SUB_RUTINA sub_total_tipo
+  _ant_ord2:=_orden2
+  _orden2:=2
+  SI ( $salida <> 'DISCO' )
+    sub_totales
+  FIN_SI
+  SI ( _orden2 = -1 ) ;; _omitir:=1 ;; FIN_SI
+  _orden2:=_ant_ord2
+  SI ((_imp_subtotales=1) AND (_omitir=0))
+    DECIMALES:=0
+    SI (_rep_nomina=1)
+      color_verde
+      #IMP('   - SUBTOTALES TIPO NOMINA ('+$ant_tip+')') ;; #IMPRIME
+      SI ( _orden1=1 )
+        SI ( CD_DC = 0 )         
+          IMP('   -- Total Deptos en tipo nomina ('+$ant_tip+'): ', .( _dp_tip ) ) ;; color_negro ;; IMPRIME
+        SI_NO
+          IMP('   -- Total Centros de Costo en tipo nomina ('+$ant_tip+'): ', .( _dp_tip ) ) ;; color_negro ;; IMPRIME
+        FIN_SI
+      FIN_SI
+      SI ( _orden1=2 )
+        IMP('   -- Total Puestos en tipo nomina ('+$ant_tip+'): ', .( _dp_tip ) ) ;; color_negro ;; IMPRIME
+      FIN_SI
+      IMP('   -- Total trabajadores en tipo nomina (', $ant_tip, ') : ', .( _trab_tip ) ) ;; color_negro ;; IMPRIME
+      color_negro
+    FIN_SI
+    DECIMALES:=2
+  FIN_SI
+  _omitir:=0
+FIN_SUB_RUTINA
+
+#Rutina que se ejecuta cada vez que se imprime el subtotal de departamento o puesto
+SUB_RUTINA sub_total_trabajadores
+  _ant_ord2:=_orden2
+  _orden2:=3
+  SI ( $salida <> 'DISCO' )
+    sub_totales
+  FIN_SI
+  SI ( _orden2 = -1 ) ;; _omitir:=1 ;; FIN_SI
+  _orden2:=_ant_ord2
+  SI ((_imp_subtotales=1) AND (_omitir=0))
+    DECIMALES:=0
+    color_marino
+    SI (_orden1=1)
+      SI ( CD_DC = 0 )
+        IMP('    - Total Trabajadores Depto('+$ant_dp+'):  ', .( _trab_dp ) ) ;; color_negro ;; IMPRIME
+      SI_NO
+        IMP('    - Total Trabajadores Centros de Costo('+$ant_dp+'):  ', .( _trab_dp ) ) ;; color_negro ;; IMPRIME
+      FIN_SI
+    FIN_SI
+    SI (_orden1=2)
+      IMP('    - Total Trabajadores Puesto('+$ant_dp+'):  ', .( _trab_dp ) ) ;; color_negro ;; IMPRIME
+    FIN_SI
+    DECIMALES:=2
+  FIN_SI
+  _omitir:=0
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales_trab
+  DECIMALES:=0
+  _cam_suc:=0
+  _cam_tip:=0
+  _cam_dp:=0
+  _cam_cd:=0
+  _encabeza:=0
+  #Imprime totales de departamento o puesto
+  SI ((_orden1<>0) AND ((($ant_dp<>$id_dp) AND ($ant_tip=$id_tip) AND ($ant_cd=$id_cd) AND ($ant_suc=$id_suc)) OR (_final=1)))
+    sub_total_trabajadores
+  FIN_SI
+  #Imprime totales de tipo de nomina si fue definido
+  SI ((_rep_nomina=1) AND ((($ant_tip<>$id_tip) AND ($ant_suc=$id_suc) AND ($ant_cd=$id_cd)) OR (_final=1)))
+    SI (_final=0)
+      sub_total_trabajadores
+    FIN_SI
+    sub_total_tipo
+  FIN_SI
+  #Imprime totales de centros de costo
+  SI ((_agrupar_cd=1) AND ((($ant_cd<>$id_cd) AND ($ant_suc=$id_suc)) OR (_final=1)))
+    SI (_final=0)
+      sub_total_trabajadores
+      SI (_rep_nomina=1)
+        sub_total_tipo
+      FIN_SI
+    FIN_SI
+    sub_total_cd   
+  FIN_SI
+  #Imprime totales de sucursal 
+  SI (($ant_suc<>$id_suc) OR (_final=1))
+    SI ($ant_suc<>'') 
+      SI (_final=0)
+        sub_total_trabajadores
+        sub_total_tipo
+      FIN_SI
+      sub_total_sucursal
+    FIN_SI
+    SI (_final=0)
+      enc_sucursal
+    FIN_SI
+  FIN_SI
+  #Imprime encabezado centro de costo o depto
+  SI ((_agrupar_cd=1) AND ((($ant_cd<>$id_cd) AND ($ant_suc=$id_suc)) OR (_cam_suc=1)))
+    enc_cd
+  FIN_SI
+  #Imprime encabezado de tipo de nomina
+  SI ((_rep_nomina=1) AND ((($ant_tip<>$id_tip) AND ($ant_suc=$id_suc)) OR (_cam_suc=1) OR (_cam_cd=1)))
+    enc_tipo_nomina
+  FIN_SI
+  #Imprime encabezado departamental
+  SI ((_orden1<>0) AND ((($ant_dp<>$id_dp) AND ($ant_tip=$id_tip) AND ($ant_suc=$id_suc)) OR (_cam_tip=1) OR (_cam_suc=1)))
+    enc_departamental
+  FIN_SI
+  #Actualizacion de variables cuando cambia la sucursal
+  SI (_cam_suc=1)
+    SI ( _final=0 )
+      _tot_suc:=_tot_suc + 1
+    FIN_SI
+    _trab_suc:=0
+    SI (_rep_nomina=0)
+      _dp_suc:=0    
+    FIN_SI
+  FIN_SI
+  #Actualizacion de variables cuando cambia el tipo de nomina
+  SI ((_rep_nomina=1) AND (_cam_tip=1))
+    _trab_tip:=0
+    _dp_tip:=0
+  FIN_SI
+  #Actualizacion de variables cuando cambia el centro de costo
+  SI ((_agrupar_cd=1) AND (_cam_cd=1))
+    _trab_cd:=0
+  FIN_SI
+  #Actualizacion de variables cuando cambia el tipo departamento o puesto
+  SI ((_orden1<>0) AND (_cam_dp=1))
+    _trab_dp:=0
+    _dp_tip:=_dp_tip + 1
+    _dp_suc:=_dp_suc + 1
+  FIN_SI
+  SI ( _encabeza=1 )
+    IMPRIME
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA datos_trabajador
+  $id_dep:=TRAE_DSP('D', _ff)
+  $id_pue:=TRAE_DSP('P', _ff)
+  $id_suc:=TRAE_DSP('S', _ff)
+  SI (_rep_nomina=1)
+    $id_tip:='EMPPRIN':'TIPO_NOM'
+  SI_NO
+    $id_tip:=''
+  FIN_SI
+  SI ( _orden1=0 )
+    $id_dp:=$id_suc
+  FIN_SI
+  SI ( _orden1=1 )
+    $id_dp:=$id_dep
+  FIN_SI
+  SI (_agrupar_cd=1)
+    $id_cd:='EMPPRIN':'CCD'
+  FIN_SI
+  SI ( _orden1=2 )
+    $id_dp:=$id_pue
+  FIN_SI
+  sub_totales_trab
+  SI ($ant_clave<>'EMPPRIN':'CLAVE')
+    _tot_trab:=_tot_trab + 1
+    _trab_suc:=_trab_suc + 1
+    _trab_dp:=_trab_dp + 1
+    _trab_cd:=_trab_cd + 1
+    _trab_tip:=_trab_tip + 1 
+    _trab_reg:=_trab_reg + 1
+    $ant_clave:='EMPPRIN':'CLAVE'
+  FIN_SI
+  formato_trabajador
+FIN_SUB_RUTINA
+
+SUB_RUTINA totales_registro
+  _final:=1
+  sub_totales_trab
+  _ant_ord2:=_orden2
+  _orden2:=0
+  SI ( $salida <> 'DISCO' )
+    sub_totales
+  FIN_SI
+  _orden2:=_ant_ord2
+  #SI ((_salto1=1) AND (_tot_trab>0))
+  #  AVANZA_HOJA
+  #FIN_SI
+  SI ((_imp_subtotales=1) AND (_omitir=0))
+    IMPRIME
+    color_marino
+    IMP ('----- SUBTOTALES REGISTRO PATRONAL (', $registro,') ' ) ;; IMPRIME
+    color_negro
+    DECIMALES:=0  
+    IMP ('----- Total de Sucursales   : ', .( _tot_suc ) ) ;; IMPRIME
+    DECIMALES:=0  
+    IMP ('----- Total de Trabajadores : ', .( _tot_trab ) ) ;; IMPRIME  
+  FIN_SI
+  _tot_trab:=0
+  _tot_suc:=0
+  _trab_suc:=0
+  _trab_tip:=0
+  _trab_cd:=0
+  _final:=0
+  $ant_suc:=''
+  $ant_tip:=''
+  $ant_dp:=''
+  $ant_clave:=''
+FIN_SUB_RUTINA
+
+SUB_RUTINA totales_globales
+  _final:=1
+  #sub_totales_registro
+  SI ((_salto1=1) AND (_trab_reg>0))
+    AVANZA_HOJA
+  FIN_SI
+  SI ((_imp_subtotales=1) AND (_omitir=0))
+    IMPRIME
+    color_marino
+    IMP ('----- TOTALES GLOBALES' ) ;; IMPRIME
+    color_negro
+    DECIMALES:=0  
+    IMP ('      Total de Registros    : ', .( _tot_reg ) ) ;; IMPRIME
+    DECIMALES:=0  
+    IMP ('      Total de Trabajadores : ', .( _trab_reg ) ) ;; IMPRIME  
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA trae_sucursales
+  _i := 0
+  $val_tabla:=TRAE_VALOR_TABLA ( &sucursal, 0, _i )
+  SI ($val_tabla<>'*')
+    MIENTRAS ( $val_tabla <> '' )
+      $sucursales:=$sucursales+'"'+$val_tabla+'"'
+      _i := _i + 1
+      $val_tabla:=TRAE_VALOR_TABLA ( &sucursal, 0, _i )
+      SI ( $val_tabla<>'')
+         $sucursales:=$sucursales+', '
+      FIN_SI
+    FIN_MIENTRAS 
+  SI_NO
+    ABRE_BASE('SUCURSAL')
+    PRIMER_REGISTRO('SUCURSAL')
+    REPITE
+      SI ('SUCURSAL':'REGISTRO PATRONAL' = $registro )
+        SI ( _i > 0 )
+          $sucursales:=$sucursales+', '
+        FIN_SI        
+        $sucursales:=$sucursales+'"'+'SUCURSAL':'CLAVE'+'"'        
+        _i:=_i + 1
+      FIN_SI
+      SIGUIENTE_REGISTRO('SUCURSAL')
+    HASTA( FIN_BASE('SUCURSAL')=1 )
+  FIN_SI
+  SI ( $sucursales = '' )
+    $sucursales:='""'
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA base_patronal
+  AGREGA_VALOR_COL ( &reg, 0, 'SELECT *' )
+  AGREGA_VALOR_COL ( &reg, 0, 'FROM PATRONAL' )
+  SI (TRAE_VALOR_TABLA ( &registro, 0, 0 ) <> '*' )
+    AGREGA_VALOR_COL ( &reg, 0, 'WHERE PATRONAL. CLAVE IN' )
+    CREA_SELECCION_SQL ( &reg, &registro )
+  FIN_SI
+  CREA_CONSULTA( 'PATRONAL', &reg )
+FIN_SUB_RUTINA
+
+SUB_RUTINA base_trabajadores
+  SI ( _orden1=0 )
+    $dp:='S'
+  FIN_SI
+  SI ( _orden1=1 )
+    $dp:='D'
+  FIN_SI
+  SI ( _orden1=2 )
+    $dp:='P'
+  FIN_SI
+  SI ($registro='')
+    TERMINA_REPORTE
+  FIN_SI
+  $sucursales:=''
+  trae_sucursales
+  LIMPIA_TABLA( &tabla )
+  AGREGA_VALOR_COL ( &tabla, 0, 'SELECT E. CLAVE, E. NOMBREP || " " || E. NOMBREM || " " || E. NOMBREN AS NOMBRE, E. TIPO_NOM, E. INGRESO,')
+  AGREGA_VALOR_COL ( &tabla, 0, 'S. CLAVE, S. CATALOGO, S. "FECHA SALIDA"')
+  AGREGA_VALOR_COL ( &tabla, 0, ', DP. CLAVE, DP. CATALOGO, DP. "FECHA SALIDA"')
+  SI ( CD_DC = 0 )
+    AGREGA_VALOR_COL ( &tabla, 0, ', CD. CLAVE, CD. "CENTRO COSTO" AS CCD')
+  SI_NO
+    AGREGA_VALOR_COL ( &tabla, 0, ', CD. CLAVE, CD. DEPARTAMENTO AS CCD')
+  FIN_SI
+  SI ($campos_extras<>'')
+    AGREGA_VALOR_COL ( &tabla, 0, ', '+$campos_extras)
+  FIN_SI
+  AGREGA_VALOR_COL ( &tabla, 0, 'FROM EMPPRIN E, EMPSUC S, EMPDEP DP')
+  SI ( $dp = 'P' )
+     AGREGA_VALOR_COL ( &tabla, 0, ', EMPPUES DP')
+  FIN_SI
+  SI ( CD_DC = 0 )
+    AGREGA_VALOR_COL ( &tabla, 0, ', DEPTO CD')
+  SI_NO
+    AGREGA_VALOR_COL ( &tabla, 0, ', CENTROC CD')
+  FIN_SI
+  SI ($bases_extras<>'')
+    AGREGA_VALOR_COL ( &tabla, 0, ', '+$bases_extras)
+  FIN_SI
+  AGREGA_VALOR_COL ( &tabla, 0, 'WHERE S. CLAVE=E. CLAVE AND S. "FECHA ENTRADA" <= :_fech AND S. "FECHA SALIDA" >= :_fech AND ')
+  AGREGA_VALOR_COL ( &tabla, 0, 'DP. CLAVE=E. CLAVE AND DP. "FECHA ENTRADA" <= :_fech AND DP. "FECHA SALIDA" >= :_fech AND ')
+  AGREGA_VALOR_COL ( &tabla, 0, 'CD. CLAVE=DP. CATALOGO AND ')
+  AGREGA_VALOR_COL ( &tabla, 0, 'S. CATALOGO IN ('+$sucursales+') AND E. INGRESO<=:_fech')
+  $dc:=TRAE_SELECCION( &dc )
+  SI ( $dc <> '' )
+    SI ( CD_DC = 0 )
+      AGREGA_VALOR_COL ( &tabla, 0, ' AND CD. "CENTRO COSTO" IN ( '+$dc+' )' )
+    SI_NO
+      AGREGA_VALOR_COL ( &tabla, 0, ' AND CD. DEPARTAMENTO IN ( '+$dc+' )' )
+    FIN_SI
+  FIN_SI
+  $dsp:=TRAE_SELECCION( &dsp )
+  SI ( $dsp <> '' )
+    AGREGA_VALOR_COL ( &tabla, 0, ' AND DP. CATALOGO IN ( '+$dsp+' )' )
+  FIN_SI
+  SI ($condiciones_extras<>'')
+    AGREGA_VALOR_COL ( &tabla, 0, 'AND '+$condiciones_extras)
+  FIN_SI
+  SI (_rep_nomina=1)
+    $tnom:=TRAE_SELECCION( &tipon )
+    SI ( $tnom <> '' )
+      AGREGA_VALOR_COL ( &tabla, 0, 'AND E.TIPO_NOM IN ( '+$tnom+' )' )
+    FIN_SI
+  FIN_SI
+  AGREGA_VALOR_COL ( &tabla, 0, 'ORDER BY ' )
+  SI ( _indices = 1 )
+    AGREGA_VALOR_COL ( &tabla, 0, 'S. CATALOGO,' )
+    SI ( _solo_dep = 0 )
+      SI ( CD_DC = 0 )
+        AGREGA_VALOR_COL ( &tabla, 0, 'CD. "CENTRO COSTO",' )
+      SI_NO
+        AGREGA_VALOR_COL ( &tabla, 0, 'CD. DEPARTAMENTO,' )
+      FIN_SI
+    SI_NO
+      SI ( _orden1 = 0 )
+        SI ( CD_DC = 0 )
+          AGREGA_VALOR_COL ( &tabla, 0, 'CD. "CENTRO COSTO",' )
+        SI_NO
+          AGREGA_VALOR_COL ( &tabla, 0, 'CD. DEPARTAMENTO,' )
+        FIN_SI
+      FIN_SI
+    FIN_SI
+    SI (_rep_nomina=1)
+      AGREGA_VALOR_COL ( &tabla, 0, 'E. TIPO_NOM,' )
+    FIN_SI
+    SI ( _orden1 <> 0 )
+      AGREGA_VALOR_COL ( &tabla, 0, 'DP. CATALOGO,')
+    FIN_SI
+  FIN_SI
+  SI ( _orden2=1 )
+    AGREGA_VALOR_COL ( &tabla, 0, 'E. NOMBRE' )
+  SI_NO
+    AGREGA_VALOR_COL ( &tabla, 0, 'E. CLAVE' )
+  FIN_SI
+  CREA_CONSULTA ( 'EMPPRIN', &tabla )
+  PARAMETRO_SQL( 'EMPPRIN', '_fech', _ff )
+  MUESTRA_AVANCE( 'EMPPRIN', 'Reg. Patronal: ' + $registro )
+FIN_SUB_RUTINA

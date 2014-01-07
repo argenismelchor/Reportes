@@ -1,0 +1,47 @@
+#VARIABLES GLOBALES
+_lv             := 0
+_dec_antes      := 0
+_condensado     := 0
+$titulo_reporte := ''
+
+SUB_RUTINA encabezado_ini
+   _dec_antes := DECIMALES
+   SI ( _condensado = 1 )
+     LETRA ( 'LETRA CONDENSADA' ) IMPRIME
+   SI_NO
+     LETRA ( 'LETRA ENFATISADA' ) IMPRIME
+   FIN_SI
+   _lv := LONGITUD ( VERSION_GIRO )
+   IMP ( COL (1) , NOMBRE_REPORTE , COL (COLUMNAS - _lv) , VERSION_GIRO ) ;; IMPRIME
+   IMP ( COL (1) , CLAVE_REPORTE , CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ( MAYUSCULAS( $titulo_reporte ) ) ) ;; IMPRIME
+   IMP ( REPITETXT ( '=' , COLUMNAS ) ) ;; IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA encabezado_fin
+   IMP ( REPITETXT ( '-' , COLUMNAS ) ) ;; IMPRIME ;; IMPRIME 
+   SI ( _condensado = 1 )
+     LETRA ( 'LETRA CONDENSADA' ) IMPRIME
+   SI_NO
+     LETRA ( 'LETRA NORMAL' ) IMPRIME
+   FIN_SI
+   DECIMALES := _dec_antes  
+FIN_SUB_RUTINA
+
+SUB_RUTINA pie_estandar
+   _dec_antes := DECIMALES
+   IMPRIME
+   DECIMALES := 0
+   SI ( _condensado = 1 )
+     LETRA ( 'LETRA CONDENSADA' ) IMPRIME
+   SI_NO
+     LETRA ( 'LETRA ENFATISADA' ) IMPRIME
+   FIN_SI
+   IMP ( COL (1) , 'Fecha : ' , FECHA (FECHA_HOY) , '    ' , 'Hora : ' , HORA (HORA_ACTUAL) , COL (65) , 'PAGINA : ' , PAGINA ) ;; IMPRIME
+   SI ( _condensado = 1 )
+     LETRA ( 'LETRA CONDENSADA' ) IMPRIME
+   SI_NO
+     LETRA ( 'LETRA NORMAL' ) IMPRIME
+   FIN_SI
+   DECIMALES := _dec_antes
+FIN_SUB_RUTINA

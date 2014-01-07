@@ -1,0 +1,85 @@
+#IMPORTACION DE ACUMULADOS POR COLUMNA
+#IMPORACION DE ACUMULADOS DESDE EXCEL
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como base en los reportes.
+#CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL/DISCO', $salida)
+NUEVO_PARAMETRO_RUTA ('SALIDA' , 'C:\ACUM.XLS' , $archivo )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$clave    := ''
+$concepto := ''
+_ene      := 0
+_feb      := 0
+_mar      := 0
+_abr      := 0
+_may      := 0
+_jun      := 0
+_jul      := 0
+_ago      := 0
+_sep      := 0
+_oct      := 0
+_nov      := 0
+_dic      := 0
+_agui     := 0
+_fini     := 0
+_esp      := 0
+
+EXCEL ('AGREGA_HOJA_PLANTILLA' , 0 , 0 , $archivo ) 
+
+ABRE_BASE ('EMPACUM')
+_ren := 3
+
+REPITE
+
+   EXCEL ( 'TRAE_VALOR' ,  1   , _ren , $clave    ) 
+   EXCEL ( 'TRAE_VALOR' ,  2   , _ren , $concepto ) 
+   EXCEL ( 'TRAE_VALOR' ,  3   , _ren , _esp      ) 
+
+   SI ( TRAE_REGISTRO ( 'EMPACUM' , $clave , $concepto ) = VERDADERO ) 
+
+      'EMPACUM':'ESPECIAL' := 'EMPACUM':'ESPECIAL' + _esp
+
+      $valor := $clave
+      imprime_columna
+
+      GRABA_BASE('EMPACUM')
+
+      SI_NO
+
+      AGREGA_REGISTRO ('EMPACUM')
+
+      'EMPACUM':'CLAVE'    := $clave
+      'EMPACUM':'CONCEPTO' := $concepto
+      'EMPACUM':'ESPECIAL' := _esp
+
+      $valor := $clave
+      imprime_columna
+
+
+      GRABA_BASE('EMPACUM')
+
+   FIN_SI
+
+imprime_renglon
+
+_ren := _ren + 1
+HASTA ( $clave = '' ) 

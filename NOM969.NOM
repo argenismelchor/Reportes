@@ -1,0 +1,60 @@
+#LAYOUT DE CHECADAS
+#IMPORTACION DE CHECADAS
+#USUARIO =*
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte de checadas.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'DISCO', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+$ruta := 'C:\REGISTROS_PENDIENTES_1.TXT'
+
+SALIDA_REPORTE ( $ruta ) 
+
+NUEVO_PARAMETRO_RUTA ( 'EXCEL' , '' , $excel ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , $excel ) 
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+_filaexcel := 1
+$clave := '' ;; $fecha := '' ;; $hora := '' ;; $horas:= ''
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+           IMP ( $clave + '=' + $fecha + ' ' + $horas ) 
+           IMPRIME 
+FIN_SUB_RUTINA
+
+ABRE_BASE ( 'EMPPRIN')
+
+EXCEL( 'TRAE_VALOR' , 1 , _filaexcel , $clave   ) 
+
+MIENTRAS ( $clave <>  '' ) 
+
+  EXCEL ( 'TRAE_VALOR' , 2 , _filaexcel , $fecha ) 
+  EXCEL ( 'TRAE_VALOR' , 3 , _filaexcel , $hora  )
+
+FORMATO_HORA := 2 
+  SI ( VALOR ( $hora ) <> 0 ) 
+       $horas := HORA ( VALOR($hora) ) 
+  FIN_SI
+
+
+  formato_trabajador
+ _filaexcel := ( _filaexcel + 1 ) 
+ EXCEL ( 'TRAE_VALOR' , 1 , _filaexcel , $clave ) 
+
+FIN_MIENTRAS
+
+TERMINA_REPORTE

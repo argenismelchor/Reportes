@@ -1,0 +1,58 @@
+#CAMBIO DE FECHA DE ALTA
+#VERSION 1.0
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+FORMATO_FECHA := 2
+SALIDA := 'PANTALLA'
+
+
+ABRE_BASE ( 'EMPPRIN' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPDEP' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPPUES', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSUC' , 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+
+
+$clave_empleado := '' 
+_fecha          := 0
+REPITE
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO_TAB ( 'EMPLEADO', 'EMPPRIN/CLAVE/TABLA DE EMPLEADOS', $clave_empleado )
+   NUEVO_PARAMETRO_FEC ( 'ALTA'    , '', _fecha )
+   LEE_PARAMETROS
+   SI ( TRAE_REGISTRO ( 'EMPPRIN', $clave_empleado ))
+      ULTIMO_REGISTRO ( 'EMPSDO' )
+      ULTIMO_REGISTRO ( 'EMPDEP' )
+      ULTIMO_REGISTRO ( 'EMPPUES' )
+      ULTIMO_REGISTRO ( 'EMPSUC' )
+      SI ( 'EMPSDO':'TIPO' = 'A' )
+         SI (( 'EMPSDO':'FECHA' = 'EMPDEP':'FECHA ENTRADA'  ) Y
+             ( 'EMPSDO':'FECHA' = 'EMPPUES':'FECHA ENTRADA' ) Y
+             ( 'EMPSDO':'FECHA' = 'EMPSUC':'FECHA ENTRADA' ))
+            'EMPSDO':'FECHA' := _fecha
+            GRABA_BASE ( 'EMPSDO' )
+            'EMPSUC':'FECHA ENTRADA' := _fecha
+            GRABA_BASE ( 'EMPSUC' )
+            'EMPDEP':'FECHA ENTRADA' := _fecha
+            GRABA_BASE ( 'EMPDEP' )
+            'EMPPUES':'FECHA ENTRADA' := _fecha
+            GRABA_BASE ( 'EMPPUES' )
+            'EMPPRIN':'INGRESO' := _fecha
+            GRABA_BASE ( 'EMPPRIN' )
+         SI_NO
+            MENSAJE ( 'EL TRABAJADOR YA TIENE CAMBIOS DE DEPARTAMENTO, PUESTO O SUCURSAL... NO ES POSIBLE HACER EL CAMBIO !' )
+         FIN_SI
+      SI_NO
+         MENSAJE ( 'EL TRABAJADOR YA TIENE MAS MOVIMIENTOS AFILIATORIOS... NO ES POSIBLE HACER EL CAMBIO !' )
+      FIN_SI
+   SI_NO
+      MENSAJE ( 'EL EMPLEADO NO FUE ENCONTRADO !' ) 
+   FIN_SI
+HASTA ( $clave_empleado = '' )
+
+

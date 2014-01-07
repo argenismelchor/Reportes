@@ -1,0 +1,117 @@
+#IMPORTACION DE PRESTAMOS
+#NO EDITAR
+#USUARIO =*
+#IMPORTACIONES DE CAPTURAS NOMINA
+#VERSION 2.500
+#DESCRIPCION
+#Importacion datos de una archivo de texto NOMINA.TXT del directorio de trabajo con el siguiente formato:
+#CAMPO       COL LON JUST. FORMATO
+#CLAVE         1  10  IZQ
+#CONCEPTO     11  10  IZQ
+#FECHA        21  10  DDMMAAAA
+#MONTO        31  10  DER XXXXX.XX
+#DESCUENTO    41  10  DER XXXXX.XX
+#FIN          51   1  DER '#'
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO      ( 'ARCHIVO', DIRECTORIO_TRABAJO + '\PRESTAMO.TXT', $archivo )
+NUEVO_PARAMETRO      ( 'DESCRIPCION PREST.', '', $descripcion )
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR', '', _grabar )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+CREA_BASE_TXT ( 'TABLA', $archivo, 'FIJO' )
+DEFINE_CAMPO_TXT ( 'TABLA', 'CLAVE' , 1 , 10 )
+DEFINE_CAMPO_TXT ( 'TABLA', 'CONCEPTO' , 11, 10 )
+DEFINE_CAMPO_TXT ( 'TABLA', 'FECHA' , 21, 10 )
+DEFINE_CAMPO_TXT ( 'TABLA', 'MONTO' , 31, 10 )
+DEFINE_CAMPO_TXT ( 'TABLA', 'DESCUENTO' , 41, 10 )
+DEFINE_CAMPO_TXT ( 'TABLA', 'FIN' , 51, 1 )
+ABRE_BASE_TXT    ( 'TABLA', 'EDICION' )
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ('IMPORTACION DE PRESTAMOS')) ;; IMPRIME
+   IMP ( REPITETXT('=',90)) ;; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(45), DER('CONCEPTO',10), COL(60), 'FECHA', COL(70), DER('MONTO',10), COL(80), DER('DESCUENTO',10) );; IMPRIME
+   IMP ( REPITETXT('-',90) );; IMPRIME;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+COLUMNAS := 90
+FORMATO_PESOS := 2
+FORMATO_FECHA := 2
+DECIMALES := 2
+$clave    := ''
+$concepto := ''
+_fecha    := 0
+$fecha    := ''
+_ano      := 0
+_mes      := 0
+_dia      := 0
+_monto    := 0
+_descuento:= 0
+
+SUB_RUTINA carga_valores
+  $concepto := QUITA_CARACTER ( ' ' , 'TABLA':'CONCEPTO' )
+  $fecha := QUITA_CARACTER ( ' ' , 'TABLA':'FECHA' )
+  _dia   := VALOR( SUBSTR( $fecha, 1, 2 ) )
+  _mes   := VALOR( SUBSTR( $fecha, 3, 2 ) )
+  _ano   := VALOR( SUBSTR( $fecha, 5, 4 ) )
+  _fecha := CALCULA_FECHA( _ano, _mes, _dia )
+  _monto := VALOR( 'TABLA':'MONTO' )
+  _descuento := VALOR( 'TABLA':'DESCUENTO' )
+FIN_SUB_RUTINA
+
+ABRE_BASE ( 'EMPPRIN' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPPRES', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'TABLA' )
+MIENTRAS ( FIN_BASE( 'TABLA' ) = FALSO )
+  $clave := QUITA_CARACTER ( ' ' , 'TABLA':'CLAVE' )
+  SI ( TRAE_REGISTRO ( 'EMPPRIN', $clave ) )
+    carga_valores
+    SI ( _grabar = 1 )
+      AGREGA_REGISTRO( 'EMPPRES' )
+      'EMPPRES':'CLAVE'       := 'EMPPRIN':'CLAVE'
+      'EMPPRES':'CLAVE_CONCEPTO' := $concepto
+      'EMPPRES':'FECHA'       := _fecha
+      'EMPPRES':'MONTO'       := _monto
+      'EMPPRES':'DESCUENTO'   := _descuento
+      'EMPPRES':'SALDO'       := _monto
+      'EMPPRES':'ESTADO'      := 'S'
+      'EMPPRES':'COMENTARIO'  := $descripcion
+      'EMPPRES':'PRESTAMO'    := _monto
+      'EMPPRES':'INTERES'     := 0
+      GRABA_BASE( 'EMPPRES' )
+    FIN_SI
+    IMP ( COL(1), 'TABLA':'CLAVE', COL (11), SUBSTR( 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN', 1, 28) ) 
+    IMP ( COL(45), DER( $concepto, 10 ) )
+    IMP ( COL(60), FECHA( _fecha ) )
+    IMP ( COL(70), DER( $(_monto), 10 ) )
+    IMP ( COL(80), DER( $(_descuento), 10 ) )
+    IMPRIME
+  SI_NO
+    IMP ( COL(1), 'TABLA':'CLAVE', COL(40), 'ERROR', COL(50), 'EMPLEADO NO ENCONTRADO...' ) ;; IMPRIME
+  FIN_SI
+  SIGUIENTE_REGISTRO ( 'TABLA' )
+FIN_MIENTRAS
+
+TERMINA_REPORTE
+

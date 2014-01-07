@@ -1,0 +1,164 @@
+#TOTALES POR TALLA
+#TOTALES POR TALLA ( CAMISA Y PANTALON )
+#USUARIO =IBARRAM,RODRIGUEZS,LOPEZL
+#EXCEL
+#VERSION 2.5
+#DESCRIPCION
+#Reporte estandar de trabajadores vigentes.
+#MUESTRA TOTALES POR TALLA YA SEA DE PANTALÓN O DE CAMISA.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL', $salida)
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , '' , _fi ) 
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL' , '' , _ff )
+NUEVO_PARAMETRO_SEL ( 'TALLAS POR', 'CAMISA/PANTALON', _tipo )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+
+SI ( _tipo = 0 )
+  $columna   := 'TALLA CAMISAS'
+SI_NO
+  $columna   := 'TALLA PANTALON'
+FIN_SI
+_longitud  := 15
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'TOTALES'
+_longitud  := 10
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+
+$titulo_reporte := 'TALLAS DE CAMISAS Y PANTALONES DEL ' + FECHA (_fi) + ' AL ' + FECHA (_ff)
+define_encabezado
+
+# PARAMETROS
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+_totales_talla := 0
+$aux_talla     := ''
+$condicion     := ''
+_flag          := 0
+
+
+# VARIABLES GLOBALES
+
+SUB_RUTINA  totales_por_talla
+#  SI ( ( $aux_talla <> $condicion ) AND ( _flag = 1 ) )   
+  SI ( ( $aux_talla <> $condicion ) AND ( _flag = 1 ) )   
+      $valor := ''
+      imprime_columna
+    
+      $valor := ''
+      imprime_columna
+    
+      $valor := ''
+      imprime_columna
+    
+      DECIMALES := 0
+      $valor := . ( _totales_talla  )
+      imprime_columna
+      _totales_talla := 0
+      DECIMALES := 2
+      $aux_talla  := $condicion  
+      imprime_renglon      
+#   SI_NO
+   FIN_SI
+      $valor := 'EMPPRIN':'CLAVE'
+      imprime_columna
+    
+      $valor := 'EMPPRIN':'NOMBRE'
+      imprime_columna
+    
+      $valor := $condicion
+      imprime_columna
+  
+      $valor := ' '
+      imprime_columna
+      _totales_talla :=  _totales_talla  +  1
+      imprime_renglon
+      _flag := 1
+#      _flag          := 1  
+#   FIN_SI
+FIN_SUB_RUTINA
+
+# SUBRUTINAS
+SUB_RUTINA formato_trabajador
+   SI ( _tipo = 0 )
+      $condicion := 'EMPPRIN':'CAMISA'
+   SI_NO
+      $condicion := . ( 'EMPPRIN':'PANTALON' )
+   FIN_SI
+   totales_por_talla
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+  sub_total_util
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+$campos_extras      := 'U. PANTALON, U. CAMISA'
+$bases_extras       := 'EMP_UNIF U'
+$condiciones_extras := 'U.CLAVE = E.CLAVE'
+SI ( _tipo = 0 )
+   $ordenes_extras     := 'U.CAMISA'
+SI_NO
+   $ordenes_extras     := 'U.PANTALON'
+FIN_SI
+
+base_trabajadores
+
+USA_ARCHIVO ( 'EMPPRIN' , 'EMP_UNIF' , 'CLAVE' )
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+  SI ( 'EMPPRIN':'CLAVE' = '0188' )
+    _incluir_dep := _incluir_dep
+  FIN_SI
+   SI ( FUE_VIGENTE( _fi, _ff ) )
+      SI ( TRAE_REGISTRO ( 'EMP_UNIF' , 'EMPPRIN':'CLAVE'  ) )
+        SI ( ( 'EMP_UNIF':'CAMISA'<>'' )  AND  (  'EMP_UNIF':'PANTALON'<>'' )  )
+           datos_trabajador
+        FIN_SI
+      FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+$indice := 'TOTAL'
+imprime_totales
+
+TERMINA_REPORTE

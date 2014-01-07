@@ -1,0 +1,528 @@
+#PROCEDIMIENTO CALC. IMP 79
+#PROCEDIMIENTO DE CALCULO DE ISPT
+#USUARIO =*
+#DESCRIPCION
+#Procedimiento de Cálculo de ISPT
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+NUEVO_PARAMETRO_SEL ('TIPO DE CALCULO','Art.80/Art.86/Art.79', _art )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+
+NUEVO_PARAMETRO ( 'TABLA ISPT MEN' , LEE_INI( 'TABLAS IMPUESTO', 'ISPT', 'ISPT' ) , $ispt ) 
+NUEVO_PARAMETRO ( 'TABLA SUBS MEN' , LEE_INI( 'TABLAS IMPUESTO', 'SUBS', 'SUBS' ) , $subs ) 
+NUEVO_PARAMETRO ( 'TABLA CRED MEN' , LEE_INI( 'TABLAS IMPUESTO', 'CRED', 'CRED' )   , $cred ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+
+########  VARIABLES GLOBALES. 
+_base   := 0
+_dias   := 0 
+_factor := 0
+_base79 := 0
+_base86 := 0
+_base80 := 0
+_aux1   := 0
+_aux2   := 0
+_aux3   := 0
+_aux4   := 0
+_ispt1  := 0
+_ispt2  := 0
+_sdo_prom  := 0
+_lim_inf   := 0
+_excedente := 0
+_imp_marg  := 0
+_cuota_fija:= 0
+_imp_bruto := 0
+_sub_marg  := 0
+_sub_fijo  := 0
+_sub_acred := 0
+_subsidio  := 0
+_subsidio  := 0
+_cred_sal  := 0
+_imp_neto  := 0
+_factor    := 0
+
+
+####### PARAMETROS REQUERIDOS PARA CADA UN DE LOS PROCEDIMIENTOS DE CALCULO.
+
+
+   ##################  ARTICULO 80
+SI ( _art = 0 )
+   NUEVO_PARAMETRO ( 'BASE', '', _base )
+   NUEVO_PARAMETRO ( 'DIAS', '7', _dias )
+   NUEVO_PARAMETRO ( 'FACTOR DE MENSUALIZACION', '30.4166', _factor )
+   LEE_PARAMETROS
+   BORRA_PARAMETROS
+FIN_SI
+
+   ##################  ARTICULO 86 Y 79
+SI ( ( _art = 1 ) OR ( _art = 2 ) )
+   NUEVO_PARAMETRO ( 'BASE', '', _base )
+   NUEVO_PARAMETRO ( 'SDO. DIARIO', '', _sdo_prom )
+   NUEVO_PARAMETRO ( 'FACTOR DE MENSUALIZACION', '30.4166', _factor )
+   LEE_PARAMETROS
+   BORRA_PARAMETROS
+FIN_SI
+
+
+
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+SALIDA := $salida
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+   IMP ( CENTRA ('PROCEDIMIENTO DE CALCULO DE ISPT'));; IMPRIME
+   IMP ( REPITETXT('-',80) );; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+
+##############  PROCEDIMIENTO DE CALCULOS SEGUN ARTICULO SELECCIONADO.  ############
+####################################################################################
+
+
+   ##################  ARTICULO 80
+SI ( _art = 0 )
+   SI ( _dias > 0 )
+     DECIMALES := 4 
+     IMP ( COL(5), 'MONTO', COL(23), '/ Dias', COL(43), '* ', _factor, COL(63), '= BASE' ) ;; IMPRIME
+     DECIMALES := 2
+     IMP ( COL(5), $(_base), COL(23), '/ ' )
+     IMP ( .(_dias))
+     DECIMALES := 4
+     IMP ( COL(43), '* ', _factor )
+     _base := _base / _dias * _factor
+     DECIMALES := 2
+     IMP ( COL(63), '= ', $(_base) )
+     IMPRIME ;; IMPRIME
+   FIN_SI
+   
+   SI (TRAE_REGISTRO('TABISPT', $ispt ) )
+     PRIMER_REGISTRO('VALISPT')
+     MIENTRAS( _base > 'VALISPT':'SUPERIOR' )
+       SIGUIENTE_REGISTRO('VALISPT')
+     FIN_MIENTRAS
+   FIN_SI
+   
+   DECIMALES := 4
+   _lim_inf := 'VALISPT':'INFERIOR'
+   _excedente := 'VALISPT':'EXCEDENTE'
+   _imp_marg := ( _base - _lim_inf ) * ( _excedente / 100 )
+   _cuota_fija := 'VALISPT':'CTA_FIJA'
+   _imp_bruto := _imp_marg + _cuota_fija 
+   
+   SI (TRAE_REGISTRO('TABISPT', $subs ) )
+     PRIMER_REGISTRO('VALISPT')
+     MIENTRAS( _base > 'VALISPT':'SUPERIOR' )
+       SIGUIENTE_REGISTRO('VALISPT')
+     FIN_MIENTRAS
+   FIN_SI
+   
+   _sub_marg := 'VALISPT':'SUB_MARG'
+   _sub_fijo := 'VALISPT':'SUB_FIJO'
+   _sub_acred := 'TABISPT':'Subsidio'
+   _subsidio := ( _imp_marg * ( _sub_marg / 100 ) + _sub_fijo ) * ( _sub_acred / 100 )
+   _subsidio := CALCULA_SUBSIDIO( _base )
+   
+   SI (TRAE_REGISTRO('TABISPT', $cred ) )
+     PRIMER_REGISTRO('VALISPT')
+     MIENTRAS( _base > 'VALISPT':'SUPERIOR' )
+       SIGUIENTE_REGISTRO('VALISPT')
+     FIN_MIENTRAS
+   FIN_SI
+   _cred_sal := 'VALISPT':'CTA_FIJA'
+   _imp_neto := _imp_bruto - _subsidio - _cred_sal
+   
+   DECIMALES := 2
+   IMP ( COL(5), '( BASE', COL(23), '- Limite Inferior )', COL(43), '* %Exedente', COL(63), '= Impuesto Marg.' ) ;; IMPRIME
+   IMP ( COL(5), '( ', $( _base ), COL(23) ,'- ', $( _lim_inf), COL(41), ') * ' ) 
+   DECIMALES := 0
+   IMP ( .(_excedente), '%' )
+   DECIMALES := 2
+   IMP ( COL(63), '= ', $(_imp_marg) )
+   IMPRIME
+   
+   IMPRIME
+   IMP ( COL(5), 'Impuesto Marg.', COL(23), '+ Cuota Fija', COL(63), '= Impuesto Bruto' ) ;; IMPRIME
+   IMP ( COL(5), $(_imp_marg), COL(23), '+ ', $(_cuota_fija), COL(63), '= ', $(_imp_bruto) )
+   IMPRIME
+   
+   IMPRIME
+   IMP ( COL(5), '( Impuesto Marg.', COL(23), '* %Sub. Marg.', COL(43), '+ Sub. Fijo       )' ) ;; IMPRIME
+   IMP ( COL(5), '( ', $(_imp_marg), COL(23), '* ' )
+   DECIMALES := 0
+   IMP ( .(_sub_marg), '%' )
+   DECIMALES := 2
+   IMP ( COL(43), '+ ', $(_sub_fijo), COL(61), ') = ', $( (_imp_marg * ( _sub_marg / 100 ) ) + _sub_fijo ) )
+   IMPRIME
+   
+   IMPRIME
+   IMP ( COL(43), '* Sub. Acreeditable', COL(63), '= Subsidio' ) ;; IMPRIME
+   IMP ( COL(43), '* ', $(_sub_acred), COL(63), '= ', $(_subsidio) )
+   IMPRIME
+   
+   IMPRIME
+   IMP ( COL(5), 'BASE', COL(63), '= Credito Sal.' ) ;; IMPRIME
+   IMP ( COL(5), $(_base), COL(63), '= ', $(_cred_sal) )
+   IMPRIME
+   
+   IMPRIME
+   IMP ( COL(5), 'Impuesto Bruto', COL(23), '- Subsidio', COL(43), '- Credito Sal.', COL(63), '= Impuesto Neto' ) ;; IMPRIME
+   IMP ( COL(5), $(_imp_bruto), COL(23), '- ', $(_subsidio), COL(43), '- ', $(_cred_sal), COL(63), '= ', $(_imp_neto) ) ;; IMPRIME
+   IMPRIME
+   
+   SI ( _dias > 0 )
+     DECIMALES := 4
+     IMP ( COL(5), 'Impuesto Neto', COL(23), '/ ', _factor, COL(43), '* Dias', COL(63), '= Impuesto Neto' ) ;; IMPRIME
+     DECIMALES := 2
+     IMP ( COL(5), $(_imp_neto))
+     DECIMALES := 4
+     IMP ( COL(23), '/ ', _factor )
+     DECIMALES := 0
+     IMP ( COL(43), '* ', _dias )
+     DECIMALES := 4
+     _imp_neto := _imp_neto / _factor * _dias
+     DECIMALES := 2
+     IMP ( COL(63), '= ', $(_imp_neto) )
+     IMPRIME
+   FIN_SI
+FIN_SI
+
+
+   ##################  ARTICULO 86
+SI ( _art = 1 )
+
+   _aux1 := ( ( _base ) / 365 * _factor ) + ( _sdo_prom * _factor )
+   _aux2 := ( _sdo_prom * _factor )
+
+   DECIMALES := 4 
+   IMP ( COL(5), '* BASE 1' ) ;; IMPRIME
+   IMP ( COL(5), 'PERC.GRAVADA', COL(23), '/ DIAS DEL AÑO', COL(43), '* ', _factor, COL(63), '=   BASE 1' ) ;; IMPRIME
+   DECIMALES := 2 
+   IMP ( COL(5), DER ( $ ( _base ) , 10 ) )
+   DECIMALES := 4 
+   IMP ( COL(23), '/ 365', COL(43), '* ', _factor, COL(63), '=' )
+   DECIMALES := 2 
+   IMP ( COL(66),  DER ( $ ( _aux1 ) , 10 )  ) ;; IMPRIME ;; IMPRIME
+
+
+   DECIMALES := 4 
+   IMP ( COL(5), '* BASE 2' ) ;; IMPRIME
+   IMP ( COL(5), 'SDO.DIARIO', COL(23), '* ', _factor, COL(63), '=   BASE 2' ) ;; IMPRIME
+   DECIMALES := 2 
+   IMP ( COL(5), DER ( $ ( _sdo_prom ) , 10 ) )
+   DECIMALES := 4
+   IMP ( COL(23), '* ',  _factor )
+   DECIMALES := 2
+   IMP ( COL(63), '=' , COL(66), DER ( $ ( _aux2 ) , 10 ) ) ;; IMPRIME ;; IMPRIME
+
+
+
+   ############################################################
+   ###### CALCULO DE IMPUESTO CON EL ART. 80 PARA LA BASE 1
+   ############################################################
+
+   SI (TRAE_REGISTRO('TABISPT', $ispt ) )
+     PRIMER_REGISTRO('VALISPT')
+     MIENTRAS( _aux1  > 'VALISPT':'SUPERIOR' )
+       SIGUIENTE_REGISTRO('VALISPT')
+     FIN_MIENTRAS
+   FIN_SI
+   
+   DECIMALES := 4
+   _lim_inf := 'VALISPT':'INFERIOR'
+   _excedente := 'VALISPT':'EXCEDENTE'
+   _imp_marg := ( _aux1  - _lim_inf ) * ( _excedente / 100 )
+   _cuota_fija := 'VALISPT':'CTA_FIJA'
+   _imp_bruto := _imp_marg + _cuota_fija 
+   
+   SI (TRAE_REGISTRO('TABISPT', $subs ) )
+     PRIMER_REGISTRO('VALISPT')
+     MIENTRAS( _aux1  > 'VALISPT':'SUPERIOR' )
+       SIGUIENTE_REGISTRO('VALISPT')
+     FIN_MIENTRAS
+   FIN_SI
+   
+   _sub_marg := 'VALISPT':'SUB_MARG'
+   _sub_fijo := 'VALISPT':'SUB_FIJO'
+   _sub_acred := 'TABISPT':'Subsidio'
+   _subsidio := ( _imp_marg * ( _sub_marg / 100 ) + _sub_fijo ) * ( _sub_acred / 100 )
+   _subsidio := CALCULA_SUBSIDIO( _aux1  )
+   
+   SI (TRAE_REGISTRO('TABISPT', $cred ) )
+     PRIMER_REGISTRO('VALISPT')
+     MIENTRAS( _aux1  > 'VALISPT':'SUPERIOR' )
+       SIGUIENTE_REGISTRO('VALISPT')
+     FIN_MIENTRAS
+   FIN_SI
+   _cred_sal := 'VALISPT':'CTA_FIJA'
+   _imp_neto := _imp_bruto - _subsidio - _cred_sal
+
+   IMPRIME
+   IMP ( COL(5), '*** CALCULO DE IMP ART.80 PARA LA BASE 1' ) ;; IMPRIME
+   IMPRIME
+
+   DECIMALES := 2
+   IMP ( COL(5), '( BASE', COL(23), '- Limite Inferior )', COL(43), '* %Exedente', COL(63), '= Impuesto Marg.' ) ;; IMPRIME
+   IMP ( COL(5), '( ', $( _aux1 ), COL(23) ,'- ', $( _lim_inf), COL(41), ') * ' ) 
+   DECIMALES := 0
+   IMP ( .(_excedente), '%' )
+   DECIMALES := 2
+   IMP ( COL(63), '= ', $(_imp_marg) )
+   IMPRIME
+   
+   IMPRIME
+   IMP ( COL(5), 'Impuesto Marg.', COL(23), '+ Cuota Fija', COL(63), '= Impuesto Bruto' ) ;; IMPRIME
+   IMP ( COL(5), $(_imp_marg), COL(23), '+ ', $(_cuota_fija), COL(63), '= ', $(_imp_bruto) )
+   IMPRIME
+   
+   IMPRIME
+   IMP ( COL(5), 'Impuesto Bruto', COL(23), '- Subsidio', COL(43), '- Credito Sal.', COL(63), '= Impuesto Neto' ) ;; IMPRIME
+   IMP ( COL(5), $(_imp_bruto), COL(23), '- ', $(_subsidio), COL(43), '- ', $(_cred_sal), COL(63), '= ', $(_imp_neto) ) ;; IMPRIME
+   IMPRIME  
+   _ispt1 := _imp_neto 
+
+
+   ############################################################
+   ###### CALCULO DE IMPUESTO CON EL ART. 80 PARA LA BASE 2
+   ############################################################
+
+
+   SI (TRAE_REGISTRO('TABISPT', $ispt ) )
+     PRIMER_REGISTRO('VALISPT')
+     MIENTRAS( _aux2  > 'VALISPT':'SUPERIOR' )
+       SIGUIENTE_REGISTRO('VALISPT')
+     FIN_MIENTRAS
+   FIN_SI
+   
+   DECIMALES := 4
+   _lim_inf := 'VALISPT':'INFERIOR'
+   _excedente := 'VALISPT':'EXCEDENTE'
+   _imp_marg := ( _aux2 - _lim_inf ) * ( _excedente / 100 )
+   _cuota_fija := 'VALISPT':'CTA_FIJA'
+   _imp_bruto := _imp_marg + _cuota_fija 
+   
+   SI (TRAE_REGISTRO('TABISPT', $subs ) )
+     PRIMER_REGISTRO('VALISPT')
+     MIENTRAS( _aux2  > 'VALISPT':'SUPERIOR' )
+       SIGUIENTE_REGISTRO('VALISPT')
+     FIN_MIENTRAS
+   FIN_SI
+   
+   _sub_marg := 'VALISPT':'SUB_MARG'
+   _sub_fijo := 'VALISPT':'SUB_FIJO'
+   _sub_acred := 'TABISPT':'Subsidio'
+   _subsidio := ( _imp_marg * ( _sub_marg / 100 ) + _sub_fijo ) * ( _sub_acred / 100 )
+   _subsidio := CALCULA_SUBSIDIO( _aux2  )
+   
+   SI (TRAE_REGISTRO('TABISPT', $cred ) )
+     PRIMER_REGISTRO('VALISPT')
+     MIENTRAS( _aux2  > 'VALISPT':'SUPERIOR' )
+       SIGUIENTE_REGISTRO('VALISPT')
+     FIN_MIENTRAS
+   FIN_SI
+   _cred_sal := 'VALISPT':'CTA_FIJA'
+   _imp_neto := _imp_bruto - _subsidio - _cred_sal
+
+
+   IMPRIME
+   IMP ( COL(5), '*** CALCULO DE IMP ART.80 PARA LA BASE 2' ) ;; IMPRIME
+   IMPRIME
+
+   DECIMALES := 2
+   IMP ( COL(5), '( BASE', COL(23), '- Limite Inferior )', COL(43), '* %Exedente', COL(63), '= Impuesto Marg.' ) ;; IMPRIME
+   IMP ( COL(5), '( ', $( _aux2 ), COL(23) ,'- ', $( _lim_inf), COL(41), ') * ' ) 
+   DECIMALES := 0
+   IMP ( .(_excedente), '%' )
+   DECIMALES := 2
+   IMP ( COL(63), '= ', $(_imp_marg) )
+   IMPRIME
+   
+   IMPRIME
+   IMP ( COL(5), 'Impuesto Marg.', COL(23), '+ Cuota Fija', COL(63), '= Impuesto Bruto' ) ;; IMPRIME
+   IMP ( COL(5), $(_imp_marg), COL(23), '+ ', $(_cuota_fija), COL(63), '= ', $(_imp_bruto) )
+   IMPRIME
+   
+   IMPRIME
+   IMP ( COL(5), 'Impuesto Bruto', COL(23), '- Subsidio', COL(43), '- Credito Sal.', COL(63), '= Impuesto Neto' ) ;; IMPRIME
+   IMP ( COL(5), $(_imp_bruto) , COL(23), '- ', $(_subsidio), COL(43), '- ', $(_cred_sal), COL(63), '= ', $(_imp_neto) ) ;; IMPRIME
+   IMPRIME  
+   _ispt2 := _imp_neto 
+
+
+   ######### DIFERENCIA ENTRE LAS BASES.
+
+   IMPRIME
+   IMP ( COL(5), '*** DIFERENCIA DE LOS IMPUESTOS ENTRE LA DIFERENCIA DE LAS BASES.' ) ;; IMPRIME
+   IMPRIME
+
+   IMPRIME
+   IMP ( COL(5), 'Factor :', COL(23), '= ', COL(27), '(    ISPT1    -    ISPT2    )   /   (    BASE1    -    BASE2    )' ) ;; IMPRIME
+   IMP ( COL(23), '= ',  COL (27) , '( ' )
+   IMP ( COL(23), '= ',  COL (30) ,  $( _ispt1 ) + '   -  ' +   $( _ispt2 )  )
+   IMP ( COL(54) , ' )' )
+   IMP ( COL(58) , ' /' )
+   IMP ( COL(63) , '( ' )
+   IMP ( COL(65) ,  $( _aux1) + '   -    ' +   $( _aux2 )  )
+   IMP ( COL(90) , ' )' )
+   IMPRIME
+   DECIMALES :=  12
+   _factor  := ( _ispt1 - _ispt2 ) / ( _aux1 - _aux2 ) 
+   DECIMALES :=  4
+   IMPRIME
+   IMP ( COL(23), '= ',  COL (27) , $( _factor ) )
+   IMPRIME
+   IMPRIME
+   IMPRIME
+   IMP ( COL(5), '*** IMP. NETO' , COL(23), '= ',  COL (27) , $( _factor ) +  '  *  '  )
+   DECIMALES :=  2
+   IMP ( $( _base ) )
+   DECIMALES :=  12
+   _aux1 := _factor * _base
+   DECIMALES :=  2
+   IMPRIME;;IMPRIME;;IMPRIME
+   IMP ( COL(23), '= ',  COL (27) , DER ( $(_aux1 ), 10 ))
+   IMPRIME 
+   IMP (  COL (27) , REPITETXT ('=' , 10) )
+   IMPRIME   
+FIN_SI
+
+
+
+   ##################  ARTICULO 79
+SI ( _art = 2 )
+
+   _aux1 := ( _sdo_prom * _factor )
+
+
+   IMP ( COL(5), '* BASE GRAVABLE' ) ;; IMPRIME
+   IMP ( COL(5), DER ($( _base ),10) ) ;; IMPRIME;; IMPRIME
+
+
+   DECIMALES := 4 
+   IMP ( COL(5), '* BASE SDO MENSUALIZADO' ) ;; IMPRIME
+   IMP ( COL(5), 'SDO.DIARIO', COL(23), '* ', _factor, COL(63), '=   BASE ' ) ;; IMPRIME
+   DECIMALES := 2 
+   IMP ( COL(5), DER ( $ ( _sdo_prom ) , 10 ) )
+   DECIMALES := 4
+   IMP ( COL(23), '* ',  _factor )
+   DECIMALES := 2
+   IMP ( COL(63), '=' , COL(66), DER ( $ ( _aux1 ) , 10 ) ) ;; IMPRIME ;; IMPRIME
+   IMPRIME;;IMPRIME
+
+
+
+   ############################################################
+   ###### CALCULO DE IMPUESTO CON EL ART. 80 PARA LA BASE 
+   ############################################################
+
+
+   SI (TRAE_REGISTRO('TABISPT', $ispt ) )
+     PRIMER_REGISTRO('VALISPT')
+     MIENTRAS( _aux1  > 'VALISPT':'SUPERIOR' )
+       SIGUIENTE_REGISTRO('VALISPT')
+     FIN_MIENTRAS
+   FIN_SI
+   
+   DECIMALES := 4
+   _lim_inf := 'VALISPT':'INFERIOR'
+   _excedente := 'VALISPT':'EXCEDENTE'
+   _imp_marg := ( _aux1  - _lim_inf ) * ( _excedente / 100 )
+   _cuota_fija := 'VALISPT':'CTA_FIJA'
+   _imp_bruto := _imp_marg + _cuota_fija 
+   
+   SI (TRAE_REGISTRO('TABISPT', $subs ) )
+     PRIMER_REGISTRO('VALISPT')
+     MIENTRAS( _aux1  > 'VALISPT':'SUPERIOR' )
+       SIGUIENTE_REGISTRO('VALISPT')
+     FIN_MIENTRAS
+   FIN_SI
+   
+   _sub_marg := 'VALISPT':'SUB_MARG'
+   _sub_fijo := 'VALISPT':'SUB_FIJO'
+   _sub_acred := 'TABISPT':'Subsidio'
+   _subsidio := ( _imp_marg * ( _sub_marg / 100 ) + _sub_fijo ) * ( _sub_acred / 100 )
+   _subsidio := CALCULA_SUBSIDIO( _aux1  )
+   
+   SI (TRAE_REGISTRO('TABISPT', $cred ) )
+     PRIMER_REGISTRO('VALISPT')
+     MIENTRAS( _aux1  > 'VALISPT':'SUPERIOR' )
+       SIGUIENTE_REGISTRO('VALISPT')
+     FIN_MIENTRAS
+   FIN_SI
+   _cred_sal := 'VALISPT':'CTA_FIJA'
+   _imp_neto := _imp_bruto - _subsidio - _cred_sal
+
+   IMPRIME
+   IMP ( COL(5), '*** CALCULO DE IMP ART.80 PARA LA BASE' ) ;; IMPRIME
+   IMPRIME
+
+   DECIMALES := 2
+   IMP ( COL(5), '( BASE', COL(23), '- Limite Inferior )', COL(43), '* %Exedente', COL(63), '= Impuesto Marg.' ) ;; IMPRIME
+   IMP ( COL(5), '( ', $( _aux1 ), COL(23) ,'- ', $( _lim_inf), COL(41), ') * ' ) 
+   DECIMALES := 0
+   IMP ( .(_excedente), '%' )
+   DECIMALES := 2
+   IMP ( COL(63), '= ', $(_imp_marg) )
+   IMPRIME
+   
+   IMPRIME
+   IMP ( COL(5), 'Impuesto Marg.', COL(23), '+ Cuota Fija', COL(63), '= Impuesto Bruto' ) ;; IMPRIME
+   IMP ( COL(5), $(_imp_marg), COL(23), '+ ', $(_cuota_fija), COL(63), '= ', $(_imp_bruto) )
+   IMPRIME
+   
+   IMPRIME
+   IMP ( COL(5), 'Impuesto Bruto', COL(23), '- Subsidio', COL(43), '- Credito Sal.', COL(63), '= Impuesto Neto' ) ;; IMPRIME
+   IMP ( COL(5), $(_imp_bruto), COL(23), '- ', $(_subsidio), COL(43), '- ', $(_cred_sal), COL(63), '= ', $(_imp_neto) ) ;; IMPRIME
+   IMPRIME  
+   _ispt1 := _imp_neto 
+
+
+   SI (_ispt1 < 0)
+      _ispt1 := _ispt1 * -1
+   FIN_SI
+
+   IMPRIME
+   IMP ( COL(5), 'Factor ', COL(23), '= ', COL(33),  '(   ' + '   ISPT ' + '    /    '  + '  BASE ' + '   )') ;; IMPRIME;; IMPRIME
+   IMP ( COL(23), '= ', COL(33),  '(   ' + $( _ispt1 ) + '      /    '  + $( _aux1 ) + '   )') ;; IMPRIME;; IMPRIME
+   DECIMALES := 12
+   _aux2 := ( _ispt1 / _aux1 )
+   DECIMALES := 6
+   IMP ( COL(23), '= ', COL(33),  DER ( $( _aux2 ), 10 ) );; IMPRIME;; IMPRIME
+   IMP ( COL(5), '*** IMP. NETO ', COL(23), '= ', COL(33),  '(  ' + $( _aux2 ) + '  *  ' )
+   DECIMALES := 2
+   IMP (  $( _base ) + '  )' )
+   IMPRIME ;; IMPRIME
+   DECIMALES := 12
+   _ispt1 := (_ispt1 / _aux1 ) * ( _base )
+   DECIMALES := 4
+   IMP ( COL(23), '= ', COL(33),   DER ($( _ispt1 ),10) )
+   IMPRIME
+   IMP ( COL(23), '= ', COL(33),   REPITETXT ('=',10) )
+   IMPRIME ;; IMPRIME
+
+   SI (_ispt1 < 0)
+      _ispt1 := 0
+   FIN_SI
+
+
+FIN_SI
+
+

@@ -1,0 +1,223 @@
+#NOTIFICACIONES DATOS INCOMPLETOS 
+#REPORTE ESTANDAR DE MUESTRA
+#USUARIO =*
+#VERSION 2.14
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como base en los reportes.
+#CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'EXCEL', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ESTADO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'DEPTO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'RFC'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CURP'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INGRESO'
+_longitud  := 12
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CALLE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NUMERO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'EMERGENCIA_CONTACTO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'EMERGENCIA_TELEFONO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'FOTO'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'AFILIACION'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+
+_condensado := 1
+$titulo_reporte := 'REPORTE ESTANDAR DE TRABAJADORES'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+_enviar := 0 
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+
+   $valor := TRAE_DSP ('S' , FECHA_HOY)
+   imprime_columna
+
+   SI ( TRAE_REGISTRO ('DEPTO', TRAE_DSP ('D' , FECHA_HOY)))
+      $valor := 'DEPTO':'DESCRIPCION'
+   FIN_SI
+   imprime_columna
+
+   $valor := FORMATO( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' )
+   imprime_columna
+
+   $valor := FORMATO( 'EMPPRIN':'CURP', 'XXXX-XXXXXX-XXX' )
+   imprime_columna
+
+   $valor := FECHA( 'EMPPRIN':'INGRESO' )
+   imprime_columna
+
+   $valor   := 'EMPPRIN':'CALLE'
+   imprime_columna
+
+   $valor   := 'EMPPRIN':'NUMERO'
+   imprime_columna
+
+   $valor   := 'EMPPRIN':'EMERGENCIA_CONTACTO'
+   imprime_columna
+
+   $valor   := 'EMPPRIN':'EMERGENCIA_TELEFONO'
+   imprime_columna
+
+   $valor   := 'EMPPRIN':'FOTO'
+   imprime_columna
+
+   $valor   := FORMATO('EMPPRIN':'AFILIACION','XX-XX-XX-XXXX-X')
+   imprime_columna
+
+_enviar := 1
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. *, RH.*'
+$bases_extras  := 'EMPRH RH'
+$condiciones_extras := 'E.CLAVE = RH.CLAVE AND (CALLE IS NULL OR NUMERO IS NULL OR EMERGENCIA_CONTACTO IS NULL OR EMERGENCIA_TELEFONO IS NULL OR AFILIACION IS NULL OR RFC IS NULL OR CURP IS NULL OR FOTO IS NULL)' 
+base_trabajadores
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+USA_ARCHIVO     ( 'EMPPRIN' , 'EMPSUC' , 'CLAVE' ) 
+USA_ARCHIVO     ( 'EMPPRIN' , 'EMPDEP' , 'CLAVE' ) 
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE( FECHA_HOY ) )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+
+# INSTRUCCION PARA ENVIAR CORREOS DESDE GIRO
+
+VAR_T       ( &destinatarios )
+VAR_T       ( &mensaje ) 
+
+$file_backup := ''
+
+EXCEL('NOMBRE_ARCHIVO', 0 , 0 ,$file_backup )
+EXCEL('CERRAR'        , 0 , 0 ,$file_backup )
+
+$empresa := ''
+
+SI ( TRAE_REGISTRO('EMPRESA', 'EMPRESA':'CLAVE'))
+   $empresa := 'EMPRESA':'NOMBRE'
+FIN_SI
+
+
+MENSAJE ( $file_backup ) 
+
+LEE_INI('NOTIFICACIONES','NOMBRE','')   
+
+$nombre_mostrar := LEE_INI('NOTIFICACIONES','NOMBRE','') # NOMBRE PARA MOSTRAR EN LA LLEGADA DE CORREO.
+$de_correo      := LEE_INI('NOTIFICACIONES','CORREO','')   # CUENTA DE CORREO ELECTRONICO
+$con_copia      := ''                          # CON COPIA PARA
+$asunto         := 'Listado de personal con datos incompletos en la base de giro al: ' + FECHA(FECHA_HOY)  + ' ' + $empresa              # ASUNTO DEL CORREO
+$adjunto        := $file_backup                # ARCHIVO ADJUNTO DIRECCION COMPLETA
+
+AGREGA_VALOR_COL ( &destinatarios , 0 , 'jflores@consisarh.com.mx' ) #AGREGA DESTINATARIOS
+AGREGA_VALOR_COL ( &destinatarios , 0 , 'gerenciaadmtiva@apsisgorh.com' ) #AGREGA DESTINATARIOS
+#AGREGA_VALOR_COL ( &destinatarios , 0 , 'acruz@seao.com.mx')   
+#AGREGA_VALOR_COL ( &destinatarios , 0 , 'rcamacho@seao.com.mx' ) #AGREGA DESTINATARIOS
+AGREGA_VALOR_COL ( &mensaje       , 0 , ''           ) # AGREGA MENSAJE
+
+_un     := 0
+
+SI ( _enviar )   
+   ENVIA_CORREO( $nombre_mostrar , $de_correo , &destinatarios , $con_copia , $asunto , &mensaje , $adjunto  )
+FIN_SI
+
+termina_reporte
+
+TERMINA_REPORTE

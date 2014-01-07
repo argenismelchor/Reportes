@@ -1,0 +1,99 @@
+#EXPORTACION ACUMULADOS MENSUALES A EXCEL
+#ACUMULADOS MENSUALES
+#USUARIO =*
+#EXCEL
+#VERSION 2.600
+#DESCRIPCION
+#Este reporte permite exportar los acumulados de un mes a excel
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'EXCEL', $salida )
+NUEVO_PARAMETRO_CHEQ ( 'VIGENTES', '', _vig )
+LEE_PARAMETROS
+
+_fecha := 0
+_ff    := 0
+SI ( _vig = 1 )
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO_FEC  ( 'FECHA VIGENCIA', '', _fecha )
+   LEE_PARAMETROS
+SI_NO
+   _fecha := FECHA_HOY
+FIN_SI
+_ff := _fecha
+
+_dec := 14
+_col  := 0
+
+BORRA_PARAMETROS
+NUEVO_PARAMETRO_SEL ('MESES', 'ENE/FEB/MAR/ABR/MAY/JUN/JUL/AGO/SEP/OCT/NOV/DIC/FINIQUITO/AGUINALDO/ESPECIAL', $mes )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+_col_excel := 0
+_ren_excel := 3
+
+EXCEL ( 'PON_VALOR', 1, 1, 'CLAVE' )
+EXCEL ( 'PON_VALOR', 2, 1, 'NOMBRE COMPLETO' )
+EXCEL ( 'PON_VALOR', 3, 1, 'SUELDO' )
+
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+#Variables Globales
+VAR_T ( &concepto )
+$straux := ''
+_indice := 0
+
+#Subrutina diversas
+
+SUB_RUTINA carga_conceptos
+   PRIMER_REGISTRO( 'CONCEPTO' )
+   _indice := 5
+   MIENTRAS( FIN_BASE('CONCEPTO') = FALSO )
+      $straux := 'CONCEPTO':'CLAVE'
+      AGREGA_VALOR_COL( &concepto, 0, $straux )
+      EXCEL ( 'PON_VALOR', _indice, 1, 'CONCEPTO':'CLAVE' )
+      _indice := _indice + 1
+      SIGUIENTE_REGISTRO( 'CONCEPTO' )
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   DECIMALES := 2
+   IMP ( COL(1),  'EMPPRIN':'CLAVE' )
+   IMP ( COL(10), 'EMPPRIN':'NOMBRE' ) IMPRIME
+   EXCEL( 'PON_VALOR', 1, _ren_excel, '"' + 'EMPPRIN':'CLAVE' )
+   EXCEL( 'PON_VALOR', 2, _ren_excel, '"' + 'EMPPRIN':'NOMBRE' )
+   EXCEL( 'PON_VALOR', 3, _ren_excel, SUELDO_ACTUAL ( _fecha, _fecha ))
+   PRIMER_REGISTRO ( 'EMPACUM' )
+   MIENTRAS ( FIN_BASE ( 'EMPACUM' ) = FALSO )
+      $straux := 'EMPACUM':'CONCEPTO'
+      _indice := TRAE_INDICE_COL ( &concepto, 0, $straux )
+      SI ( _indice >= 0 )
+         EXCEL( 'PON_VALOR', _indice + 5, _ren_excel, 'EMPACUM':$mes )
+      FIN_SI
+      SIGUIENTE_REGISTRO ( 'EMPACUM' )
+   FIN_MIENTRAS
+   _ren_excel := _ren_excel + 1
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+carga_conceptos
+
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI (( _vig = 0 ) OR ( ES_VIGENTE ( _fecha ) = VERDADERO ))
+    datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte

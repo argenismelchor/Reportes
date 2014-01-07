@@ -1,0 +1,73 @@
+#CATALOGO DE PERIODOS
+#NO EDITAR
+#USUARIO =*
+#DESCRIPCION
+#Este reporte imprime los periodos del tipo de nomina seleccionado
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+NUEVO_PARAMETRO_TAB ('TIPO NOMINA','TIPONOM/CLAVE/TIPOS DE NOMINA', $tipon )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 3
+SALIDA        := $salida
+COLUMNAS      := 82
+RENGLONES     := 65
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO   
+   $titulo_reporte := 'PERIODOS DE NÒMINA DEL TIPO ' +  'TIPONOM':'DESCRIPCION'
+   encabezado_ini
+   IMP ( COL(1), 'NUM', COL(5), DER('INICIO', 10 ), COL(17), DER('TERMINO',10), COL(30), 'DIAS', COL(35), 'AI  AF  BI  BF  MI  MF  E1  E2  D1  D2  MES ACUM' );; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 3
+DECIMALES := 0
+SI ( TRAE_REGISTRO( 'TIPONOM', $tipon ) )
+  USA_ARCHIVO( 'TIPONOM', 'PERIODO', 'CLAVE' )
+  PRIMER_REGISTRO ( 'PERIODO' )
+  MIENTRAS ( FIN_BASE( 'PERIODO' ) = FALSO )
+    IMP ( COL(1), DER( .('PERIODO':'NUMERO'), 3 ), COL(5), DER(FECHA( 'PERIODO':'FECHA INICIAL' ), 11 ), COL(18), DER(FECHA( 'PERIODO':'FECHA FINAL' ), 11 ) )
+    IMP ( COL(30), DER( .('PERIODO':'DIAS DE PAGO'), 3 ) )
+    SI ( 'PERIODO':'INICIO DE AÑO' = 1 )
+      IMP ( COL(35), 'SI' )
+    FIN_SI
+    SI ( 'PERIODO':'FIN DE AÑO' = 1 )
+      IMP ( COL(39), 'SI' )
+    FIN_SI
+    SI ( 'PERIODO':'INICIO DE BIMESTRE' = 1 )
+      IMP ( COL(43), 'SI' )
+    FIN_SI
+    SI ( 'PERIODO':'FIN DE BIMESTRE' = 1 )
+      IMP ( COL(47), 'SI' )
+    FIN_SI
+    SI ( 'PERIODO':'INICIO DE MES' = 1 )
+      IMP ( COL(51), 'SI' )
+    FIN_SI
+    SI ( 'PERIODO':'FIN DE MES' = 1 )
+      IMP ( COL(55), 'SI' )
+    FIN_SI
+    SI ( 'PERIODO':'EXTRA 1' = 1 )
+      IMP ( COL(59), 'SI' )
+    FIN_SI
+    SI ( 'PERIODO':'EXTRA 2' = 1 )
+      IMP ( COL(63), 'SI' )
+    FIN_SI
+    DECIMALES := 0
+    SI ( 'PERIODO':'DIA DESCUENTO 1' <> 0 )
+      IMP ( COL(68), .('PERIODO':'DIA DESCUENTO 1') )
+    FIN_SI
+    SI ( 'PERIODO':'DIA DESCUENTO 2' <> 0 )
+      IMP ( COL(72), .('PERIODO':'DIA DESCUENTO 2') )
+    FIN_SI
+    IMP ( COL(75), 'PERIODO':'MES DE ACUMULACION' )
+    IMPRIME
+    SIGUIENTE_REGISTRO ( 'PERIODO' )
+  FIN_MIENTRAS
+FIN_SI

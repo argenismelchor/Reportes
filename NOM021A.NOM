@@ -1,0 +1,497 @@
+#ACUMULADOS MENSUALES TODAS
+#NO EDITAR
+#USUARIO =*
+#VERSION 3.0
+#EXCEL
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/DISCO/EXCEL', $salida)
+NUEVO_PARAMETRO      ( 'CONCEPTO(S)', '*', $conceptos )
+NUEVO_PARAMETRO_CHEQ ( 'SOLO TOTALES', '', _solot )
+NUEVO_PARAMETRO_CHEQ ( 'GRAFICA', '', _graf )
+NUEVO_PARAMETRO_CHEQ ( 'VIGENTES', '', _vig )
+NUEVO_PARAMETRO_FEC  ( 'FECHA VIGENCIA', '', _fecha )
+NUEVO_PARAMETRO_CHEQ ( 'CONFIGURAR EMPRESAS' , '' , _config )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+
+VAR_T ( &empresas )
+$empresas := LEE_INI ( 'MULTIEMPRESAS' , 'NOM021A' , '' )
+  SI ( _config )
+    NUEVO_PARAMETRO ( 'EMPRESAS' , $empresas , $empresas )
+    LEE_PARAMETROS
+    BORRA_PARAMETROS
+    ESCRIBE_INI ( 'MULTIEMPRESAS' , 'NOM021A' , $empresas )
+  FIN_SI
+
+  SI ( POS ( ',' , $empresas ) > 0 )
+    MIENTRAS ( POS ( ',' , $empresas ) > 0 )
+      AGREGA_VALOR_COL ( &empresas , 0 , SUBSTR ( $empresas , 1 , POS ( ',' , $empresas ) - 1 ) )
+      $empresas := SUBSTR ( $empresas , POS ( ',' , $empresas ) + 1 , 255 )
+    FIN_MIENTRAS
+  FIN_SI
+AGREGA_VALOR_COL ( &empresas , 0 , $empresas )
+
+
+
+# CONSTANTES
+_col := 0
+_dec := 14     ;;  #NUMERO DE DECIMALES A IMPRIMIR
+
+_mes1 := 0 ;; _mes2 := 0 ;; _mes3 := 0 ;; _mes4  := 0 ;; _mes5  := 0 ;; _mes6  := 0
+_mes7 := 0 ;; _mes8 := 0 ;; _mes9 := 0 ;; _mes10 := 0 ;; _mes11 := 0 ;; _mes12 := 0
+
+BORRA_PARAMETROS
+NUEVO_PARAMETRO_CHEQ ('MESES', 'ENE', _mes1 )
+NUEVO_PARAMETRO_CHEQ ('', 'FEB', _mes2 )
+NUEVO_PARAMETRO_CHEQ ('', 'MAR', _mes3 )
+NUEVO_PARAMETRO_CHEQ ('', 'ABR', _mes4 )
+NUEVO_PARAMETRO_CHEQ ('', 'MAY', _mes5 )
+NUEVO_PARAMETRO_CHEQ ('', 'JUN', _mes6 )
+NUEVO_PARAMETRO_CHEQ ('', 'JUL', _mes7 )
+NUEVO_PARAMETRO_CHEQ ('', 'AGO', _mes8 )
+NUEVO_PARAMETRO_CHEQ ('', 'SEP', _mes9 )
+NUEVO_PARAMETRO_CHEQ ('', 'OCT', _mes10 )
+NUEVO_PARAMETRO_CHEQ ('', 'NOV', _mes11 )
+NUEVO_PARAMETRO_CHEQ ('', 'DIC', _mes12 )
+NUEVO_PARAMETRO_CHEQ ('', 'ESPECIAL', _mes13 )
+NUEVO_PARAMETRO_CHEQ ('', 'AGUINALDO', _mes14 )
+NUEVO_PARAMETRO_CHEQ ('', 'FINIQUITO', _mes15 )
+LEE_PARAMETROS
+
+VAR_T( &meses )
+SI ( _mes1 = 1 )  AGREGA_VALOR_COL( &meses, 0, 'ENE' ) FIN_SI
+SI ( _mes2 = 1 )  AGREGA_VALOR_COL( &meses, 0, 'FEB' ) FIN_SI
+SI ( _mes3 = 1 )  AGREGA_VALOR_COL( &meses, 0, 'MAR' ) FIN_SI
+SI ( _mes4 = 1 )  AGREGA_VALOR_COL( &meses, 0, 'ABR' ) FIN_SI
+SI ( _mes5 = 1 )  AGREGA_VALOR_COL( &meses, 0, 'MAY' ) FIN_SI
+SI ( _mes6 = 1 )  AGREGA_VALOR_COL( &meses, 0, 'JUN' ) FIN_SI
+SI ( _mes7 = 1 )  AGREGA_VALOR_COL( &meses, 0, 'JUL' ) FIN_SI
+SI ( _mes8 = 1 )  AGREGA_VALOR_COL( &meses, 0, 'AGO' ) FIN_SI
+SI ( _mes9 = 1 )  AGREGA_VALOR_COL( &meses, 0, 'SEP' ) FIN_SI
+SI ( _mes10 = 1 ) AGREGA_VALOR_COL( &meses, 0, 'OCT' ) FIN_SI
+SI ( _mes11 = 1 ) AGREGA_VALOR_COL( &meses, 0, 'NOV' ) FIN_SI
+SI ( _mes12 = 1 ) AGREGA_VALOR_COL( &meses, 0, 'DIC' ) FIN_SI
+SI ( _mes13 = 1 ) AGREGA_VALOR_COL( &meses, 0, 'ESPECIAL' ) FIN_SI
+SI ( _mes14 = 1 ) AGREGA_VALOR_COL( &meses, 0, 'AGUINALDO' ) FIN_SI
+SI ( _mes15 = 1 ) AGREGA_VALOR_COL( &meses, 0, 'FINIQUITO' ) FIN_SI
+
+
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+_condensado   := 1
+_imp_subtotal := 0
+
+_total_columnas := _mes1 + _mes2 + _mes3 + _mes4 + _mes5 + _mes6 + _mes7 + _mes8 + _mes9 + _mes10 + _mes11 + _mes12
+# SE SUMA LA COLUMNA DE TOTAL
+_total_columnas := _total_columnas + 1
+# SE MULTIPLICA POR LA LONGITUD
+_total_columnas := _total_columnas * _dec
+# SE LE SUMA LO LARGO DE LA CLAVE DEL CONCEPTO Y EL NOMBRE
+_total_columnas := _total_columnas + 30
+
+COLUMNAS := _total_columnas
+
+SI ( $salida <> 'DISCO' )
+  ENCABEZADO
+     $titulo_reporte := 'REPORTE DE ACUMULADOS MENSUALES'
+     encabezado_ini
+     SI ( VERDADERO )
+       IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE' ) ;; IMPRIME
+       IMP ( COL(3), 'CVE.', COL(8), 'CONCEPTO' )
+       _col := 30
+       SI ( _mes1=1 ) ;; IMP ( COL(_col), DER('ENE',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes2=1 ) ;; IMP ( COL(_col), DER('FEB',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes3=1 ) ;; IMP ( COL(_col), DER('MAR',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes4=1 ) ;; IMP ( COL(_col), DER('ABR',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes5=1 ) ;; IMP ( COL(_col), DER('MAY',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes6=1 ) ;; IMP ( COL(_col), DER('JUN',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes7=1 ) ;; IMP ( COL(_col), DER('JUL',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes8=1 ) ;; IMP ( COL(_col), DER('AGO',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes9=1 ) ;; IMP ( COL(_col), DER('SEP',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes10=1 ) ;; IMP ( COL(_col), DER('OCT',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes11=1 ) ;; IMP ( COL(_col), DER('NOV',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes12=1 ) ;; IMP ( COL(_col), DER('DIC',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+
+       SI ( _mes13=1 ) ;; IMP ( COL(_col), DER('ESP',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes14=1 ) ;; IMP ( COL(_col), DER('AGUI',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+       SI ( _mes15=1 ) ;; IMP ( COL(_col), DER('FINI',_dec) ) ;; _col:=_col + _dec ;; FIN_SI
+
+       IMP ( COL(_col), DER('TOTAL',_dec) )
+       IMPRIME
+     SI_NO
+       IMP ( COL(5), 'CLAVE' )
+       IMP ( COL(12), 'DESCRIPCION', COL(40), DER( 'TOTAL', 15 ) )
+       IMPRIME
+     FIN_SI
+     encabezado_fin
+  FIN_ENCABEZADO
+FIN_SI
+
+PIE
+   pie_estandar
+FIN_PIE
+
+# VARIABLES GLOBALES
+VAR_T( &conceptos )
+VAR_T( &acum )
+VAR_T( &totales )
+VAR_T( &subtot )
+_imprimir := 0
+_num_con  := 0
+$cve_conc := ''
+$mes      := ''
+_ind_mes  := 0
+
+_col_excel := 0
+_ren_excel := 2
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+SALIDA := $salida
+
+VAR_T( &indices )
+_num_ind := 0
+
+_ind_imp  := 0
+$valor    := ''
+_valor    := 0
+_col_imp  := 0
+_subtotal := 0
+$conc_sum := ''
+_sum_ind  := 0
+$sum_ind  := ''
+
+SUB_RUTINA sumatoria
+  DECIMALES := 2
+  INCREMENTA_TABLA( &totales, $mes, $conc_sum, _valor )
+  INCREMENTA_TABLA( &subtot, $mes, $conc_sum, _valor )
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_nombre
+  SI ( _solot = 0 )
+    IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+    IMPRIME
+    SI ( $salida = 'EXCEL' )
+      _ren_excel := _ren_excel + 1
+      EXCEL ( 'PON_VALOR', 1, _ren_excel, 'EMPPRIN':'CLAVE'  )
+      EXCEL ( 'PON_VALOR', 2, _ren_excel, 'EMPPRIN':'NOMBRE'  )
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   DECIMALES := 2
+   imprime_nombre
+   _ind_imp := 1
+   $valor := TRAE_VALOR_TABLA( &acum, 0, _ind_imp )
+   MIENTRAS( $valor <> '' )
+     $conc_sum := $valor
+     SI ( _solot = 0 )
+       IMP ( COL(1), $valor )
+       SI ( TRAE_INDICE_COL( &conceptos, 0, $valor ) >= 0 )
+         IMP ( COL(8), TRAE_VALOR_TABLA( &conceptos, 1, TRAE_INDICE_COL( &conceptos, 0, $valor ) ) )
+       FIN_SI
+       SI ( $salida = 'EXCEL' )
+         _ren_excel := _ren_excel + 1
+         EXCEL ( 'PON_VALOR', 2, _ren_excel, $valor  )
+         EXCEL ( 'PON_VALOR', 3, _ren_excel, TRAE_VALOR_TABLA( &conceptos, 1, TRAE_INDICE_COL( &conceptos, 0, $valor ) ) )
+       FIN_SI
+     FIN_SI
+     _col_imp := 0
+     _subtotal := 0
+     MIENTRAS ( TRAE_VALOR_TABLA( &meses, 0, _col_imp ) <> '' )
+       $mes := TRAE_VALOR_TABLA( &meses, 0, _col_imp )
+       $valor := TRAE_VALOR_TABLA( &acum, _col_imp + 1, _ind_imp )
+       _valor := VALOR( $valor )
+       SI ( _solot = 0 )
+         IMP ( COL(30 + ( _col_imp * _dec )), DER( $( _valor ), _dec ) )
+         SI ( $salida = 'EXCEL' )
+           EXCEL ( 'PON_VALOR', 5 + _col_imp, _ren_excel, $valor  )
+         FIN_SI
+       FIN_SI
+       _subtotal := _subtotal + _valor
+       sumatoria
+       _col_imp := _col_imp + 1
+     FIN_MIENTRAS
+     SI ( _solot = 0 )
+       IMP ( COL(30 + ( _col_imp * _dec )), DER( $( _subtotal ), _dec ) )
+       IMPRIME
+       SI ( $salida = 'EXCEL' )
+         EXCEL ( 'PON_VALOR', 5 + _col_imp, _ren_excel, $( _subtotal )  )
+       FIN_SI
+     FIN_SI
+     _ind_imp := _ind_imp + 1
+     $valor := TRAE_VALOR_TABLA( &acum, 0, _ind_imp )     
+   FIN_MIENTRAS
+   SI ( _solot = 0 )
+     IMPRIME
+     SI ( $salida = 'EXCEL' )
+       _ren_excel := _ren_excel + 1
+     FIN_SI
+   FIN_SI
+FIN_SUB_RUTINA
+
+$saux := ''
+$caux := ''
+_ind_con := 0
+$indice  := ''
+
+SUB_RUTINA carga_conceptos
+  LIMPIA_TABLA( &conceptos )
+  _ind_con := 0
+  SI ( $conceptos = '*' )
+    PRIMER_REGISTRO( 'CONCEPTO' )
+    MIENTRAS( FIN_BASE( 'CONCEPTO' ) = FALSO )
+      $saux := 'CONCEPTO':'CLAVE'
+      PON_VALOR_TABLA( &conceptos, 0, _ind_con, $saux )
+      PON_VALOR_TABLA( &conceptos, 1, _ind_con, 'CONCEPTO':'DESCRIPCION' )
+      INCREMENTA_TABLA( &totales, 'TOTAL', $saux, 0 )
+      _ind_con := _ind_con + 1
+      SIGUIENTE_REGISTRO( 'CONCEPTO' )
+    FIN_MIENTRAS
+  SI_NO
+    $saux := $conceptos
+    MIENTRAS( POS(',', $saux ) > 0 )
+      $caux := SUBSTR( $saux, 1, POS(',', $saux) - 1 )
+      SI ( TRAE_REGISTRO( 'CONCEPTO', $caux ) )
+        PON_VALOR_TABLA( &conceptos, 0, _ind_con, $caux )
+        PON_VALOR_TABLA( &conceptos, 1, _ind_con, 'CONCEPTO':'DESCRIPCION' )
+        INCREMENTA_TABLA( &totales, 'TOTAL', $caux, 0 )
+        _ind_con := _ind_con + 1
+      FIN_SI
+      $saux := ELIMINA( $saux, 1, POS(',', $saux) )
+    FIN_MIENTRAS
+    SI ( TRAE_REGISTRO( 'CONCEPTO', $saux ) )
+      PON_VALOR_TABLA( &conceptos, 0, _ind_con, $saux )
+      PON_VALOR_TABLA( &conceptos, 1, _ind_con, 'CONCEPTO':'DESCRIPCION' )
+      INCREMENTA_TABLA( &totales, 'TOTAL', $saux, 0 )
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA encabezados  
+  carga_conceptos
+FIN_SUB_RUTINA
+
+
+_valor_total := 0
+_col_sub := 0
+_ren_sub := 0
+_con_imp := 0
+$con_sub := ''
+$indice_valor := ''
+$indice_texto := ''
+$concepto     := ''
+
+SUB_RUTINA sub_totales  
+  _imp_subtotal := 1
+  SI ( _solot = 0 )
+  #  AVANZA_HOJA
+  FIN_SI
+  IMPRIME
+  IMP ( 'SUBTOTALES ', $indice, '   ', $indice_valor, '   ', $indice_texto )
+  IMPRIME
+  SI ( $salida = 'EXCEL' )
+    _ren_excel := _ren_excel + 1
+    EXCEL ( 'PON_VALOR', 1, _ren_excel, 'SUBTOTALES ' + $indice + '   ' + $indice_valor + '   ' + $indice_texto )
+  FIN_SI
+
+  _ren_sub  := 1
+  _valor_total := 0
+  ORDENA_COLUMNA( &subtot, 0 )
+  MIENTRAS( TRAE_VALOR_TABLA( &subtot, 0, _ren_sub ) <> '' )
+    $con_sub := TRAE_VALOR_TABLA( &subtot, 0, _ren_sub )
+    _col_sub := 0
+    _con_imp := 0
+    _valor_total := 0
+    MIENTRAS( TRAE_VALOR_TABLA( &meses, 0, _col_sub ) <> '' )
+      $mes := TRAE_VALOR_TABLA( &meses, 0, _col_sub )
+      _valor := VALOR( TRAE_VALOR_TABLA( &subtot, _col_sub + 1, _ren_sub ) )
+      #SI ( _valor <> 0 )        
+        SI ( _con_imp = 0 )
+          IMP ( COL(5), $con_sub )
+          SI ( TRAE_INDICE_COL( &conceptos, 0, $con_sub ) >= 0 )
+            IMP ( COL(12), TRAE_VALOR_TABLA( &conceptos, 1, TRAE_INDICE_COL( &conceptos, 0, $con_sub ) ) )
+          FIN_SI
+          SI ( $salida = 'EXCEL' )
+            EXCEL ( 'PON_VALOR', 1, _ren_excel, $con_sub )
+            EXCEL ( 'PON_VALOR', 2, _ren_excel, TRAE_VALOR_TABLA( &conceptos, 1, TRAE_INDICE_COL( &conceptos, 0, $con_sub ) ) )
+          FIN_SI
+           _con_imp := 1
+        FIN_SI
+        DECIMALES := 2
+        IMP ( COL(30 + ( _col_sub * _dec )), DER( $( _valor ), _dec ) )
+        _valor_total := _valor_total + _valor
+        SI ( $salida = 'EXCEL' )
+          EXCEL ( 'PON_VALOR', 3 + _col_sub, _ren_excel, $( _valor ) )
+        FIN_SI
+      #FIN_SI
+      _col_sub := _col_sub + 1
+    FIN_MIENTRAS
+    IMP ( COL(30 + ( _col_sub * _dec )), DER( $( _valor_total ), _dec ) )
+    IMPRIME
+    SI ( $salida = 'EXCEL' )
+      _ren_excel := _ren_excel + 1
+    FIN_SI
+    _ren_sub  := _ren_sub + 1
+  FIN_MIENTRAS  
+   
+  LIMPIA_TABLA( &subtot )
+  _imp_subtotal := 0
+  #AVANZA_HOJA
+FIN_SUB_RUTINA
+
+SUB_RUTINA checa_condicion
+  _imprimir := 0
+  SI (( _vig = 0 ) OR ( ES_VIGENTE( _fecha ) = VERDADERO ))
+    _imprimir := 1
+  FIN_SI
+  SI ( _imprimir = 1 )
+    _imprimir := 0
+    LIMPIA_TABLA( &acum )
+    #PONE ENCABEZADO DE MESES
+    AGREGA_VALOR_REN( &acum, 0, '/' )
+    _ind_mes  := 0
+    $mes := TRAE_VALOR_TABLA( &meses, 0, _ind_mes )
+    MIENTRAS( $mes <> '' )
+     AGREGA_VALOR_REN( &acum, 0, $mes )
+      _ind_mes := _ind_mes + 1
+      $mes := TRAE_VALOR_TABLA( &meses, 0, _ind_mes )
+    FIN_MIENTRAS
+
+    _num_con  := 0
+    $cve_conc := TRAE_VALOR_TABLA( &conceptos, 0, _num_con )
+    MIENTRAS( $cve_conc <> '' )
+      SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', $cve_conc ) )
+        _ind_mes  := 0
+        $mes := TRAE_VALOR_TABLA( &meses, 0, _ind_mes )
+        MIENTRAS( $mes <> '' )
+          SI ( 'EMPACUM':$mes <> 0 )
+            DECIMALES := 2
+            INCREMENTA_TABLA( &acum, $mes, $cve_conc, 'EMPACUM':$mes )
+            _imprimir := 1
+          FIN_SI
+          _ind_mes := _ind_mes + 1
+          $mes := TRAE_VALOR_TABLA( &meses, 0, _ind_mes )
+        FIN_MIENTRAS
+      FIN_SI
+      _num_con  := _num_con + 1
+      $cve_conc := TRAE_VALOR_TABLA( &conceptos, 0, _num_con )
+    FIN_MIENTRAS
+  FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+SI ( _solot = 1 )
+  _omitir_encabezados   := 1
+FIN_SI
+lee_parametros_seleccion
+lee_parametros_indices
+
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+SUB_RUTINA enc_excel
+    EXCEL ( 'PON_VALOR', 1, 1, 'CLAVE' )
+    EXCEL ( 'PON_VALOR', 2, 1, 'NOMBRE COMPLETO' )
+    EXCEL ( 'PON_VALOR', 3, 1, 'CVE' )
+    EXCEL ( 'PON_VALOR', 4, 1, 'CONCEPTO' )
+    _col_excel := 5
+    SI ( _mes1 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'ENERO'  ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes2 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'FEBRERO' ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes3 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'MARZO'  ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes4 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'ABRIL' ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes5 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'MAYO'  ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes6 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'JUNIO' ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes7 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'JULIO'  ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes8 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'AGOSTO' ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes9 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'SEPTIEMBRE'  ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes10 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'OCTUBRE' ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes11 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'NOVIEMBRE'  ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes12 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'DICIEMBRE' ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes13 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'ESPECIAL' ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes14 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'AGUINALDO'  ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    SI ( _mes15 = 1 ) ;; EXCEL ( 'PON_VALOR', _col_excel, 1, 'FINIQUITO' ) ;; _col_excel := _col_excel + 1 ;; FIN_SI
+    EXCEL ( 'PON_VALOR', _col_excel, 1, 'TOTAL' )
+FIN_SUB_RUTINA
+
+
+  SI ( $salida = 'EXCEL' )
+#    EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 1 , 1 , 'O:\ACUMULADOS.XLS' )
+#    EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 1 , 1 , 'EMPRESA':'PATH REPORTES' + '\ACUMULADOS.XLS' )
+     EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 1 , 1 , 'C:\ACUMULADOS.XLS' )
+    enc_excel
+  FIN_SI
+
+$empresa          := ''
+_renglon_empresas := 0
+_total_empleados  := 0
+  MIENTRAS ( TRAE_VALOR_TABLA ( &empresas , 0 , _renglon_empresas ) <> '' )
+    $empresa := TRAE_VALOR_TABLA ( &empresas , 0 , _renglon_empresas )
+      SI ( TRAE_REGISTRO ( 'EMPRESA' , $empresa ) )
+        CAMBIA_BASE ( 'EMPRESA':'PATH TRABAJO' )
+          SI ( TRAE_REGISTRO ( 'EMPRESA' , $empresa ) ) ;; FIN_SI
+
+        base_trabajadores
+        USA_ARCHIVO( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+
+          SI ( _renglon_empresas > 0 ) 
+            AVANZA_HOJA 
+            EXCEL ( 'CAMBIA_PAGINA' , _renglon_empresas + 1 , 1 , '' )
+            EXCEL ( 'PON_VALOR' , 1 , 2 , $empresa )
+            EXCEL ( 'PON_VALOR' , 2 , 2 , 'EMPRESA':'NOMBRE' )
+            enc_excel
+          FIN_SI
+        IMP ( CENTRA ( 'EMPRESA: ' + $empresa ) ) ;; IMPRIME
+        IMPRIME
+        MUESTRA_AVANCE( 'EMPPRIN', 'EMPRESA (' + $empresa + ')' )
+
+        
+        PRIMER_REGISTRO ( 'EMPPRIN' )
+        carga_conceptos
+        MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+#           MUESTRA_AVANCE( 'EMPPRIN', 'EMPPRIN':'CLAVE' )
+           checa_condicion
+           SI( _imprimir = 1 )
+             datos_trabajador
+           FIN_SI
+           SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+        FIN_MIENTRAS
+
+         termina_reporte
+        _total_empleados := _total_empleados + _total_gen
+        _total_gen := 0
+        _ren_excel := 2
+        CIERRA_BASE ( 'EMPPRIN' )
+        CIERRA_BASE ( 'EMPACUM' )
+        CIERRA_BASE ( 'TIPONOM' )
+        CIERRA_BASE ( 'PERIODO' )
+        CIERRA_BASE ( 'EMPNOM' )
+      FIN_SI
+    _renglon_empresas := _renglon_empresas + 1
+  FIN_MIENTRAS
+
+        
+#AVANZA_HOJA
+DECIMALES := 2
+#termina_reporte

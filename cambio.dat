@@ -1,0 +1,102 @@
+#CAMBIO MASIVO DE COSTO COMEDOR
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este proceso modifica el costo del comedor del campo de EMPPRIN para los filtros seleccionados.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO     ( 'COSTO', '', _costo )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE')) ;; IMPRIME
+   IMP ( CENTRA ('CAMBIO MASIVO DE COSTO COMEDOR') ) ;; IMPRIME
+   IMP ( REPITETXT('=',80)) ;; IMPRIME
+   SI ( CD_DC = 0 )
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), DER('SUCURSAL', 10), COL(60), DER('DEPTO', 10), COL(70), DER('PUESTO', 10) );; IMPRIME
+   SI_NO
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), DER('SUCURSAL', 10), COL(60), DER('C.C.', 10), COL(70), DER('PUESTO',10) );; IMPRIME
+   FIN_SI
+   IMP ( REPITETXT('-',80) );; IMPRIME;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+FORMATO_FECHA := 2
+
+#Variables Globales
+_total := 0
+VAR_T ( &grabar )
+$clave := ''
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+  IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 30) )
+  IMP ( COL(50), DER('EMPPRIN':'SUC_CLAVE', 10), COL(60), DER('EMPPRIN':'DEP_CLAVE', 10), COL(70), DER('EMPPRIN':'PUE_CLAVE', 10) )
+  IMPRIME
+  $clave := 'EMPPRIN':'CLAVE'
+  AGREGA_VALOR_COL( &grabar, 0, $clave )
+  _total := _total + 1
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+SALIDA := $salida
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+base_trabajadores
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE( _ff ) = VERDADERO )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+
+CIERRA_BASE( 'EMPPRIN' )
+
+ABRE_BASE( 'EMPPRIN' )
+PRIMER_REGISTRO( 'EMPPRIN' )
+MUESTRA_AVANCE( 'EMPPRIN', 'ACTUALIZANDO' )
+_ind := 0
+$clave := TRAE_VALOR_TABLA( &grabar, 0, _ind )
+MIENTRAS( $clave <> '' )
+  SI ( TRAE_REGISTRO( 'EMPPRIN', $clave ) )
+    'EMPPRIN':'COSTO_COMEDOR' := _costo
+    GRABA_BASE( 'EMPPRIN' )
+  FIN_SI
+  _ind := _ind + 1
+  $clave := TRAE_VALOR_TABLA( &grabar, 0, _ind )
+FIN_MIENTRAS
+
+IMPRIME ;; IMPRIME
+DECIMALES := 0
+IMP ( 'TOTAL DE TRABAJADORES ACTUALIZADOS : ', .( _total ) ) ;; IMPRIME
+TERMINA_REPORTE

@@ -1,0 +1,80 @@
+#TURNOS Y CALENDARIOS
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra el turno y calendario des los trabajadores vigentes de la empresa.
+#Este reporte imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+COLUMNAS := 90
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), 'giro Ver 1.0' );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+   IMP ( CENTRA ('TURNOS Y CALENDARIOS'));; IMPRIME
+   IMP ( REPITETXT('=', COLUMNAS ));; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(40), 'SUCURSAL' )
+   SI ( CD_DC = 0 )
+      IMP ( COL(50), 'DEPTO' )
+   SI_NO
+      IMP ( COL(50), 'C.C.' )
+   FIN_SI
+   IMP ( COL(60), 'PUESTO', COL(70), 'TURNO', COL(80), 'CALENDARIO' );; IMPRIME
+   IMP ( REPITETXT('-', COLUMNAS ) );; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+### VARIABLES GLOBALES DEL REPORTE
+_dias:=0
+_fini:=0
+_ffin:=0
+_di:=0
+$ant_trab:=''
+
+SUB_RUTINA formato_trabajador
+  IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 28), COL(40), 'EMPPRIN':'SUC_CLAVE', COL(50), 'EMPPRIN':'DEP_CLAVE', COL(60), 'EMPPRIN':'PUE_CLAVE' )
+  IMP ( COL(70), 'EMPPRIN':'TURNO', COL(80), 'EMPPRIN':'CALENDARIO' ) ;; IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+$campos_extras:='E. CALENDARIO, E. TURNO'
+base_trabajadores
+
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE ( _ff ) )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte

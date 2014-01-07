@@ -1,0 +1,87 @@
+#BORRADO DE MOVIMIENTOS
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este proceso hace un borrado masivo de salario a los trabajadores que lo tengan a la fecha especificada de la empresa.
+#Este proceso pide la fecha del movimiento a eliminar y mientras no se indique borrar este no afecta el kardex de sueldos.
+#Este proceso imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal.
+#Este proceso tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ('FECHA','',_ff)
+NUEVO_PARAMETRO_CHEQ('BORRAR', '', _borrar )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+   IMP ( CENTRA ('BORRADO MASIVO DE SALARIOS'));; IMPRIME
+   IMP ( REPITETXT('=',80));; IMPRIME
+   SI ( CD_DC = 0 )
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), DER('SUCURSAL', 10), COL(60), DER('DEPTO', 10), COL(70), DER('PUESTO', 10) );; IMPRIME
+   SI_NO
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), DER('SUCURSAL', 10), COL(60), DER('C.C.', 10), COL(70), DER('PUESTO',10) );; IMPRIME
+   FIN_SI
+   IMP ( REPITETXT('-',80) );; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_A ( $filtro )
+$val_tabla:=''
+_i:=0
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+  IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 30) )
+  IMP ( COL(50), DER('EMPPRIN':'SUC_CLAVE', 10), COL(60), DER('EMPPRIN':'DEP_CLAVE', 10), COL(70), DER('EMPPRIN':'PUE_CLAVE', 10) )
+  IMPRIME
+  SI ( _borrar = 1 )
+    TRAE_MOV_FECHA( _ff )
+    BORRA_REGISTRO( 'EMPSDO' ) 
+  FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+$campos_extras := 'S. CLAVE, S. TIPO, S. FECHA'
+$bases_extras := 'EMPSDO S'
+$condiciones_extras := 'S. CLAVE = E. CLAVE AND S. FECHA = :FECHA AND S. TIPO = "M"'
+base_trabajadores
+PARAMETRO_SQL( 'EMPPRIN', 'FECHA', _ff )
+
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  datos_trabajador         
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte

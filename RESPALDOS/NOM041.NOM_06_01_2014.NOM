@@ -1,0 +1,889 @@
+#CALCULO DE FINIQUITOS
+#CALCULO DE FINIQUITOS
+#VERSION 2.529
+#NO EDITAR
+#DESCRIPCION
+#Este reporte calcula el finiquito por trabajador, teniendo como opción el acumular los calculos directamente
+#en la nómina o en el mes deseado
+#FIN_DESCRIPCION
+#COMENTARIO:FECHA=15/10/2013;AUTOR=YO;SOLICITANTE=ARGENIS
+#xxxxxx
+#COMENTARIO:FECHA=01/10/13;AUTOR=ARGENIS;SOLICITANTE=ARGENIS
+#calculo con articulo 113
+#
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+NUEVO_PARAMETRO_TAB ('EMPLEADO','EMPPRIN/CLAVE/EMPLEADO', $trab)
+NUEVO_PARAMETRO_FEC ('FECHA DE BAJA', '', _fecha)
+LEE_PARAMETROS
+
+FORMATO_FECHA := 1
+FORMATO_PESOS := 2
+LETRA ( 'LETRA NORMAL' )
+SALIDA := $salida
+# DECLARACION DE VARIABLES
+
+VAR_N (_ex80 ) ;; VAR_N (_ex86 ) ;; VAR_N (_ex79 ) ;; VAR_N (_perc ) ;; VAR_N (_dedu ) ;; VAR_N (_ispt1)
+VAR_N (_ispt2) ;; VAR_N (_ispt3) ;; VAR_N (_ispt ) ;; VAR_N (_aux1 ) ;; VAR_N (_aux2 ) ;; VAR_N (_minimo)
+VAR_N (_exen ) ;; VAR_N (_ex10 ) ;; VAR_N (_ex13 ) ;; VAR_N (_ex30 ) ;; VAR_N (_ex16 ) ;; VAR_N ( _aux3)
+VAR_N (_ex22 ) ;; VAR_N (_ex14 ) ;; VAR_N (_base80) ;; VAR_N (_base86) ;; VAR_N (_base79) ;; VAR_N (_exento)
+VAR_A ( $mes ) ;; VAR_A ($acum ) ;; VAR_N ( _ant ) ;; VAR_N (_aux4 ) ;; VAR_A ( $aux1)  ;; VAR_N( _salir )
+VAR_N (_aux5) ;; VAR_N (_aux6)
+VAR_A ( DIAS ) ;; VAR_A ( SDO ) ;; VAR_A ( SEP ) ;; VAR_A ( VAC ) ;; VAR_A ( PVAC ) ;; VAR_A ( H2 ) ;; VAR_A (H3)
+VAR_A ( FEST ) ;; VAR_A ( PDOM) ;; VAR_A ( PANT) ;; VAR_A (INDEM) ;; VAR_A ( AGUI ) ;; VAR_A (ISPT) ;; VAR_A (EXEN)
+VAR_A ( PUNT ) ;; VAR_A ( ASIS) ;; VAR_A ( VALE) ;; VAR_A ( PROD) 
+VAR_A ( EX10 ) ;; VAR_A ( EX13) ;; VAR_A ( EX16) ;; VAR_A ( EX22) ;; VAR_A ( EX30 ) ;; VAR_A (EX14) ;; VAR_A (GRAT)
+VAR_A ( COMP ) ;; VAR_A (OPERC) ;; VAR_A (ODEDU) ;; VAR_A ( PERC) ;; VAR_A ( DEDU ) ;; VAR_A (TOTA) ;; VAR_A (IMSS)
+VAR_A ( FON  ) ;; VAR_A ( PPER );; VAR_A ( DOSX100 ) ;; VAR_A ( FINI )
+VAR_T ( &TOTALES ) ;; VAR_A ( VDA )
+
+_cont := 0
+$saux := ''
+_tot_conc := 0
+$conc := ''
+$bco  := ''
+
+# ASIGNACION DE CLAVES DE CONCEPTO
+DIAS  := 'DVIG'
+SDO   := '01'
+SEP   := '02'
+VAC   := '12'
+PVAC  := '13'
+H2    := '10'
+H3    := '11'
+FEST  := '14'
+PDOM  := '16'
+PUNT  := '19'
+ASIS  := '20'
+VALE  := '29'
+PROD  := '33'
+INDEM := '21'
+VDA   := '22'
+PANT  := '23'
+AGUI  := '30'
+OPERC := '25'
+GRAT  := '17'
+COMP  := '17'
+ISPT  := '51'
+IMSS  := '52'
+ODEDU := '69'
+DOSX100 := 'C01'
+EX10  := 'EX10'
+EX13  := 'EX13'
+EX14  := 'EX14'
+EX16  := 'EX16'
+EX22  := 'EX22'
+EX22  := 'EX23'
+EX30  := 'EX30'
+FINI  := 'C02'
+PERC  := 'PERC'
+DEDU  := 'DEDU'
+TOTA  := 'TOTA'
+# ASIGNACION DE CLAVES PARA LOS PRESTAMOS
+FON   := '64'
+PPER  := '65'
+_tipo := 0
+_descontar := 0
+
+# INDICAR CLAVES
+
+# APERTURA DE BASES DE DATOS
+
+LETRA ( 'LETRA NORMAL' )
+ABRE_BASE ('EMPPRIN')
+USA_ARCHIVO ('EMPPRIN', 'EMPSDO', 'CLAVE')
+USA_ARCHIVO ('EMPPRIN', 'EMPPRES', 'CLAVE')
+SI ( TRAE_REGISTRO_VIG ('MINIMO', _fecha) = FALSO )
+   MENSAJE('NO HAY MINIMO VIGENTE A LA FECHA ')
+FIN_SI
+SI ( TRAE_REGISTRO_VIG ('PAGOIMSS',_fecha) = FALSO )
+   MENSAJE ('NO HAY CUOTAS DE IMSS VIGENTES')
+FIN_SI
+
+# INICIO DEL PROGRAMA
+
+SI ( TRAE_REGISTRO ( 'EMPPRIN', $trab ) = 1)
+   TRAE_MOV_FECHA( _fecha )
+   SI ( 'EMPSDO':'TIPO' = 'B' )
+     REGISTRO_ANTERIOR( 'EMPSDO' )
+   FIN_SI
+
+
+  ULTIMO_REGISTRO('EMPSDO')
+  MIENTRAS( (INICIO_BASE('EMPSDO') =FALSO) AND ( _salir <> 1))
+      SI (('EMPSDO':'TIPO' = 'R') OR ('EMPSDO':'TIPO' = 'M'))## MODIFICADO POR ARGENIS
+        _salir := 1
+         FIN_SI
+      REGISTRO_ANTERIOR ('EMPSDO')
+   FIN_MIENTRAS
+   SI ( _salir = 1 )
+         SIGUIENTE_REGISTRO ('EMPSDO')
+   FIN_SI
+
+
+   _ant := (_fecha - 'EMPSDO':'FECHA') / 365
+
+   SI ( TRAE_REGISTRO('SUCURSAL', TRAE_DSP('S', _fecha) ) = FALSO )
+      MENSAJE ('NO FUE POSIBLE CARGAR LA SUCURSAL')
+   FIN_SI
+   SI ( TRAE_REGISTRO('PATRONAL','SUCURSAL':'REGISTRO PATRONAL') = FALSO )
+      MENSAJE('NO FUE POSIBLE TRAER EL REGISTRO')
+   FIN_SI
+
+   ABRE_BASE ( 'FACTOR' )
+   SI ( TRAE_REGISTRO ( 'PUESTO', TRAE_DSP ( 'P', _fecha )))
+      PRIMER_REGISTRO ( 'FACTOR' )
+      MIENTRAS (( FIN_BASE ( 'FACTOR' ) = FALSO ) Y
+               (( 'FACTOR':'CLAVE' <> 'PUESTO':'TIPO EMPLEADO' ) O
+                ( 'FACTOR':'ANT FINAL' < ( TRUNCAR ( _ant + 1 )))))
+               SIGUIENTE_REGISTRO ( 'FACTOR' )
+      FIN_MIENTRAS
+      SI (( 'FACTOR':'CLAVE' = 'PUESTO':'TIPO EMPLEADO' ) Y
+          ( 'FACTOR':'ANT INICIAL' <= ( TRUNCAR ( _ant + 1 ))) Y
+          ( 'FACTOR':'ANT FINAL'   >= ( TRUNCAR ( _ant + 1 ))))
+         _ant := _ant
+      SI_NO
+         MENSAJE ( 'NO FUE POSIBLE TRAER EL FACTOR DE INTEGRACION DEL EMPLEADO...' )
+         TERMINA_REPORTE
+      FIN_SI
+   SI_NO
+      MENSAJE ( 'NO FUE POSIBLE TRAER EL PUESTO DEL EMPLEADO...' )
+      TERMINA_REPORTE
+   FIN_SI
+
+
+   SI ( TRAE_REGISTRO ( 'TIPONOM', 'EMPPRIN':'TIPO_NOM' ) = 0 )
+      TERMINA_REPORTE
+   SI_NO
+      SI ( TRAE_REGISTRO ( 'PERIODO', 'EMPPRIN':'TIPO_NOM', 'TIPONOM':'ACTUAL' ) = 0 )
+         TERMINA_REPORTE
+      FIN_SI
+   FIN_SI
+   SI ( 'PATRONAL':'ZONA ECONOMICA' ='A')
+      _minimo := 'MINIMO':'MINIMO A'
+   FIN_SI
+   SI ( 'PATRONAL':'ZONA ECONOMICA' ='B')
+      _minimo := 'MINIMO':'MINIMO B'
+   FIN_SI
+   SI ( 'PATRONAL':'ZONA ECONOMICA' ='C')
+      _minimo := 'MINIMO':'MINIMO C'
+   FIN_SI
+# ******************************************************
+# IMPRESION DE DATOS PERSONALES
+# ******************************************************
+   IMP (CENTRA('EMPRESA':'NOMBRE')) ;; IMPRIME
+   IMP (CENTRA('FINIQUITO O LIQUIDACION INDIVIDUAL')) ;; IMPRIME
+   IMP (REPITETXT ('=', 80)) ;; IMPRIME ;; IMPRIME
+   IMP ('CLAVE             : ','EMPPRIN':'CLAVE') ;; IMPRIME
+   IMP ('NOMBRE            : ','EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN') ;; IMPRIME
+   IMP ('R.F.C.            : ', FORMATO('EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX')) ;; IMPRIME
+   IMP ('FECHA DE BAJA     : ', FECHA (_fecha)) ;; IMPRIME
+   IMP ('FECHA DE INGRESO  : ', FECHA ('EMPPRIN':'INGRESO')) ;; IMPRIME
+   IMP ('SALARIO DIARIO    : ', DER($('EMPSDO':'SDO1'), 10)) ;; IMPRIME
+   IMP ('SALARIO INTEGRADO : ', DER($('EMPSDO':'SDO3'), 10)) ;; IMPRIME
+   IMP ('ANTIGUEDAD        : ', _ant , ' AÑO(S)') #;; IMPRIME #;; IMPRIME
+   IMP (COL(27), 'DIAS', COL(54), 'PERCEP', COL(65), 'DEDUC') ;; IMPRIME
+   IMP (REPITETXT ('-', 80)) ;; #IMPRIME #;; IMPRIME
+# ******************************************************
+# CALCULO DE DIAS DE SUELDO
+# ******************************************************
+   _fecha := _fecha + 1
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('DIAS DE SUELDO', '', _aux1)
+   LEE_PARAMETROS
+   SI ('PERIODO':'DIAS DE PAGO' = 6)
+      _aux2 := _aux1 / 6
+   FIN_SI
+   _aux3   := _aux1 * 'EMPSDO':'SDO1'
+   _aux4   := _aux2 * 'EMPSDO':'SDO1'
+   SI (_aux3 > 0)
+      IMP ('SUELDO'          , COL(25), DER($(_aux1),10), COL(49), DER($(_aux3), 10) ) ;; IMPRIME
+   FIN_SI
+   SI (_aux2 > 0)
+      IMP ('SEPTIMO DIA'     , COL(25), DER($(_aux2),10), COL(49), DER($(_aux4), 10)) ;; IMPRIME
+   FIN_SI
+   _base80 := _base80 + _aux3 + _aux4
+   _perc   := _perc + _aux3 + _aux4
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', DIAS, _aux1 + _aux2)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', SDO, _aux3)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', SEP, _aux4)
+
+# ******************************************************
+# CALCULO DE TIEMPO EXTRA
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('HORAS EXTRAS DOBLES', '', _aux1)
+   NUEVO_PARAMETRO ('HORAS EXTRAS TRIPLES', '', _aux2)
+   LEE_PARAMETROS
+   _aux3  := 'EMPSDO':'SDO1' / 4 * _aux1
+   _aux4  := 'EMPSDO':'SDO1' / 8 * _aux2 * 3
+   SI (_aux3 > 0)
+      IMP ('HORAS DOBLES'    , COL(25), DER($(_aux1  ),10), COL(49), DER($(_aux3), 10)) ;; IMPRIME
+   FIN_SI
+   SI (_aux4 > 0)
+      IMP ('HORAS TRIPLES'   , COL(25), DER($(_aux2  ),10), COL(49), DER($(_aux4), 10)) ;; IMPRIME
+   FIN_SI
+   _base80 := _base80 + _aux3 + _aux4
+   _perc   := _perc + _aux3 + _aux4
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', H2 , _aux3)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', H3 , _aux4)
+   _exen   := _minimo * 5
+   SI ((_aux3 / 2) > _exen)
+      _ex80 := _ex80 + _exen
+      _ex10 := _exen
+   SI_NO
+      _ex80 := _ex80 + (_aux3 / 2)
+      _ex10 := _aux3 / 2
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', EX10, _ex10)
+# ******************************************************
+# CALCULO DE VACACIONES Y PRIMA VACACIONAL
+# ******************************************************
+   BORRA_PARAMETROS
+   _aux1 := SDO_VACACIONAL_DIAS (_fecha)
+
+# ******************************************************
+# SE TRAE NUEVAMENTE EL SUELDO PUES SE PIERDE CON LA CONSULTA DE VACACIONES
+# ******************************************************
+
+   TRAE_MOV_FECHA( _fecha )
+   SI ( 'EMPSDO':'TIPO' = 'B' )
+     REGISTRO_ANTERIOR( 'EMPSDO' )
+   FIN_SI
+
+
+   $aux1 := .(_aux1)
+   NUEVO_PARAMETRO ('DIAS DE VACACIONES', $aux1, _aux1)
+   LEE_PARAMETROS
+   _aux2    := _aux1 * 'EMPSDO':'SDO1'
+   _aux3   := _aux2 * 0.25
+   _perc   := _perc + _aux2 + _aux3
+   _base80 := _base80 + _aux2
+   _base80 := _base80 + _aux3
+   SI (_aux2 > 0)
+      IMP ('VACACIONES'      , COL(25), DER($(_aux1),10), COL(49), DER($(_aux2 ), 10)) ;; IMPRIME
+      IMP ('PRIMA VACACIONAL', COL(49), DER($(_aux3), 10)) ;; IMPRIME
+   FIN_SI
+   #INCREMENTA_TABLA (&TOTALES, 'TOTAL', DIAS, _aux1)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', VAC , _aux2)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', PVAC, _aux3)
+   _exen := _minimo * 15
+   _aux1 := _exen - ACUM_ANUAL('EX13')
+   SI (_aux1 > 0)
+      SI (_aux3 > _aux1)
+         _ex86 := _ex86 + _aux1
+         _ex13 := _aux1
+      SI_NO
+         _ex86 := _ex86 + _aux3
+         _ex13 := _aux3 - _ex86 ## MODIFICADO POR ARGENIS
+      FIN_SI
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', EX13, _ex13)
+# ******************************************************
+# CALCULO DE AGUINALDO
+# ******************************************************
+   BORRA_PARAMETROS
+   SI ('EMPPRIN':'INGRESO' < CALCULA_FECHA(VALOR(SUBSTR(FECHA(FECHA_HOY), 7,2)), 01, 01))
+      _aux2    := CALCULA_FECHA (VALOR(SUBSTR(FECHA(FECHA_HOY), 7,2)), 01, 01)
+   SI_NO
+      _salir := 0
+      ULTIMO_REGISTRO ('EMPSDO')
+      MIENTRAS ( (INICIO_BASE ('EMPSDO') = FALSO) AND (_salir <> 1) )
+          SI ( ('EMPSDO':'TIPO' = 'R') OR ('EMPSDO':'TIPO' = 'A'))
+               _aux2 := 'EMPSDO':'FECHA'
+               _salir := 1
+          FIN_SI
+          REGISTRO_ANTERIOR ('EMPSDO')
+      FIN_MIENTRAS
+      
+   FIN_SI
+   SI ( _salir = 1 )
+     SIGUIENTE_REGISTRO ('EMPSDO')
+   FIN_SI
+   DECIMALES := 2
+   _fecha := _fecha - 1
+   _aux1 := ((_fecha - _aux2) + 1)  / 365 * 'FACTOR':'DIAS DE AGUINALDO'
+   $aux1 := .(_aux1)
+   NUEVO_PARAMETRO ('DIAS DE AGUINALDO', $aux1, _aux1)
+   LEE_PARAMETROS
+
+   TRAE_MOV_FECHA( _fecha )
+   SI ( 'EMPSDO':'TIPO' = 'B' )
+     REGISTRO_ANTERIOR( 'EMPSDO' )
+   FIN_SI
+
+   _aux2  := 'EMPSDO':'SDO1' * _aux1
+   _perc  := _perc + _aux2
+   _base80 := _base80 + _aux2
+   SI (_aux2 > 0)
+      IMP ('AGUINALDO'       , COL(25), DER($(_aux1),10), COL(49), DER($(_aux2), 10)) ;; IMPRIME
+   FIN_SI
+   _exen := _minimo * 30
+   SI (_aux2 > _exen)
+      _ex80 := _ex86 + _exen
+      _ex30 := _exen
+   SI_NO
+      _ex80 := _ex86 + _aux2
+      _ex30 := _ex86 + _aux2
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', AGUI, _aux2)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', EX30, _ex30)
+# ******************************************************
+# CALCULO DE PRIMA DOMINICAL
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('PRIMAS DOMIN. A PAGAR', '', _aux1)
+   NUEVO_PARAMETRO ('% DE PRIMA DOMIN.', '', _aux2)
+   LEE_PARAMETROS
+   _exen   := _minimo * _aux1
+   _aux3   := _aux2 / 100 * _aux1 * 'EMPSDO':'SDO1'
+   _perc   := _perc + _aux3
+   _base80 := _base80 + _aux3
+   SI (_aux3 > 0)
+      IMP ('PRIMA DOMINICAL'       , COL(25), DER($(_aux1),10), COL(49), DER($(_aux3), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', PDOM, _aux3)
+   SI (_aux3 > _exen)
+      _ex80 := _ex80 + _exen
+      _ex16 := _exen
+   SI_NO
+      _ex80 := _ex80 + _aux3
+      _ex16 := _aux3
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', EX16, _ex16)
+# ******************************************************
+# CALCULO DE PRIMA DE ANTIGUEDAD
+# ******************************************************
+   _aux1 := 0 ;; _aux2 := 0 ;; _aux3 := 0 ;; _aux4 := 0 ;; _aux5 := 0 ;; _aux6 := 0
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('INDEMN. DE 90 DIAS', '', _aux1)
+   NUEVO_PARAMETRO ('DIAS X AÑO DE ANTIG.', '', _aux2 )
+   NUEVO_PARAMETRO ('PRIMA DE ANTIGUEDAD', '', _aux5 )
+   LEE_PARAMETROS
+   #_ant := TRUNCAR (_ant)
+   _ant := _ant
+   _aux3 := _aux1 * 'EMPSDO':'SDO1'
+
+   SI ( _aux2 > 0 )
+      _aux4 := _aux2 * _ant * 'EMPSDO':'SDO1'
+   FIN_SI
+
+   SI ( _aux5 > 0 )
+      SI ('EMPSDO':'SDO1' > (_minimo * 2))
+         _aux6 := _aux5 * _ant * (_minimo * 2)
+      SI_NO
+         _aux6 := _aux5 * _ant * 'EMPSDO':'SDO1'
+      FIN_SI
+   FIN_SI
+
+   _perc := _perc + _aux3 + _aux4 + _aux6
+   _base79 := _base79 + _aux3 + _aux4 + _aux6
+   _exen := _minimo * 90 * _ant
+   SI (_aux3 > 0)
+      IMP ('INDEMNIZACION'       , COL(25), DER($(_aux1),10), COL(49), DER($(_aux3), 10)) ;; IMPRIME
+   FIN_SI
+   SI (_aux4 > 0)
+      IMP ('20 DIAS POR AÑO' , COL(25), DER($(_aux2 ),10), COL(49), DER($(_aux4 ), 10)) ;; IMPRIME
+   FIN_SI
+   SI (_aux6 > 0)
+      IMP ('PRIMA DE ANTIGUEDAD' , COL(25), DER($(_aux5 ),10), COL(49), DER($(_aux6 ), 10)) ;; IMPRIME
+   FIN_SI
+   SI ((_aux3 + _aux4) > _exen)
+      _ex79 := _exen
+      _ex22 := _exen
+   SI_NO
+      _ex79 := _ex79 + _aux3 + _aux4
+      _ex22 := _aux3 + _aux4
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', INDEM, _aux3)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', VDA, _aux4)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', PANT , _aux6)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', EX22 , _ex22)
+# ******************************************************
+# CALCULO DE DIAS FESTIVOS
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('DIAS FESTIVOS ', '', _aux1)
+   LEE_PARAMETROS
+   _aux2 := _aux1 * 2 * 'EMPSDO':'SDO1'
+   _perc := _perc + _aux2
+   _base80 := _base80 + _aux2
+   _exen := _minimo * 5
+   SI (_aux2 > 0)
+      IMP ('DIAS FESTIVOS'       , COL(25), DER($(_aux1),10), COL(49), DER($(_aux2), 10)) ;; IMPRIME
+   FIN_SI
+   SI ((_aux2 / 2) > _exen)
+      _ex80 := _ex80 + _exen
+      _ex14 := _exen
+   SI_NO
+      _ex80 := _ex80 + (_aux2 / 2)
+      _ex14 := _aux2 / 2
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', FEST, _aux2)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', EX14, _ex14)
+# ******************************************************
+# CALCULO DE GRATIFICACIONES
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('MONTO X GRATIFICACION', '', _aux1)
+   LEE_PARAMETROS
+   _perc := _perc + _aux1
+   _base80 := _base80 + _aux1
+   SI (_aux1 > 0)
+      IMP ('GRATIFICACION' , COL(49), DER($(_aux1), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', GRAT, _aux1)
+# ******************************************************
+# CALCULO DE BONO DE PRODUCTIVIDAD
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('BONO DE PRODUCTIVIDAD', '', _aux1)
+   LEE_PARAMETROS
+   _perc := _perc + _aux1
+   _base80 := _base80 + _aux1
+   SI (_aux1 > 0)
+      IMP ('BONO DE PRODUCTIVIDAD' , COL(49), DER($(_aux1), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', PROD, _aux1)
+
+# ******************************************************
+# CALCULO DE PREMIO PUNTUALIDAD
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('PREMIO PUNTUALIDAD', '', _aux1)
+   LEE_PARAMETROS
+   _perc := _perc + _aux1
+   _base80 := _base80 + _aux1
+   SI (_aux1 > 0)
+      IMP ('PREMIO PUNTUALIDAD' , COL(49), DER($(_aux1), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', PUNT, _aux1)
+# ******************************************************
+# CALCULO DE PREMIO ASISTENCIA
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('PREMIO ASISTENCIA', '', _aux1)
+   LEE_PARAMETROS
+   _perc := _perc + _aux1
+   _base80 := _base80 + _aux1
+   SI (_aux1 > 0)
+      IMP ('PREMIO ASISTENCIA' , COL(49), DER($(_aux1), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', ASIS, _aux1)
+# ******************************************************
+# CALCULO DE VALES DE DESPENSA
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('VALES DE DESPENSA', '', _aux1)
+   LEE_PARAMETROS
+   _perc := _perc + _aux1
+   _base80 := _base80 + _aux1
+   SI (_aux1 > 0)
+      IMP ('VALES DE DESPENSA' , COL(49), DER($(_aux1), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', VALE, _aux1)
+# ******************************************************
+# CALCULO DE COMPENSACION
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('MONTO X COMPENSACION', '', _aux1)
+   LEE_PARAMETROS
+   _perc := _perc + _aux1
+   _base80 := _base80 + _aux1
+   SI (_aux1 > 0)
+      IMP ('COMPENSACION' , COL(49), DER($(_aux1), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', COMP, _aux1)
+# ******************************************************
+# CALCULO DE OTRAS PERCEPCIONES
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('OTRAS PERCEPCIONES', '', _aux1)
+   LEE_PARAMETROS
+   _perc := _perc + _aux1
+   _base80 := _base80 + _aux1
+   SI (_aux1 > 0)
+      IMP ('OTRAS PERCEPCIONES' , COL(49), DER($(_aux1), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', OPERC, _aux1)
+   IMP (COL(49), REPITETXT ('-', 10)) ;; IMPRIME
+   IMP ('TOTAL DE PERCEPCIONES ', COL(49), DER($(_perc), 10)) ;; IMPRIME #;; IMPRIME
+# ******************************************************
+# CALCULO DE ISPT
+# ******************************************************
+   BORRA_PARAMETROS
+   SI (_base79 > 0)
+      _aux1 := 'EMPSDO':'SDO1' * 30
+      SI (TRAE_REGISTRO('TABISPT', LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','ISPT','ISPT')))
+         _ispt1 := CALCULA_ISPT (_aux1)
+      FIN_SI
+      SI (TRAE_REGISTRO('TABISPT',LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','SUBS','SUBS')))
+         _ispt1 := _ispt1 - CALCULA_SUBSIDIO (_aux1)
+      FIN_SI
+      SI (TRAE_REGISTRO('TABISPT', LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','CRED','CRED') ) )
+         _ispt1 := _ispt1 - CALCULA_ISPT (_aux1)
+      FIN_SI
+      SI (_ispt1 < 0)
+         _ispt1 := _ispt1 * -1
+      FIN_SI
+      _ispt1 := (_ispt1 / _aux1) * (_base79 - _ex79)
+      SI (_ispt1 < 0)
+         _ispt1 := 0
+      FIN_SI
+   FIN_SI
+   SI (_base80 > 0)
+      _base80 := _base80 - _ex80
+      #SI ('PERIODO':'FIN DE MES' = 1)
+         #$mes := 'PERIODO':'MES DE ACUMULACION'
+        # _base80 := _base80 + ACUM_MENSUAL($mes, 'PGRA')
+         SI (TRAE_REGISTRO('TABISPT',LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','ISPT','ISPT')))
+            _ispt2 := CALCULA_ISPT (_base80)
+         FIN_SI
+         #SI (TRAE_REGISTRO('TABISPT',LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','SUBS','SUBS')))
+         #   _ispt2 := _ispt2 - CALCULA_SUBSIDIO (_base80)
+         #FIN_SI
+         #SI (TRAE_REGISTRO('TABISPT',LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','CRED','CRED')))
+         #   _ispt2 := _ispt2 - CALCULA_ISPT (_base80)
+         #FIN_SI
+         _ispt2 := _ispt2 - ACUM_MENSUAL($mes,'51')
+         SI (_ispt2 < 0)
+            _ispt2 := _ispt2 - ACUM_MENSUAL($mes, '_51A')
+         FIN_SI
+      SI_NO
+         #_base80 := _base80 / VALOR_TABLA (&TOTALES, 'TOTAL', DIAS) * 30.4
+         _base80 := _base80
+         SI (TRAE_REGISTRO('TABISPT',LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','ISPT','ISPT')))
+            _ispt2 := CALCULA_ISPT (_base80)
+         FIN_SI
+         #SI (TRAE_REGISTRO('TABISPT',LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','SUBS','SUBS')))
+         #   _ispt2 := _ispt2 - CALCULA_SUBSIDIO (_base80)
+         #FIN_SI
+         #SI (TRAE_REGISTRO('TABISPT',LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','CRED','CRED')))
+         #   _ispt2 := _ispt2 - CALCULA_ISPT (_base80)
+         #FIN_SI
+         #_ispt2 := _ispt2 / 30.4 * VALOR_TABLA (&TOTALES, 'TOTAL', DIAS)
+         _ispt2 := _ispt2
+      FIN_SI
+    #FIN_SI
+   SI (_base86 > 0)
+      _aux1 := ((_base86 - _ex86) / 365 * 30.4) + ('EMPSDO':'SDO1' * 30.4)
+      _aux3 := 'EMPSDO':'SDO1' * 30.4
+      SI (TRAE_REGISTRO('TABISPT',LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','ISPT','ISPT')))
+         _aux2 := CALCULA_ISPT (_aux1)
+         _aux4 := CALCULA_ISPT (_aux3)
+      FIN_SI
+      SI (TRAE_REGISTRO('TABISPT',LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','SUBS','SUBS')))
+         _aux2 := _aux2 - CALCULA_SUBSIDIO (_aux1)
+         _aux4 := _aux4 - CALCULA_SUBSIDIO (_aux3)
+      FIN_SI
+      SI (TRAE_REGISTRO('TABISPT',LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','CRED','CRED')))
+         _aux2 := _aux2 - CALCULA_ISPT (_aux1)
+         _aux4 := _aux4 - CALCULA_ISPT (_aux3)
+      FIN_SI
+      SI ((_aux2 < 0 ) OR (_aux4 < 0))
+         _ispt3 := 0
+      SI_NO
+         _ispt3 := (_aux2 - _aux4) / (_aux1 - _aux3) * (_base86 - _ex86)
+      FIN_SI
+   FIN_SI
+   $aux1 := .(_ispt1)
+   NUEVO_PARAMETRO ('ISPT ART.141', $aux1, _ispt1)
+   $aux1 := .(_ispt2)
+   NUEVO_PARAMETRO ('ISPT ART.113', $aux1, _ispt2)
+   $aux1 := .(_ispt3)
+   NUEVO_PARAMETRO ('ISPT ART.142', $aux1, _ispt3)
+   LEE_PARAMETROS
+   SI (_ispt3 <> 0)
+      IMP ('ISPT ART.142' , COL(59), DER($(_ispt3), 10)) ;; IMPRIME
+   FIN_SI
+   SI (_ispt2 <> 0)
+      IMP ('ISPT ART.113' , COL(59), DER($(_ispt2), 10)) ;; IMPRIME
+   FIN_SI
+   SI (_ispt1 <> 0)
+      IMP ('ISPT ART.141' , COL(59), DER($(_ispt1), 10)) ;; IMPRIME
+   FIN_SI
+   _ispt := _ispt1 + _ispt2 + _ispt3
+   _dedu := _dedu + _ispt
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', ISPT, _ispt)
+# ******************************************************
+# CALCULO DE IMSS
+# ******************************************************
+   _aux3 := VALOR_TABLA (&TOTALES, 'TOTAL', DIAS)
+   _aux1 := 'EMPSDO':'SDO3'
+   SI (_aux1 <= (_minimo + 0.001))
+      _aux2 := 0
+   SI_NO
+      SI ((_aux1 < _minimo) AND (('EMPPRIN':'JORNADA REDUCIDA' = 1) OR ('EMPPRIN':'SEMANA REDUCIDA' = 1)))
+         _aux1 := _minimo
+      FIN_SI
+      _aux2   := _aux1 * _aux3 * 'PAGOIMSS':'EG ESPECIE EMPLEADO' / 100
+      _aux4 := ('MINIMO':'TOPE EG'/ 25) * 3
+      SI (_aux1 > _aux4)
+         _aux2 := _aux2 + ((_aux1 - _aux4) * _aux3 * 'PAGOIMSS':'EG 3SMGDF EMPLEADO' / 100)
+      FIN_SI
+      _aux2 := _aux2 + (_aux1 * _aux3 * 'PAGOIMSS':'EG DINERO EMPLEADO' / 100)
+      _aux1 := 'EMPSDO':'SDO3'
+      _aux4 := 'MINIMO':'TOPE IVCM'
+      SI (_aux1 > _aux4)
+         _aux2 := _aux2 + (_aux4 * _aux3 * ('PAGOIMSS':'INVALIDEZ Y VIDA EMPLEADO' + 'PAGOIMSS':'CESANTIA Y VEJEZ EMPLEADO') / 100)
+      SI_NO
+         _aux2 := _aux2 + (_aux1 * _aux3 * ('PAGOIMSS':'INVALIDEZ Y VIDA EMPLEADO' + 'PAGOIMSS':'CESANTIA Y VEJEZ EMPLEADO') / 100)
+      FIN_SI
+   FIN_SI
+   $aux1 := .(_aux2)
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO('PAGO IMSS', $aux1, _aux2)
+   LEE_PARAMETROS
+   _dedu := _dedu + _aux2
+   SI (_aux2 > 0)
+      IMP ('IMSS' , COL(59), DER($(_aux2), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', IMSS, _aux2)
+# ******************************************************
+# CALCULO DE PRESTAMOS
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO_CHEQ( 'DESCONTAR PRESTAMOS', '', _descontar )
+   LEE_PARAMETROS
+   SI ( _descontar = 1 )
+     PRIMER_REGISTRO('EMPPRES')
+     MIENTRAS (FIN_BASE ('EMPPRES') = FALSO)
+        SI ((TRAE_REGISTRO('CONCEPTO','EMPPRES':'CLAVE_CONCEPTO') = 1) AND ('EMPPRES':'CLAVE_CONCEPTO' <> 'C03'))
+           SI (( 'EMPPRES':'SALDO' > 0 ) AND ( 'EMPPRES':'MONTO' > 0 ))
+             IMP ('CONCEPTO':'DESCRIPCION', COL(59), DER($('EMPPRES':'SALDO'), 10) ) ;; IMPRIME
+             INCREMENTA_TABLA (&TOTALES, 'TOTAL', 'EMPPRES':'CLAVE_CONCEPTO', _perc)
+             _dedu := _dedu + 'EMPPRES':'SALDO'
+           FIN_SI
+        FIN_SI
+        SIGUIENTE_REGISTRO ('EMPPRES')
+     FIN_MIENTRAS
+   FIN_SI
+# ******************************************************
+# CALCULO DE OTRAS DEDUCCIONES
+# ******************************************************
+   #BORRA_PARAMETROS
+   #NUEVO_PARAMETRO ('OTRAS DEDUCCIONES', '', _aux1)
+   #LEE_PARAMETROS
+   #_dedu := _dedu + _aux1
+   #SI (_aux1 > 0)
+   #   IMP ('OTRAS DEDUCCIONES' , COL(59), DER($(_aux1), 10)) ;; IMPRIME
+   #FIN_SI
+   #INCREMENTA_TABLA (&TOTALES, 'TOTAL', ODEDU, _aux1)
+   #IMP (COL(59), REPITETXT ('-', 10)) ;; IMPRIME
+   #IMP ('TOTAL DE DEDUCCIONES ', COL(59), DER($(_dedu), 10)) ;; IMPRIME ;; IMPRIME
+   #_aux1 := _perc - _dedu
+   #IMP ('TOTAL A PAGAR', COL(69), DER($(_aux1), 10)) ;; IMPRIME
+   #INCREMENTA_TABLA (&TOTALES, 'TOTAL', PERC, _perc)
+   #INCREMENTA_TABLA (&TOTALES, 'TOTAL', DEDU, _dedu)
+   #INCREMENTA_TABLA (&TOTALES, 'TOTAL', TOTA, _aux1)
+   #INCREMENTA_TABLA (&TOTALES, 'TOTAL', FINI , _aux1)
+# ******************************************************
+# CALCULO DE DESCUENTO MATERIAL DE TRABAJO
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('DESCUENTO MATERIAL DE TRABAJO', '', _aux1)
+   LEE_PARAMETROS
+   _dedu := _dedu + _aux1
+   SI (_aux1 > 0)
+      IMP ('DESCUENTO MATERIAL DE TRABAJO' , COL(59), DER($(_aux1), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', ODEDU, _aux1)
+   SI (_aux1 > 0)
+   IMP (COL(59), REPITETXT ('-', 10)) ;;# IMPRIME
+   FIN_SI
+   #IMP ('PENSION ALIMENTICIA 1', COL(59), DER($(_dedu), 10)) ;; #IMPRIME #;; #IMPRIME
+   _aux1 := _perc - _dedu
+  #IMP ('TOTAL A PAGAR', COL(69), DER($(_aux1), 10)) ;; IMPRIME
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', PERC, _perc)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', DEDU, _dedu)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', TOTA, _aux1)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', FINI , _aux1)
+# ******************************************************
+# CALCULO DE DESCUENTO CAJA CHICA
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('DESCUENTO CAJA CHICA', '', _aux1)
+   LEE_PARAMETROS
+   _dedu := _dedu + _aux1
+   SI (_aux1 > 0)
+      IMP ('DESCUENTO CAJA CHICA' , COL(59), DER($(_aux1), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', ODEDU, _aux1)
+   SI (_aux1 > 0)
+   IMP (COL(59), REPITETXT ('-', 10)) ;;# IMPRIME
+   FIN_SI
+   #IMP ('PENSION ALIMENTICIA 1', COL(59), DER($(_dedu), 10)) ;; #IMPRIME #;; #IMPRIME
+   _aux1 := _perc - _dedu
+  #IMP ('TOTAL A PAGAR', COL(69), DER($(_aux1), 10)) ;; IMPRIME
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', PERC, _perc)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', DEDU, _dedu)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', TOTA, _aux1)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', FINI , _aux1)
+# ******************************************************
+# CALCULO DE PENSION ALIMENTICIA 1
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('PENSION ALIMENTICIA 1', '', _aux1)
+   LEE_PARAMETROS
+   _dedu := _dedu + _aux1
+   SI (_aux1 > 0)
+      IMP ('PENSION ALIMENTICIA 1' , COL(59), DER($(_aux1), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', ODEDU, _aux1)
+   SI (_aux1 > 0)
+   IMP (COL(59), REPITETXT ('-', 10)) ;; #IMPRIME
+   FIN_SI
+   #IMP ('PENSION ALIMENTICIA 1', COL(59), DER($(_dedu), 10)) ;; IMPRIME #;; #IMPRIME
+   _aux1 := _perc - _dedu
+  #IMP ('TOTAL A PAGAR', COL(69), DER($(_aux1), 10)) ;; IMPRIME
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', PERC, _perc)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', DEDU, _dedu)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', TOTA, _aux1)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', FINI , _aux1)
+# ******************************************************
+# CALCULO DE PENSION ALIMENTICIA 2
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('PENSION ALIMENTICIA 2', '', _aux1)
+   LEE_PARAMETROS
+   _dedu := _dedu + _aux1
+   SI (_aux1 > 0)
+      IMP ('PENSION ALIMENTICIA 2' , COL(59), DER($(_aux1), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', ODEDU, _aux1)
+   SI (_aux1 > 0)
+   IMP (COL(59), REPITETXT ('-', 10)) ;; #IMPRIME
+   FIN_SI
+   #IMP ('PENSION ALIMENTICIA 1', COL(59), DER($(_dedu), 10)) ;; IMPRIME #;; #IMPRIME
+   _aux1 := _perc - _dedu
+   #IMP ('TOTAL A PAGAR', COL(69), DER($(_aux1), 10)) ;; IMPRIME
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', PERC, _perc)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', DEDU, _dedu)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', TOTA, _aux1)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', FINI , _aux1)
+# CALCULO DEL 2% SOBRE NOMINA
+   _aux1 := _perc * 0.02
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', DOSX100 , _aux1)
+   IMP (COL(69),  REPITETXT (' ', 10)) ;; IMPRIME #;; IMPRIME
+# ******************************************************
+# CALCULO DE OTRAS DEDUCCIONES
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ('OTRAS DEDUCCIONES', '', _aux1)
+   LEE_PARAMETROS
+   _dedu := _dedu + _aux1
+   SI (_aux1 > 0)
+      IMP ('OTRAS DEDUCCIONES' , COL(59), DER($(_aux1), 10)) ;; IMPRIME
+   FIN_SI
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', ODEDU, _aux1)
+   IMP (COL(59), REPITETXT ('-', 10)) ;; IMPRIME
+   IMP ('TOTAL DE DEDUCCIONES ', COL(59), DER($(_dedu), 10)) ;; IMPRIME# ;; IMPRIME
+   _aux1 := _perc - _dedu
+   IMP ('TOTAL A PAGAR', COL(69), DER($(_aux1), 10)) ;; IMPRIME# ;; IMPRIME
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', PERC, _perc)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', DEDU, _dedu)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', TOTA, _aux1)
+   INCREMENTA_TABLA (&TOTALES, 'TOTAL', FINI , _aux1)
+
+# ******************************************************
+# IMPRESION DE LEYENDA
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO ( 'NO DE CHEQUE Y BANCO', '', $bco )
+   LEE_PARAMETROS
+
+   IMP ('RECIBI DE ','EMPRESA':'NOMBRE',' LA CANTIDAD DE ', DER($(_perc - _dedu), 10)    ) ;; IMPRIME
+   SI ( $bco <> '' )
+      IMP ('Cheque y Banco : ',$bco ) ;; IMPRIME
+   FIN_SI
+   IMP ('(',CANTIDAD_LETRA((_perc - _dedu)), ') ' ) ;; IMPRIME
+   IMP ('POR  CONCEPTO  DE  LA  LIQUIDACION   FINIQUITO  QUE  ME  CORRESPONDE AL  DAR POR') ;; IMPRIME
+   IMP ('CONCLUIDO  EN FORMA VOLUNTARIA MI CONTRATO DE TRABAJO EN LOS TERMINOS DE LA LEY') ;; IMPRIME
+   IMP ('FEDERAL DEL TRABAJO.') ;; IMPRIME #;; IMPRIME
+   IMP ('HAGO CONSTAR  QUE AL RECIBIR LA CANTIDAD ANTES  MENCIONADA NO SE ME ADEUDA SUMA') ;; IMPRIME
+   IMP ('ALGUNA  POR  CONCEPTO  DE  SALARIOS  ORDINARIOS  O EXTRAORDINARIOS, VACACIONES,') ;; IMPRIME
+   IMP ('PRIMAS , NI  NINGUN  OTRO   CONCEPTO  QUE   POR  LEY  O  POR  CONTRATO  PUDIERA') ;; IMPRIME
+   IMP ('CORRESPONDERME, POR  LO  QUE  NO  TENGO  NINGUN  INCONVENIENTE EN EXTENDER A LA') ;; IMPRIME
+   IMP ('EMPRESA  EL  MAS  AMPLIO  FINIQUITO  QUE PUDIERA CORRESPONDERME, RELEVANDOLE DE') ;; IMPRIME
+   IMP ('CUALQUIER  RESPONSABILIDAD  PRESENTE O FUTURA POR MOTIVO DE LEY, O DEL CONTRATO') ;; IMPRIME
+   IMP ('DE TRABAJO QUE HOY DOY POR TERMINADO EN FORMA VOLUNTARIA.') ;; IMPRIME ;; IMPRIME ;; IMPRIME ;; IMPRIME ;; IMPRIME ;; IMPRIME ;; IMPRIME
+   IMP ('-----------------------     -----------------------     -----------------------') ;; IMPRIME
+   IMP ('   Vo.Bo.CONTABILDAD            RECURSOS HUMANOS          RECIBI DE CONFORMIDAD ') ;; IMPRIME ;; IMPRIME
+   FORMATO_FECHA:= 5
+   IMP ( CENTRA(('PATRONAL':'MUNICIPIO' + ', ' + 'PATRONAL':'ESTADO' + ' , ' + FECHA(_fecha) ))) ;; IMPRIME
+
+# ******************************************************
+# ACUMULACION DE FINIQUITOS
+# ******************************************************
+   BORRA_PARAMETROS
+   NUEVO_PARAMETRO_SEL('ACUMULAR FINIQUITO', 'N/S', $acum)
+   NUEVO_PARAMETRO_SEL('TIPO ACUMULACION', 'NOMINA/ACUMULADOS', _tipo )
+   LEE_PARAMETROS
+   SI ($acum = 'S')
+      SI ( _tipo = 1 )
+        BORRA_PARAMETROS
+        NUEVO_PARAMETRO_SEL('MES A ACUMULAR', 'ENE/FEB/MAR/ABR/MAY/JUN/JUL/AGO/SEP/OCT/NOV/DIC/AGUINALDO/FINIQUITO/ESPECIAL', $mes)
+        LEE_PARAMETROS
+        USA_ARCHIVO( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+      SI_NO
+        SI ( 'EMPPRIN':'TIPO_NOM' <> '' )
+          SI ( TRAE_REGISTRO( 'TIPONOM', 'EMPPRIN':'TIPO_NOM' ) )
+            SI ( TRAE_REGISTRO( 'PERIODO', 'EMPPRIN':'TIPO_NOM', 'TIPONOM':'ACTUAL' ) = FALSO )
+              MENSAJE ( 'PERIDO DE NOMINA INEXISTENTE' )
+              TERMINA_REPORTE
+            FIN_SI
+          SI_NO
+            MENSAJE ( 'TIPO DE NOMINA INEXISTENTE' )
+            TERMINA_REPORTE
+          FIN_SI
+        SI_NO
+          MENSAJE( 'EL EMPLEADO NO TIENE TIPO DE NOMINA' )
+          TERMINA_REPORTE
+        FIN_SI
+        USA_ARCHIVO( 'EMPPRIN', 'EMPNOM', 'CLAVE' )
+        PON_TOTAL_0
+      FIN_SI
+      _cont := 0
+      $conc := TRAE_VALOR_TABLA( &TOTALES, 0, _cont)
+      MIENTRAS ( $conc <> '' )
+        $saux := TRAE_VALOR_TABLA( &TOTALES, 1, _cont)
+        _tot_conc := VALOR( $saux )
+        SI ( _tot_conc <> 0 )
+          SI ( _tipo = 1 )
+            SI ( TRAE_REGISTRO( 'EMPACUM', 'EMPPRIN':'CLAVE', $conc ) = FALSO)
+              AGREGA_REGISTRO ( 'EMPACUM' )
+              'EMPACUM':'CLAVE' := 'EMPPRIN':'CLAVE'
+              'EMPACUM':'CONCEPTO' := $conc
+            FIN_SI
+            SI ( $mes = 'ENE' ) ;; 'EMPACUM':'ENE' := 'EMPACUM':'ENE' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'FEB' ) ;; 'EMPACUM':'FEB' := 'EMPACUM':'FEB' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'MAR' ) ;; 'EMPACUM':'MAR' := 'EMPACUM':'MAR' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'ABR' ) ;; 'EMPACUM':'ABR' := 'EMPACUM':'ABR' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'MAY' ) ;; 'EMPACUM':'MAY' := 'EMPACUM':'MAY' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'JUN' ) ;; 'EMPACUM':'JUN' := 'EMPACUM':'JUN' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'JUL' ) ;; 'EMPACUM':'JUL' := 'EMPACUM':'JUL' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'AGO' ) ;; 'EMPACUM':'AGO' := 'EMPACUM':'AGO' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'SEP' ) ;; 'EMPACUM':'SEP' := 'EMPACUM':'SEP' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'OCT' ) ;; 'EMPACUM':'OCT' := 'EMPACUM':'OCT' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'NOV' ) ;; 'EMPACUM':'NOV' := 'EMPACUM':'NOV' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'DIC' ) ;; 'EMPACUM':'DIC' := 'EMPACUM':'DIC' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'AGUINALDO' ) ;; 'EMPACUM':'AGUINALDO' := 'EMPACUM':'AGUINALDO' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'FINIQUITO' ) ;; 'EMPACUM':'FINIQUITO' := 'EMPACUM':'FINIQUITO' + _tot_conc ;; FIN_SI
+            SI ( $mes = 'ESPECIAL' ) ;; 'EMPACUM':'ESPECIAL' := 'EMPACUM':'ESPECIAL' + _tot_conc ;; FIN_SI
+            GRABA_BASE ( 'EMPACUM' )
+          SI_NO
+            SI ( CONCEPTO_CAPTURADO( $conc ) = FALSO )
+              CAPTURA_CONCEPTO( $conc )
+            FIN_SI
+            TOTAL( $conc ) := _tot_conc
+            GRABA_BASE( 'NOMINA' )
+          FIN_SI
+        FIN_SI
+        _cont := _cont + 1
+        $conc := TRAE_VALOR_TABLA( &TOTALES, 0, _cont)
+      FIN_MIENTRAS
+      SI ( _tipo = 0 )
+        GRABA_BASE( 'EMPNOM' )
+      FIN_SI
+   FIN_SI
+
+ FIN_SI

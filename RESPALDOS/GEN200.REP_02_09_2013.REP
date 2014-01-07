@@ -1,0 +1,133 @@
+#REPORTE DE MENSUAL DE ACUMULADOS
+#VERSION 1.000
+#NO EDITAR
+#EXCEL
+#DESCRIPCION
+#Descripcion no disponible.
+#FIN_DESCRIPCION
+#
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA/EXCEL',$salida)
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','',_fi)
+NUEVO_PARAMETRO_FEC ('FECHA FINAL','',_ff)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( $salida = 'EXCEL' )
+  SALIDA := 'PANTALLA'
+SI_NO
+  SALIDA := $salida
+FIN_SI
+
+INCLUYE REPUTIL.DAT
+
+# CONFIGURACION INICIAL
+FORMATO_PESOS := 2
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 120
+
+DRAFT:='S'
+
+# DEFINICION DE COLUMNAS DE ENCABEZADO
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE COMPLETO'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ACUM. PGRA'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ACUM. IMP'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ACUM. SUBS'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ACUM. CRED'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'ACUM. 51A'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+# DEFINICION TITULO
+_condensado := 0
+$titulo_reporte := 'REPORTE DE MENSUAL DE ACUMULADOS'
+define_encabezado
+
+# SUBRUTINA DE IMPRESION DE DATOS DEL TRABAJADOR
+SUB_RUTINA formato_trabajador
+  $valor := 'EMPPRIN':'CLAVE'
+  imprime_columna
+
+  $valor := 'EMPPRIN':'NOMBRE'
+  imprime_columna
+
+  DECIMALES:=2
+  $valor := $( ACUM_MENSUAL('ENE','PGRA')  )
+  imprime_columna
+
+  $valor := $( ACUM_MENSUAL('ENE','IMP')  )
+  imprime_columna
+
+  $valor := $( ACUM_MENSUAL('ENE','SUBS')  )
+  imprime_columna
+
+  $valor := $( ACUM_MENSUAL('ENE','CRED')  )
+  imprime_columna
+
+  $valor := $( ACUM_MENSUAL('ENE','51A')  )
+  imprime_columna
+
+
+  imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 0
+_incluir_pue := 1
+_incluir_dep := 1
+_incluir_suc := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+base_trabajadores
+USA_ARCHIVO('EMPPRIN','EMPACUM', 'CLAVE' )
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( FUE_VIGENTE ( _fi, _ff))
+      datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte
+
+$indice := 'TOTAL'
+sub_totales

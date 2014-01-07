@@ -1,0 +1,86 @@
+#REPORTE DE BAJAS DEL PERSONAL
+#REPORTE DE MOVIMIENTOS
+#VERSION 2.500
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra las bajas de personal de un periodo
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , '', _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL  ' , '', _ff )
+NUEVO_PARAMETRO_TAB ( 'TIPO DE BAJA', 'BAJA/CLAVE/TIPOS DE BAJA', &tipo_baja )
+NUEVO_PARAMETRO_CHEQ( 'DATOS DOMICILIARIOS' , '', _dat_dom )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'Bajas del '+ FECHA (_fi)+ ' al ' + FECHA (_ff)
+   encabezado_ini
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL (45), 'No. IMSS', COL (60) , 'RFC' ) ;; IMPRIME
+   IMP ( COL(10), 'MOV', COL(15), 'FECHA', COL(27), 'CAUSA' ) ;; IMPRIME
+   SI ( _dat_dom = 1 )
+     IMP ( COL(5), 'DOMICILIO', COL(60), 'COLONIA' ) ;; IMPRIME
+   FIN_SI
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+FORMATO_FECHA := 3
+COLUMNAS      := 80
+RENGLONES     := 65
+SALIDA        := $salida
+
+#Variables Globales
+$ant_trab := ''
+$causa    := ''
+
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 33 ) , COL (45), FORMATO ( 'EMPPRIN':'AFILIACION', 'XXXXXXXXXX-X' ), COL (60), FORMATO ( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' )) ;; IMPRIME     
+   DECIMALES := 0
+   DECIMALES := 2
+      SI ( TRAE_REGISTRO( 'BAJA', 'EMPPRIN':'CAUSA BAJA' ) )
+         $causa := 'BAJA':'DESCRIPCION'
+   FIN_SI
+   IMP ( COL(10), 'EMPPRIN':'TIPO', COL(15), FECHA('EMPPRIN':'FECHA'), COL(27), FECHA('EMPPRIN':'BAJA IMSS'), COL(45), $causa ) ;; IMPRIME
+   SI ( _dat_dom = 1 )
+     IMP ( COL(5), 'EMPRH':'CALLE' + ' ' + 'EMPRH':'NUMERO' + ' ' + 'EMPRH':'INTERIOR', COL(60), 'EMPRH':'COLONIA' ) ;; IMPRIME
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+$tipo_bajas := TRAE_SELECCION ( &tipo_baja )
+$campos_extras := 'E. RFC, E. AFILIACION, M. FECHA, M. TIPO, M. SDO1, M. SDO2, M. SDO3, M. SDO4, M. SDO5, M. "BAJA IMSS", M. "CAUSA BAJA"'
+$bases_extras := 'EMPSDO M'
+$condiciones_extras := 'M.CLAVE = E.CLAVE AND M. TIPO = "B" AND M. FECHA >= :FI AND M. FECHA <= :FF'
+SI (( $tipo_bajas <> '*' ) Y ( $tipo_bajas <> '' ))
+   $condiciones_extras := $condiciones_extras + ' AND M."CAUSA BAJA" in ( ' + $tipo_bajas + ')'
+FIN_SI
+
+base_trabajadores
+PARAMETRO_SQL ( 'EMPPRIN', 'FI', _fi )
+PARAMETRO_SQL ( 'EMPPRIN', 'FF', _ff )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPRH', 'CLAVE' )
+
+_num := 0
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+  datos_trabajador
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte
+

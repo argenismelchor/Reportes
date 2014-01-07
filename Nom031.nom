@@ -1,0 +1,103 @@
+#SUELDOS EN FUNCION AL S.M.
+#NO EDITAR
+#USUARIO =*
+#GRAFICA
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra los trabajadores y el numero de salarios minimos que ganan y permite generar una grafica de los datos resultantes.
+#Este reporte imprime de los trabajadores la clave, nombre, el sueldo y las veces el salario mínimo.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA', '', _fecha )
+NUEVO_PARAMETRO_CHEQ( 'GRAFICA', '', _graf )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'SUELDOS EN FUNCION AL S.M.'
+   encabezado_ini
+   IMP ( COL(1), 'Clave', COL(10), 'Nombre', COL(50), DER('Sueldo',10), COL(70), DER('Veces',5) ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+RENGLONES     := 65
+COLUMNAS      := 80
+
+### VARIABLES GLOBALES DEL REPORTE
+$tipo_act := ''
+VAR_T ( &kardex )
+VAR_T ( &grafica )
+_sueldo:=0
+_veces:=0
+_minimo:=0
+$aux:=''
+$indice := ''
+$indice_valor := ''
+
+SUB_RUTINA formato_trabajador
+  DECIMALES := 2
+  _sueldo   := SUELDO_ACTUAL ( _fecha, _fecha )
+  _veces    := _sueldo / _minimo
+  DECIMALES := 2
+  IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), 'EMPPRIN':'NOMBRE', COL(50), DER($(_sueldo),10) )
+  DECIMALES := 0
+  IMP ( COL(70), DER(.(_veces),5) ) ;; IMPRIME
+  $aux := .(TRUNCAR(_veces))
+  INCREMENTA_TABLA( &grafica, $aux, 'TOTAL', 1)
+FIN_SUB_RUTINA
+
+SUB_RUTINA encabezados
+  SI ( $indice = 'REGISTRO PATRONAL' )
+    SI ( TRAE_REGISTRO ( 'PATRONAL', $indice_valor ))
+      SI ('PATRONAL':'ZONA ECONOMICA' = 'A' )
+        _minimo:='MINIMO':'MINIMO A'
+      FIN_SI
+      SI ('PATRONAL':'ZONA ECONOMICA' = 'B' )
+        _minimo:='MINIMO':'MINIMO B'
+      FIN_SI
+      SI ('PATRONAL':'ZONA ECONOMICA' = 'C' )
+        _minimo:='MINIMO':'MINIMO C'
+      FIN_SI
+    FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_ssocial := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+SI (TRAE_REGISTRO_VIG ( 'MINIMO', _fecha ) = FALSO)
+  MENSAJE('No hay salario vigente a la fecha especificada...')  
+FIN_SI
+
+base_trabajadores
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( ES_VIGENTE ( _fecha ) )
+    datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte
+
+SI ( _graf=1)
+  CREA_GRAFICA( &grafica )
+FIN_SI

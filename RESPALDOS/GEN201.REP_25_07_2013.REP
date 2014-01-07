@@ -1,0 +1,168 @@
+#REPORTE DE MUESTRA
+#VERSION 1.000
+#NO EDITAR
+#EXCEL
+#DESCRIPCION
+#Este reporte es una muestra de lo que puede hacer el generador de reportes.
+#FIN_DESCRIPCION
+#
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA/EXCEL',$salida)
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','',_fi)
+NUEVO_PARAMETRO_FEC ('FECHA FINAL','',_ff)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( $salida = 'EXCEL' )
+  SALIDA := 'PANTALLA'
+SI_NO
+  SALIDA := $salida
+FIN_SI
+
+INCLUYE REPUTIL.DAT
+
+# CONFIGURACION INICIAL
+FORMATO_PESOS := 2
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 110
+
+DRAFT:='S'
+
+# DEFINICION DE COLUMNAS DE ENCABEZADO
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE(S)'
+_longitud  := 25
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'PADRE'
+_longitud  := 30
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'MADRE'
+_longitud  := 30
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'RFC'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CALLE'
+_longitud  := 30
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'COLONIA'
+_longitud  := 30
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'EDO.'
+_longitud  := 5
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'CODIGO'
+_longitud  := 6
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SEXO'
+_longitud  := 4
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'E. CIV.'
+_longitud  := 6
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+# DEFINICION TITULO
+_condensado := 0
+$titulo_reporte := 'REPORTE DE MUESTRA'
+define_encabezado
+
+# SUBRUTINA DE IMPRESION DE DATOS DEL TRABAJADOR
+SUB_RUTINA formato_trabajador
+  $valor := 'EMPPRIN':'CLAVE'
+  imprime_columna
+
+  $valor := 'EMPPRIN':'NOMBREN'
+  imprime_columna
+
+  imprime_columna
+
+  imprime_columna
+
+  $valor := FORMATO( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' )
+  imprime_columna
+
+  $valor := 'EMPRH':'CALLE'
+  imprime_columna
+
+  $valor := 'EMPRH':'COLONIA'
+  imprime_columna
+
+  $valor := 'EMPRH':'ESTADO'
+  imprime_columna
+
+  $valor := .( 'EMPRH':'CP' )
+  imprime_columna
+
+  $valor := 'EMPRH':'SEXO'
+  imprime_columna
+
+  $valor := 'EMPRH':'ESTADO_CIVIL'
+  imprime_columna
+
+
+  imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 0
+_incluir_pue := 1
+_incluir_dep := 1
+_incluir_suc := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+$campos_extras:='E.NOMBREN, E.RFC'
+base_trabajadores
+USA_ARCHIVO('EMPPRIN','EMPRH', 'CLAVE' )
+USA_ARCHIVO('EMPPRIN','EMPFAM', 'CLAVE' )
+
+ASIGNA_TABLA( &in, &in2 )
+inicializa_totales
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( FUE_VIGENTE ( _fi, _ff))
+      datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte
+
+$indice := 'TOTAL'
+sub_totales

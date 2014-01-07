@@ -1,0 +1,48 @@
+#NOTIFICACIONES DATOS INCOMPLETOS 
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.14
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como base en los reportes.
+#CLAVE NOMBRE RFC SUELDO
+#FIN_DESCRIPCION
+
+
+# INSTRUCCION PARA ENVIAR CORREOS DESDE GIRO
+
+VAR_T       ( &destinatarios )
+VAR_T       ( &mensaje ) 
+
+$file_backup := ''
+
+
+MENSAJE ( $file_backup ) 
+
+$nombre_mostrar := 'INDICADORES SEAO'               # NOMBRE PARA MOSTRAR EN LA LLEGADA DE CORREO.
+$de_correo      := 'notificaciones@seao.com.mx'    # CUENTA DE CORREO ELECTRONICO
+$con_copia      := ''                          # CON COPIA PARA
+$asunto         := 'Listado de personal con datos incompletos en la base de giro al: ' + FECHA(FECHA_HOY)               # ASUNTO DEL CORREO
+$adjunto        := $file_backup                # ARCHIVO ADJUNTO DIRECCION COMPLETA
+
+AGREGA_VALOR_COL ( &destinatarios , 0 , 'jflores@consisarh.com.mx' ) #AGREGA DESTINATARIOS
+#AGREGA_VALOR_COL ( &destinatarios , 0 , 'sdavila@seao.com.mx' ) #AGREGA DESTINATARIOS
+#AGREGA_VALOR_COL ( &destinatarios , 0 , 'rcamacho@seao.com.mx' ) #AGREGA DESTINATARIOS
+AGREGA_VALOR_COL ( &mensaje       , 0 , 'ESTE ES UN MENSAJE DE PRUEBA'           ) # AGREGA MENSAJE
+
+ABRE_BASE('EMPPRIN')	
+MIENTRAS (FIN_BASE('EMPPRIN') = FALSO	)
+	AGREGA_VALOR_COL ( &mensaje , 0 , 'EMPPRIN':'CLAVE' )	
+	SIGUIENTE_REGISTRO('EMPPRIN')	
+FIN_MIENTRAS
+
+
+_un     := 0
+_enviar := 1
+
+SI ( _enviar )   
+   ENVIA_CORREO( $nombre_mostrar , $de_correo , &destinatarios , $con_copia , $asunto , &mensaje , $adjunto  )
+FIN_SI
+
+#termina_reporte
+
+TERMINA_REPORTE

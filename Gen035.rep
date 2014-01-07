@@ -1,0 +1,156 @@
+#IMPORTACION MOVIMIENTOS
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Importacion datos de una archivo de texto MOVTOS.TXT del directorio de trabajo con el siguiente formato:
+#CAMPO       COL LON JUST. FORMATO
+#CLAVE         1  10  IZQ
+#MOVIMIENTO   11   1  IZQ
+#FECHA        12   8  IZQ DDMMAAAA
+#SUELDO DIA   21  10  DER XXXXX.XX
+#SUELDO VAR   31  10  DER XXXXX.XX
+#SUELDO INT   41  10  DER XXXXX.XX
+#CAUSA        51  10  IZQ
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO ('ARCHIVO DE ALTA', DIRECTORIO_TRABAJO + '\MOVTOS.TXT', $archivo )
+NUEVO_PARAMETRO_CHEQ ('AGREGAR BAJAS', '', _baj  )
+NUEVO_PARAMETRO_CHEQ ('RESPETAR ANTIG.', '', _antig  )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 2
+
+CREA_BASE_TXT ( 'TABLA', $archivo, 'FIJO' )
+
+DEFINE_CAMPO_TXT ( 'TABLA' , 'CLAVE' , 1   , 10  )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'MOV'   , 11  , 1   )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'FECHA' , 12  , 8   )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'SD'    , 21  , 10  )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'SV'    , 31  , 10  )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'SI'    , 41  , 10  )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'CAUSA' , 51  , 10  )
+ABRE_BASE_TXT ( 'TABLA', 'EDICION' )
+
+ABRE_BASE  ( 'EMPPRIN' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+# DECLARACION DE VARIABLES  GLOBALES
+$clat   := ''
+$saux   := ''
+_dia    := 0
+_mes    := 0
+_año    := 0
+_i      := 0
+_fin    := 0
+_fecha  := 0
+_fechab := 0
+$tipo   := ''
+_mas    := 0
+_act    := 0
+_var_act := 0
+_int_act := 0
+_sdo_nvo := 0
+
+PRIMER_REGISTRO ( 'TABLA' )
+MIENTRAS ( FIN_BASE ( 'TABLA' ) = FALSO )
+
+#######################################################    ASIGNACION CLAVE
+
+  $clat := QUITA_CARACTER( ' ', 'TABLA':'CLAVE' )
+  SI ( TRAE_REGISTRO( 'EMPPRIN', $clat ) )
+
+
+  #######################################################    FECHA INGRESO ( DDMMAAAA)
+  
+    _dia := VALOR ( SUBSTR( 'TABLA':'FECHA', 1, 2 ) )
+    _mes := VALOR ( SUBSTR( 'TABLA':'FECHA', 3, 2 ) )
+    _año := VALOR ( SUBSTR( 'TABLA':'FECHA', 5, 4 ) )
+    _fecha := CALCULA_FECHA ( _año, _mes, _dia )
+
+    TRAE_MOV_FECHA( _fecha )
+    _var_act := 'EMPSDO':'SDO2'
+    _int_act := 'EMPSDO':'SDO3' 
+    
+  #######################################################    ASIGNACION SUELDOS
+  
+    SI ( TRAE_REGISTRO( 'EMPSDO', $clat, _fecha ) = FALSO )
+      AGREGA_REGISTRO ('EMPSDO')
+      'EMPSDO':'CLAVE' := $clat
+      'EMPSDO':'FECHA' := _fecha
+      'EMPSDO':'TIPO'  := 'TABLA':'MOV'
+      'EMPSDO':'FECHA SALIDA' := CALCULA_FECHA( 2000, 12, 31 )
+      $tipo   := 'AGREGANDO '
+      _mas := _mas + 1
+    SI_NO
+      $tipo := 'ACTUALIZANDO '
+      _act := _act + 1
+    FIN_SI
+  
+    IMP ( $tipo + ' MOVIMIENTO, EMPLEADO : ', 'TABLA':'CLAVE', '  ', FECHA( _fecha ), '   ', 'TABLA':'MOV' ) ;; IMPRIME
+    ############################################ SUELDO DIARIO
+    SI ( 'TABLA':'MOV' <> 'B' )
+      SI ( 'TABLA':'MOV' = 'R' )
+        SI ( _antig = 0 )
+          'EMPPRIN':'INGRESO' := _fecha
+          GRABA_BASE( 'EMPPRIN' )
+        FIN_SI
+      FIN_SI
+      $saux := 'TABLA':'SD'
+      MIENTRAS ( SUBSTR( $saux, 1, 1 ) = ' ' )
+         $saux := ELIMINA( $saux, 1, 1 )   
+      FIN_MIENTRAS
+      'EMPSDO':'SDO1' := $saux
+      _sdo_nvo := 'EMPSDO':'SDO1'
+    
+    ############################################ SUELDO VARIABLE IMSS E INF.
+    
+      $saux := 'TABLA':'SV'
+      SI ( $saux <> '' )
+        MIENTRAS ( SUBSTR( $saux, 1, 1 ) = ' ' )
+           $saux := ELIMINA( $saux, 1, 1 )   
+        FIN_MIENTRAS
+        'EMPSDO':'SDO2':= $saux
+        'EMPSDO':'SDO4':= $saux
+        _var_act := 'EMPSDO':'SDO2'
+      SI_NO
+        'EMPSDO':'SDO2':= _var_act
+        'EMPSDO':'SDO4':= _var_act
+      FIN_SI
+    
+    ############################################ SUELDO DIARIO INTEGRADO  IMSS E INF.
+    
+      $saux := 'TABLA':'SI'
+      SI ( $saux <> '' )
+        MIENTRAS ( SUBSTR( $saux, 1, 1 ) = ' ' )
+           $saux := ELIMINA( $saux, 1, 1 )   
+        FIN_MIENTRAS
+        'EMPSDO':'SDO3':= $saux
+        'EMPSDO':'SDO5':= $saux
+      SI_NO
+        'EMPSDO':'SDO3':= INTEGRA_IMSS( _fecha, _sdo_nvo, _var_act )
+        'EMPSDO':'SDO5':= INTEGRA_INFONAVIT( _fecha, _sdo_nvo, _var_act )
+      FIN_SI
+    
+    #######################################################    FECHA BAJA ( DDMMAAAA)
+    SI_NO
+      'EMPSDO':'BAJA IMSS'  := _fecha
+      'EMPSDO':'CAUSA BAJA' := 'TABLA':'CAUSA'
+    FIN_SI
+    GRABA_BASE ('EMPSDO')
+  SI_NO
+    IMP ( 'EMPLEADO NO ENCONTRADO : ', $clat ) ;; IMPRIME
+  FIN_SI
+
+################################################################
+
+  SIGUIENTE_REGISTRO( 'TABLA' )
+
+FIN_MIENTRAS
+
+IMPRIME ;; IMPRIME
+DECIMALES := 0
+IMP ( 'REGISTROS AGREGADOS    : ', _mas ) ;; IMPRIME
+IMP ( 'REGISTROS ACTUALIZADOS : ', _act ) ;; IMPRIME
+
+TERMINA_REPORTE

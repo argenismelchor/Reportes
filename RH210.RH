@@ -1,0 +1,97 @@
+#IMPORTACION DE INCAPACIDADES
+#IMPORTACION DE INCAPACIDADES
+#REPORTE ESTANDAR DE MUESTRA
+#USUARIO =*
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Importacion de INCAPACIDADES.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA', $salida)
+NUEVO_PARAMETRO_RUTA ( 'RUTA' , '' , $ruta ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+
+_filaexcel := 2  ;; _col := 0 
+
+$clave := '' ;; $fecha := '' ;; $numero := '' ;; $tipo := '' ;; $caso := '' ;; $nota := '' ;; $consecu := ''
+
+_duracion := 0 
+
+_dia := 0 ;; _mes := 0 ;; _anio := 0 ;; _fecha := 0 
+
+ENCABEZADO
+    IMP ( COL(1) , 'CLAVE' , COL(10) , 'NOMBRE' , COL(45) , 'FECHA' , COL(60) , 'DUR' , COL(70) , 'TIPO' , COL(100) , 'CASO' , COL(130) , 'CONSECU' )
+    IMPRIME
+FIN_ENCABEZADO
+
+
+ABRE_BASE ( 'EMPPRIN')
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPINC' , 'CLAVE' ) 
+
+SI ( EXISTE_ARCHIVO ( $ruta ) ) 
+    EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , $ruta ) 
+
+    EXCEL ( 'TRAE_VALOR' , 1  , _filaexcel ,  $clave    ) 
+
+    MIENTRAS ( $clave <> '' ) 
+
+         SI ( TRAE_REGISTRO ( 'EMPPRIN' , $clave ) ) 
+         
+               EXCEL ( 'TRAE_VALOR' , 2  , _filaexcel ,  $fecha    )
+       
+               DECIMALES := 0 
+               _dia   :=  VALOR ( SUBSTR ( $fecha , 1 , 2 ) )  
+               _mes   :=  VALOR ( SUBSTR ( $fecha , 4 , 2 ) )
+               _anio  :=  VALOR ( SUBSTR ( $fecha , 7 , 4 ) ) 
+               _fecha :=  CALCULA_FECHA ( _anio , _mes , _dia ) 
+       
+               EXCEL ( 'TRAE_VALOR' , 3  , _filaexcel ,  _duracion )
+               EXCEL ( 'TRAE_VALOR' , 4  , _filaexcel ,  $numero   )
+               EXCEL ( 'TRAE_VALOR' , 5  , _filaexcel ,  $tipo     )
+               EXCEL ( 'TRAE_VALOR' , 6  , _filaexcel ,  $caso     )
+               EXCEL ( 'TRAE_VALOR' , 7  , _filaexcel ,  $consecu  )
+     
+             
+               SI ( TRAE_REGISTRO ( 'EMPINC' , $clave , _fecha ) = FALSO ) 
+                    AGREGA_REGISTRO ( 'EMPINC')
+                    'EMPINC':'CLAVE'        := $clave  
+                    'EMPINC':'FECHA'        := _fecha  
+               FIN_SI
+
+               'EMPINC':'DURACION'          := _duracion
+               'EMPINC':'NUMERO'            := $numero
+               'EMPINC':'FECHA_CAPTURA'     := FECHA_HOY 
+
+               SI ( $tipo <> ''  )   
+                    'EMPINC':'TIPO'         := $tipo
+               FIN_SI
+
+               SI ( $caso  <> ''  )   
+                    'EMPINC':'CASO'         := $caso
+               FIN_SI
+
+               SI ( $consecu <> ''  )   
+                    'EMPINC':'CONSECUENCIA' := $consecu
+               FIN_SI
+                
+               GRABA_BASE ( 'EMPINC')
+
+               IMP ( COL(1)  , $clave  , COL(10) , 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN'  , COL(45) , FECHA( _fecha ) )
+               IMP ( COL(60) , .(_duracion) , COL(70) , $tipo , COL(100) , $caso , COL(130) , $consecu )
+               IMPRIME
+
+               _filaexcel := ( _filaexcel + 1 ) 
+               EXCEL ( 'TRAE_VALOR' , 1  , _filaexcel ,  $clave    ) 
+
+         FIN_SI
+ 
+    FIN_MIENTRAS
+    
+SI_NO
+   MENSAJE ( 'ERROR ; EL ARCHIVO NO EXISTE.')
+FIN_SI
+
+TERMINA_REPORTE

@@ -1,0 +1,104 @@
+#ACCESOS (KARDEX ILIMITADO)
+#VERSION 1.0
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra las checadas de los trabajadores de la empresa que pertenescan al Registro Patronal y sucursal especificado.
+#Este reporte puede ser general, departamental/centro de costo o por puesto y puede ser indexado por clave o nombre.
+#imprime la clave, el nombre, la sucursal, el departamento y el puesto del trabajador. Y los horarios de entradas y salidas.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','',_fi)
+NUEVO_PARAMETRO_FEC ('FECHA FINAL','',_ff) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE')) ;; IMPRIME
+   IMP ( CENTRA ('ACCESOS DEL '+ FECHA (_fi)+ ' AL ' + FECHA (_ff)));; IMPRIME
+   IMP ( REPITETXT('=',80)) ;; IMPRIME
+   SI ( CD_DC = 0 )
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), DER('SUCURSAL', 10), COL(60), DER('DEPTO', 10), COL(70), DER('PUESTO', 10) );; IMPRIME
+   SI_NO
+     IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), DER('SUCURSAL', 10), COL(60), DER('C.C.', 10), COL(70), DER('PUESTO',10) );; IMPRIME
+   FIN_SI
+   IMP ( COL ( 20 ), 'FECHA', COL(35), 'ENTRADA', COL(50), 'SALIDA', COL (65), 'HORAS' ) ;; IMPRIME
+   IMP ( REPITETXT('-',80) );; IMPRIME;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   FORMATO_HORA := 0
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+$ant_trab   := '' 
+
+SUB_RUTINA formato_trabajador
+    SI ( $ant_trab<>'EMPPRIN':'CLAVE')
+       $ant_trab:='EMPPRIN':'CLAVE'
+       IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 30) )
+       IMP ( COL(50), DER('EMPPRIN':'SUC_CLAVE', 10), COL(60), DER('EMPPRIN':'DEP_CLAVE', 10), COL(70), DER('EMPPRIN':'PUE_CLAVE', 10) )
+       IMPRIME
+    FIN_SI
+    DECIMALES:=0
+    IMP( COL(20), FECHA('EMPPRIN':'FECHA'))
+    DECIMALES := 6
+    SI ( 'EMPPRIN':'DESCANSO' = VERDADERO )
+      IMP ( COL (35), 'D E S C A N S O' )
+      IMPRIME
+    FIN_SI
+    SI (( 'EMPPRIN':'ENTRADA' <> 0 ) O ( 'EMPPRIN':'SALIDA' <> 0 ))
+       IMP ( COL(35), HORA('EMPPRIN':'ENTRADA'), COL(50),  HORA('EMPPRIN':'SALIDA'))
+       SI (( 'EMPPRIN':'ENTRADA' <> 0 ) Y ( 'EMPPRIN':'SALIDA' <> 0 ))
+          FORMATO_HORA := 2
+          SI ( 'EMPPRIN':'SALIDA' > 'EMPPRIN':'ENTRADA' )
+             IMP ( COL(65), HORA('EMPPRIN':'SALIDA' - 'EMPPRIN':'ENTRADA')) 
+          SI_NO 
+             IMP ( COL(65), HORA(( 'EMPPRIN':'SALIDA' + 1 ) - 'EMPPRIN':'ENTRADA')) 
+          FIN_SI
+       FIN_SI
+       IMPRIME
+    FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+$bases_extras:='EMPRELO2 R'
+$campos_extras:='R.CLAVE, R.FECHA, R.ENTRADA, R.SALIDA, R. DESCANSO'
+$condiciones_extras:='R.CLAVE=E.CLAVE AND R.FECHA >= :_fini AND R.FECHA <= :_ffin'
+base_trabajadores
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+PARAMETRO_SQL( 'EMPPRIN', '_fini', _fi )
+PARAMETRO_SQL( 'EMPPRIN', '_ffin', _ff )
+
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI (( 'EMPPRIN':'ENTRADA' <> 0 ) O ( 'EMPPRIN':'SALIDA' <> 0 ) O ( 'EMPPRIN':'DESCANSO' = VERDADERO ))
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

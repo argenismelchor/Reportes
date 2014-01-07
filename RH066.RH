@@ -1,0 +1,171 @@
+#EMPLEADOS CON SUELDO ACTUAL Y ANTERIOR
+#VERSION 1.000
+#USUARIO =*
+#NO EDITAR
+#EXCEL
+#DESCRIPCION
+#Descripcion no disponible.
+#FIN_DESCRIPCION
+#
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA/EXCEL',$salida)
+NUEVO_PARAMETRO_FEC ('FECHA VIGENCIA','',_fecha )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_PESOS := 2
+FORMATO_FECHA := 2
+SI ( $salida = 'EXCEL' )
+  SALIDA := 'PANTALLA'
+SI_NO
+  SALIDA := $salida
+FIN_SI
+RENGLONES:=65
+COLUMNAS:=120
+DRAFT:='S'
+_nren := 6
+
+ENCABEZADO
+   IMPRIME
+   DECIMALES:=0
+   LETRA ( 'LETRA CONDENSADA' );; IMPRIME
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), 'giro 32 Ver 1.0' );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+   IMP ( CENTRA ('EMPLEADOS CON SUELDO ACTUAL Y ANTERIOR VIGENTES AL ' + FECHA( _fecha ) ));; IMPRIME
+   IMP ( REPITETXT('=',120));; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE COMPLETO', COL(51), 'F. INGRESO', COL(64), 'DESC. PUESTO', COL(90), DER('SDO ANT', 8), COL(99), DER('SDO ACT', 8), COL(108), 'F. CAMBIO' ) ;; IMPRIME
+   IMP ( REPITETXT('-',120) );; IMPRIME
+   LETRA ( 'LETRA CONDENSADA' );; IMPRIME
+   IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA CONDENSADA' ) ;; IMPRIME
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA CONDENSADA' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+#
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &totales )
+VAR_T ( &indices )
+_num_ind := 0
+$indice  := ''
+$tipo    := ''
+_cont    := 0
+_imp     := 0
+$SAux    := ''
+_ant     := 0
+_actual  := 0
+_anterior := 0
+_factual  := 0
+
+SUB_RUTINA sumatoria
+  DECIMALES:=2
+  #Incremeto de valores para los indices seleccionados
+  _num_ind := 0
+  REPITE
+    _num_ind := _num_ind + 1
+  HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   LETRA ( 'LETRA CONDENSADA' )
+  _nren := _nren + 1
+  SI (TRAE_REGISTRO('PUESTO', 'EMPPRIN':'PUE_CLAVE')) ;; FIN_SI
+  IMP ( COL(1), SUBSTR('EMPPRIN':'CLAVE', 1, 8 ) )
+  SI ( $salida = 'EXCEL' )
+    EXCEL ( 'PON_VALOR', 1, _nren, SUBSTR('EMPPRIN':'CLAVE', 1, 8 ) )
+  FIN_SI
+  IMP ( COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 40 ) )
+  SI ( $salida = 'EXCEL' )
+    EXCEL ( 'PON_VALOR', 2, _nren, SUBSTR('EMPPRIN':'NOMBRE', 1, 40 ) )
+  FIN_SI
+  IMP ( COL(51), FECHA( 'EMPPRIN':'INGRESO' ) )
+  SI ( $salida = 'EXCEL' )
+    EXCEL ( 'PON_VALOR', 3, _nren, FECHA( 'EMPPRIN':'INGRESO' ) )
+  FIN_SI
+  IMP ( COL(64), SUBSTR('PUESTO':'DESCRIPCION', 1, 25 ) )
+  SI ( $salida = 'EXCEL' )
+    EXCEL ( 'PON_VALOR', 4, _nren, SUBSTR('PUESTO':'DESCRIPCION', 1, 25 ) )
+  FIN_SI
+  DECIMALES:=2
+  TRAE_MOV_FECHA( _fecha )
+  _actual := 'EMPSDO':'SDO1'
+  MIENTRAS( ( INICIO_BASE( 'EMPSDO' ) = FALSO ) AND ( .( _actual ) = .( 'EMPSDO':'SDO1' ) ) )    
+    _factual := 'EMPSDO':'FECHA'
+    REGISTRO_ANTERIOR( 'EMPSDO' )
+  FIN_MIENTRAS
+  _anterior := 'EMPSDO':'SDO1'  
+  IMP ( COL(90), DER($( _anterior ), 8) )
+  SI ( $salida = 'EXCEL' )
+    EXCEL ( 'PON_VALOR', 5, _nren, DER($(_anterior), 8) )
+  FIN_SI
+  IMP ( COL(99), DER($( _actual ), 8) )
+  SI ( $salida = 'EXCEL' )
+    EXCEL ( 'PON_VALOR', 6, _nren, DER($( _actual ), 8) )
+  FIN_SI  
+  IMP ( COL(108), FECHA( _factual ) )
+  SI ( $salida = 'EXCEL' )
+    EXCEL ( 'PON_VALOR', 7, _nren, FECHA( _factual ) )
+  FIN_SI
+  IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+  #
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 0
+_omitir_sub_totales   := 0
+_incluir_pue := 1
+_incluir_dep := 1
+_incluir_suc := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+SI ( $salida = 'EXCEL')
+  EXCEL ( 'PON_VALOR', 1 , 1, 'Rep. ' + CLAVE_REPORTE + ' ' +  NOMBRE_REPORTE + ' ' + VERSION_GIRO )
+  EXCEL ( 'PON_VALOR', 1 , 2, 'EMPRESA':'NOMBRE' )
+  EXCEL ( 'PON_VALOR', 1 , 3, 'Empleados con sueldo actual y anterior' )
+  EXCEL ( 'PON_VALOR', 1, 4, 'CLAVE' )
+  EXCEL ( 'PON_VALOR', 2, 4, 'NOMBRE COMPLETO' )
+  EXCEL ( 'PON_VALOR', 3, 4, 'F. INGRESO' )
+  EXCEL ( 'PON_VALOR', 4, 4, 'DESC. PUESTO' )
+  EXCEL ( 'PON_VALOR', 5, 4, 'SDO ANT' )
+  EXCEL ( 'PON_VALOR', 6, 4, 'SDO ACT' )
+  EXCEL ( 'PON_VALOR', 7, 4, 'F. CAMBIO' )
+FIN_SI
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( ES_VIGENTE ( _fecha ))
+      datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte
+
+$indice := 'TOTAL'
+sub_totales

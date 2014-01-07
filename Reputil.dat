@@ -1,0 +1,296 @@
+_reputil := 1
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+
+# VARIABLES GLOBALES
+VAR_T ( &columnas )
+VAR_T ( &totales )
+
+# DETERMINA CADA UNA DE LAS COLUMNAS
+$columna   := ''
+_longitud  := 0
+$justifica := ''
+$totales   := ''
+
+# AUXILIARES
+_num_col    := 0
+_separacion := 2
+_columna    := 0
+
+# VARIABLES DE IMPRESION DE EMPLEADO
+_no_columna     := 0
+_indice_columna := 1
+$valor          := ''
+_valor_imprimir := 0
+
+# VARIABLES DE SUBTOTALES
+VAR_T ( &indices )
+VAR_T ( &in2 )
+$indice_total := ''
+$ind_act      := ''
+$nom_ind      := ''
+_num_ind      := 0
+_impreso      := 0
+$indice       := ''
+$indice_valor := ''
+$indice_texto := ''
+
+# VARIABLES PARA EXCEL
+_ren_excel  := 2
+_col_excel  := 0
+_primera_ex := 0
+
+
+# AUXILIARES
+_max_columnas := 0
+_tot_columnas := 0
+_omitir_sub_totales := _omitir_sub_totales
+
+SUB_RUTINA agrega_columna
+  PON_VALOR_TABLA( &columnas, 0, _num_col, $columna )
+  DECIMALES := 0
+  PON_VALOR_TABLA( &columnas, 1, _num_col, .( _longitud ) )
+  PON_VALOR_TABLA( &columnas, 2, _num_col, $justifica )
+  PON_VALOR_TABLA( &columnas, 3, _num_col, $totales )
+  _num_col := _num_col + 1
+  _tot_columnas := _tot_columnas + _longitud + _separacion
+FIN_SUB_RUTINA
+
+SUB_RUTINA suma_totales
+  MIENTRAS( POS( ',', $valor ) > 0 )
+    $valor := ELIMINA( $valor, POS( ',', $valor ), 1 )
+  FIN_MIENTRAS
+
+   #Incremeto de valores para los indices seleccionados
+   _num_ind := 0
+   REPITE
+     INCREMENTA_TABLA( &totales, TRAE_VALOR_TABLA( &indices, 0, _num_ind ), TRAE_VALOR_TABLA( &columnas, 0, _no_columna ), VALOR( $valor ) )
+     _num_ind := _num_ind + 1
+   HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_columna
+  _longitud := VALOR( TRAE_VALOR_TABLA( &columnas, 1, _no_columna ) )
+  SI ( TRAE_VALOR_TABLA( &columnas, 2, _no_columna ) = 'IZQ' )
+    IMP ( COL( _indice_columna ), SUBSTR( $valor, 1, _longitud ) )
+  SI_NO
+    IMP ( COL( _indice_columna ), DER( SUBSTR( $valor, 1, _longitud ), _longitud ) )
+  FIN_SI
+  SI ( $salida = 'EXCEL' )
+    EXCEL( 'PON_VALOR', _col_excel, _ren_excel, $valor )
+  FIN_SI
+  SI ( TRAE_VALOR_TABLA( &columnas, 3, _no_columna ) = 'SI' )
+    suma_totales
+  FIN_SI
+  _indice_columna := _indice_columna + _longitud + _separacion
+  _no_columna := _no_columna + 1
+  _col_excel := _col_excel + 1
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_renglon
+  IMPRIME
+  _indice_columna   := 1
+  _no_columna := 0
+  _ren_excel := _ren_excel + 1
+  _col_excel := 1
+FIN_SUB_RUTINA
+
+SUB_RUTINA define_encabezado
+  SI ( _tot_columnas < 80 )
+    COLUMNAS := 80
+  SI_NO
+    COLUMNAS := _tot_columnas
+  FIN_SI
+  SI ( $salida <> 'DISCO' )
+    ENCABEZADO
+       encabezado_ini
+       _columna := 1
+       _num_col := 0
+       $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+       MIENTRAS( $columna <> '' )
+         SI ( TRAE_VALOR_TABLA( &columnas, 2, _num_col ) = 'IZQ' )
+           IMP ( COL( _columna ), $columna )
+         SI_NO
+           IMP ( COL( _columna ), DER( $columna, VALOR( TRAE_VALOR_TABLA( &columnas, 1, _num_col ) ) ) )
+         FIN_SI
+         _longitud := VALOR( TRAE_VALOR_TABLA( &columnas, 1, _num_col ) )
+         _columna := _columna + _longitud + _separacion
+         _num_col := _num_col + 1
+         $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+       FIN_MIENTRAS
+       IMPRIME
+       encabezado_fin
+       SI ( ( $salida = 'EXCEL' ) AND ( _primera_ex = 0 ) )
+         _col_excel := 1
+         _num_col := 0
+         $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+         MIENTRAS( $columna <> '' )
+           EXCEL( 'PON_VALOR', _col_excel, _ren_excel, $columna )
+           _col_excel := _col_excel + 1
+           _num_col := _num_col + 1
+           $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+         FIN_MIENTRAS
+         _max_columnas := _col_excel - 1
+         _ren_excel := _ren_excel + 1
+         _col_excel := 1
+       FIN_SI
+       _primera_ex := _primera_ex + 1
+    FIN_ENCABEZADO
+    
+    PIE
+      pie_estandar
+    FIN_PIE
+  SI_NO
+       _columna := 1
+       _num_col := 0
+       $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+       MIENTRAS( $columna <> '' )
+         SI ( TRAE_VALOR_TABLA( &columnas, 2, _num_col ) = 'IZQ' )
+           IMP ( COL( _columna ), $columna )
+         SI_NO
+           IMP ( COL( _columna ), DER( $columna, VALOR( TRAE_VALOR_TABLA( &columnas, 1, _num_col ) ) ) )
+         FIN_SI
+         _longitud := VALOR( TRAE_VALOR_TABLA( &columnas, 1, _num_col ) )
+         _columna := _columna + _longitud + _separacion
+         _num_col := _num_col + 1
+         $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+       FIN_MIENTRAS
+       IMPRIME
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_leyenda
+  SI ( _impreso = 0 )
+    IMPRIME
+    IMP ( COL(5), '*** SUB TOTALES ' + $indice + ' -> ' + $indice_texto )
+    SI ( $salida = 'EXCEL' )
+      EXCEL( 'PON_VALOR', 2, _ren_excel, '*** SUB TOTALES ' + $indice + ' -> ' + $indice_texto )
+    FIN_SI
+  FIN_SI
+  _impreso := 1   
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_totales
+   _impreso := 0
+   _columna := 1
+   _num_col := 0
+   _col_excel := 1
+   $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+   MIENTRAS( $columna <> '' )
+     SI ( TRAE_VALOR_TABLA( &columnas, 3, _num_col ) = 'SI' )
+       SI ( TRAE_VALOR_TABLA( &columnas, 2, _num_col ) = 'IZQ' )
+         imprime_leyenda
+         IMP ( COL( _columna ), $( VALOR_TABLA( &totales, $indice_total, $columna ) ) )
+       SI_NO
+         imprime_leyenda
+         IMP ( COL( _columna ), DER( $( VALOR_TABLA( &totales, $indice_total, $columna ) ), VALOR( TRAE_VALOR_TABLA( &columnas, 1, _num_col ) ) ) )
+       FIN_SI
+       SI ( $salida = 'EXCEL' )
+         EXCEL( 'PON_VALOR', _col_excel, _ren_excel, $( VALOR_TABLA( &totales, $indice_total, $columna ) ) )
+       FIN_SI
+       SI ( $indice_total <> 'TOTAL' )
+         ASIGNA_VALOR_TABLA ( &totales, $indice_total, $columna, 0 )
+       FIN_SI
+     FIN_SI
+     _longitud := VALOR( TRAE_VALOR_TABLA( &columnas, 1, _num_col ) )
+     _columna := _columna + _longitud + _separacion
+     _num_col := _num_col + 1
+     _col_excel := _col_excel + 1
+     $columna := TRAE_VALOR_TABLA( &columnas, 0, _num_col )
+   FIN_MIENTRAS
+   IMPRIME
+   imprime_renglon
+FIN_SUB_RUTINA
+
+# ESTAS LINEAS TIENEN QUE IR EN EL REPORTE ORIGINAL DESPUES DE LEER LOS PARAMETROS PARA INICIAZALIR LOS SUBTOTALES.
+#ASIGNA_TABLA( &in, &in2 )
+#inicializa_totales
+
+SUB_RUTINA inicializa_totales
+  #Definicion de la tabla de indices utilizados
+  REPITE
+    $nom_ind := TRAE_VALOR_TABLA( &in2, 2, _num_ind )
+    $ind_act := TRAE_VALOR_TABLA( &in2, 0, _num_ind )
+    SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+      AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+    FIN_SI
+    _num_ind := _num_ind + 1
+  HASTA(  $nom_ind = '' )
+  AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_total_util
+  SI ( _omitir_sub_totales = 0 )
+    DECIMALES := 2
+    $indice_total := $indice
+    imprime_totales
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA encabezados_util
+  SI ( $salida = 'EXCEL' )
+    EXCEL( 'PON_VALOR', 2, _ren_excel, '*** ' + $indice + ' ' +  $indice_valor + ' -> ' + $indice_texto )  
+    _ren_excel := _ren_excel + 1
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA encabezados
+  encabezados_util
+FIN_SUB_RUTINA
+
+VAR_T ( &tabla_excel )
+_et_renglon := 0
+_et_columna := 0
+$et_valor   := ''
+SUB_RUTINA envia_tabla_excel
+  _et_renglon := 0
+  $et_valor   := TRAE_VALOR_TABLA( &tabla_excel, _et_columna, _et_renglon )
+  MIENTRAS( $et_valor <> '' )
+     _et_columna := 0
+     $et_valor   := TRAE_VALOR_TABLA( &tabla_excel, _et_columna, 0 )
+     MIENTRAS( $et_valor <> '' )
+       $et_valor   := TRAE_VALOR_TABLA( &tabla_excel, _et_columna, _et_renglon )
+       EXCEL( 'PON_VALOR', _et_columna + 1, _et_renglon + 1, $et_valor )
+       _et_columna := _et_columna + 1
+       $et_valor   := TRAE_VALOR_TABLA( &tabla_excel, _et_columna, 0 )
+     FIN_MIENTRAS
+    _et_columna := 0
+    _et_renglon := _et_renglon + 1
+    $et_valor   := TRAE_VALOR_TABLA( &tabla_excel, _et_columna, _et_renglon )    
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+VAR_T ( &grafica_util )
+VAR_T ( &orden_grafica )
+_indice_grafica  := 0
+_max_grafica     := 0
+_ordenar_grafica := 0
+$titulo_superior := '.'
+$titulo_derecho  := '.'
+$titulo_izquierdo:= '.'
+$titulo_inferior := '.'
+_max_columnas_graf := 10
+
+SUB_RUTINA muestra_grafica
+  SI ( _ordenar_grafica = 1 )
+    ORDENA_RENGLON ( &grafica_util, 1 )
+    _max_grafica := 0
+    MIENTRAS ( TRAE_VALOR_TABLA( &grafica_util, _max_grafica, 0 ) <> '' )
+      _max_grafica := _max_grafica + 1
+    FIN_MIENTRAS
+
+    _indice_grafica := 0
+    MIENTRAS (( _indice_grafica <= _max_columnas_graf ) AND ( _max_grafica >= 0 ))
+      PON_VALOR_TABLA( &orden_grafica, _indice_grafica, 0, TRAE_VALOR_TABLA( &grafica_util, _max_grafica - 1, 0 ) )
+      PON_VALOR_TABLA( &orden_grafica, _indice_grafica, 1, TRAE_VALOR_TABLA( &grafica_util, _max_grafica - 1, 1 ) )
+      _max_grafica := _max_grafica - 1
+      _indice_grafica := _indice_grafica + 1
+    FIN_MIENTRAS
+  SI_NO
+    ASIGNA_TABLA( &grafica_util, &orden_grafica )
+  FIN_SI
+  CREA_GRAFICA( &orden_grafica )
+  TITULOS_GRAFICA ( &orden_grafica, '"' + $titulo_superior + '"', '"' + $titulo_derecho + '"', '"' + $titulo_inferior + '"', '"' + $titulo_izquierdo + '"' )
+FIN_SUB_RUTINA

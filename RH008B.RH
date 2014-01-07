@@ -1,0 +1,228 @@
+#REPORTE MOVIMIENTOS POR FECHA CAPTURA
+#REPORTE DE MOVIMIENTOS
+#USUARIO =*
+#EXCEL
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra los movimientos afiliatorios de los empleados. 
+#Este reporte pide la fecha inicial, final y el tipo de movimiento a emitir. Permite emitir grafica de los datos.
+#Este reporte imprime de los trabajadores la clave, nombre, afiliación y RFC, de los movimientos imprime el tipo, la fecha y los 5 salarios.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO/EXCEL', $salida )
+NUEVO_PARAMETRO_FEC  ( 'FECHA INICIAL' , '', _fi )
+NUEVO_PARAMETRO_FEC  ( 'FECHA FINAL  ' , '', _ff )
+NUEVO_PARAMETRO_CHEQ ( 'TIPO DE MOV','ALTAS',_vera)
+NUEVO_PARAMETRO_CHEQ ( '','BAJAS',_verb)
+NUEVO_PARAMETRO_CHEQ ( '','M. SALARIAL',_verm)
+NUEVO_PARAMETRO_CHEQ ( '','REINGRESOS',_verr)
+NUEVO_PARAMETRO_CHEQ ( 'GRAFICA' , '', _graficar )
+NUEVO_PARAMETRO_CHEQ ( 'VIGENTES' , '', _vigentes )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+_ren_excel := 0
+_col_excel := 0
+
+
+ENCABEZADO
+   $titulo_reporte := 'Movimientos del '+ FECHA (_fi)+ ' al ' + FECHA (_ff)
+   encabezado_ini
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL (45), 'No. IMSS', COL (60) , 'RFC' ) ;; IMPRIME
+   IMP ( COL(10), 'MOV', COL(15), 'FECHA', COL(27), DER('SUELDO',10), COL(37), DER('VAR IMSS',10), COL (47), DER('INT IMSS',10), COL (57), DER('VAR INF',10), COL (67), DER('INT INF',10) ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+FORMATO_FECHA := 3
+COLUMNAS      := 80
+RENGLONES     := 65
+SALIDA        := $salida
+
+#Variables Globales
+VAR_T ( &subtotales )
+VAR_T ( &grafica )
+VAR_T ( &indices )
+_num_ind  := 0
+$indice   := ''
+$ant_trab := ''
+_columna_totales := 0
+$tmov     := ''
+$causa    := ''
+$antes    := ''
+
+#Subrutina diversas
+
+SUB_RUTINA sub_totales
+  DECIMALES := 0
+  SI ( _vera = 1 )
+    IMP ( COL(13), 'Total de Altas en ' + $indice + ' : ', COL(_columna_totales), DER(.( VALOR_TABLA( &subtotales, $indice, 'A' ) ), 5) ) ;; IMPRIME
+    ASIGNA_VALOR_TABLA( &subtotales, $indice, 'A', 0 )
+  FIN_SI
+  SI ( _verb = 1 )
+    IMP ( COL(13), 'Total de Bajas en ' + $indice + ' : ', COL(_columna_totales), DER(.( VALOR_TABLA( &subtotales, $indice, 'B' ) ), 5) ) ;; IMPRIME
+    ASIGNA_VALOR_TABLA( &subtotales, $indice, 'B', 0 )
+  FIN_SI
+  SI ( _verr = 1 )
+    IMP ( COL(13), 'Total de Reingresos en ' + $indice + ' : ', COL(_columna_totales), DER(.( VALOR_TABLA( &subtotales, $indice, 'R' ) ), 5) ) ;; IMPRIME
+    ASIGNA_VALOR_TABLA( &subtotales, $indice, 'R', 0 )
+  FIN_SI
+  SI ( _verm = 1 )
+    IMP ( COL(13), 'Total de Modificaciones en ' + $indice + ' : ', COL(_columna_totales), DER(.( VALOR_TABLA( &subtotales, $indice, 'M' ) ), 5) ) ;; IMPRIME
+    ASIGNA_VALOR_TABLA( &subtotales, $indice, 'M', 0 )
+  FIN_SI
+
+   SI ( $salida = 'EXCEL' )
+      EXCEL( 'PON_VALOR', 1, _ren_excel, 'FECHA DE IMPRESION: ' + FECHA ( FECHA_HOY ) )
+      EXCEL( 'PON_VALOR', 3, _ren_excel, 'HORA ACTUAL: ' + HORA ( HORA_ACTUAL ) )
+      _ren_excel := _ren_excel + 1
+   FIN_SI   
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   SI ( $antes <> 'EMPPRIN':'CLAVE' )
+     $antes := 'EMPPRIN':'CLAVE'
+     IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 33 ) , COL (45), FORMATO ( 'EMPPRIN':'AFILIACION', 'XXXXXXXXXX-X' ), COL (60), FORMATO ( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' )) ;; IMPRIME     
+     SI ( $salida = 'EXCEL' )
+        EXCEL( 'PON_VALOR', 1, _ren_excel, 'EMPPRIN':'CLAVE' )
+        EXCEL( 'PON_VALOR', 2, _ren_excel, 'EMPPRIN':'NOMBRE' )
+        EXCEL( 'PON_VALOR', 3, _ren_excel, FORMATO ( 'EMPPRIN':'AFILIACION', 'XXXXXXXXXX-X' ) )
+        EXCEL( 'PON_VALOR', 4, _ren_excel, FORMATO ( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' ) )
+        _ren_excel := _ren_excel + 1
+     FIN_SI
+   FIN_SI
+   DECIMALES := 0
+   #Incremeto de valores para los indices seleccionados
+   _num_ind := 0
+   REPITE
+      INCREMENTA_TABLA( &subtotales, TRAE_VALOR_TABLA( &indices, 0, _num_ind ), 'EMPPRIN':'TIPO', 1 )
+      _num_ind := _num_ind + 1
+   HASTA ( TRAE_VALOR_TABLA( &indices, 0, _num_ind ) = '' )
+
+   SI ( _graficar = 1 )
+     INCREMENTA_TABLA( &grafica, 'EMPPRIN':'TIPO', 'SUBTOTAL', 1 )
+   FIN_SI
+
+   DECIMALES := 2
+   SI ( 'EMPPRIN':'TIPO' = 'B' )
+     SI ( TRAE_REGISTRO( 'BAJA', 'EMPPRIN':'CAUSA BAJA' ) )
+       $causa := 'BAJA':'DESCRIPCION'
+     FIN_SI
+     IMP ( COL(10), 'EMPPRIN':'TIPO', COL(15), FECHA('EMPPRIN':'FECHA'), COL(27), FECHA('EMPPRIN':'BAJA IMSS'), COL(45), $causa ) ;; IMPRIME
+     IMP ( COL(15), 'EMPRH':'TELEFONO_1', COL(30), 'EMPRH':'TELEFONO_2', COL(45), 'EMPRH':'CALLE' + ' ' + 'EMPRH':'NUMERO' + ' ' + 'EMPRH':'INTERIOR' ) ;; IMPRIME
+     SI ( $salida = 'EXCEL' )
+        EXCEL( 'PON_VALOR', 2, _ren_excel, 'EMPPRIN':'TIPO' )
+        EXCEL( 'PON_VALOR', 3, _ren_excel, FECHA('EMPPRIN':'FECHA') )
+        EXCEL( 'PON_VALOR', 4, _ren_excel, FECHA('EMPPRIN':'BAJA IMSS') )
+        EXCEL( 'PON_VALOR', 5, _ren_excel, $causa )
+        EXCEL( 'PON_VALOR', 6, _ren_excel, 'EMPRH':'TELEFONO_1' )
+        EXCEL( 'PON_VALOR', 7, _ren_excel, 'EMPRH':'TELEFONO_2' )
+        EXCEL( 'PON_VALOR', 8, _ren_excel, 'EMPRH':'CALLE' + ' ' + 'EMPRH':'NUMERO' + ' ' + 'EMPRH':'INTERIOR' )
+        _ren_excel := _ren_excel + 1
+     FIN_SI
+   SI_NO
+     IMP ( COL(10), 'EMPPRIN':'TIPO', COL(15), FECHA('EMPPRIN':'FECHA'), COL(27), DER( $('EMPPRIN':'SDO1'), 10), COL(37), DER( $('EMPPRIN':'SDO2'),10 ), COL (47), DER( $('EMPPRIN':'SDO3'),10 ) )
+     IMP ( COL (57), DER($('EMPPRIN':'SDO4'), 10), COL (67), DER($('EMPPRIN':'SDO5'), 10) )
+     IMPRIME
+     SI ( $salida = 'EXCEL' )
+        EXCEL( 'PON_VALOR', 2, _ren_excel, 'EMPPRIN':'TIPO' )
+        EXCEL( 'PON_VALOR', 3, _ren_excel, FECHA('EMPPRIN':'FECHA') )
+        EXCEL( 'PON_VALOR', 4, _ren_excel, $('EMPPRIN':'SDO1') )
+        EXCEL( 'PON_VALOR', 5, _ren_excel, $('EMPPRIN':'SDO2') )
+        EXCEL( 'PON_VALOR', 6, _ren_excel, $('EMPPRIN':'SDO3') )
+        EXCEL( 'PON_VALOR', 7, _ren_excel, $('EMPPRIN':'SDO4') )
+        EXCEL( 'PON_VALOR', 8, _ren_excel, $('EMPPRIN':'SDO5') )
+        _ren_excel := _ren_excel + 1
+     FIN_SI
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+$ind_act := ''
+$nom_ind := ''
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+$campos_extras := 'E. RFC, E. AFILIACION, M. FECHA, M. TIPO, M. SDO1, M. SDO2, M. SDO3, M. SDO4, M. SDO5, M. "BAJA IMSS", M. "CAUSA BAJA"'
+$bases_extras := 'EMPSDO M'
+$condiciones_extras := 'M.CLAVE = E.CLAVE'
+SI ( _vera = 1 ) ;; $tmov := $tmov + '"A",' ;; FIN_SI
+SI ( _verb = 1 ) ;; $tmov := $tmov + '"B",' ;; FIN_SI
+SI ( _verm = 1 ) ;; $tmov := $tmov + '"M",' ;; FIN_SI
+SI ( _verr = 1 ) ;; $tmov := $tmov + '"R",' ;; FIN_SI
+$tmov := ELIMINA( $tmov, LONGITUD( $tmov ), 1 )
+SI ( $tmov <> '' )
+  $condiciones_extras := $condiciones_extras + ' AND M. TIPO IN ( ' + $tmov + ' ) AND M. FECHA_CAPTURA >= :FI AND M. FECHA_CAPTURA <= :FF'
+FIN_SI
+
+$ordenes_extras := 'E. CLAVE, M. TIPO, M. FECHA'
+base_trabajadores
+PARAMETRO_SQL ( 'EMPPRIN', 'FI', _fi )
+PARAMETRO_SQL ( 'EMPPRIN', 'FF', _ff )
+
+LIMPIA_TABLA( &subtotales )
+
+SI ( $salida = 'EXCEL' )
+   _ren_excel := 1
+   EXCEL( 'PON_VALOR', 1, _ren_excel, 'CLAVE' )
+   EXCEL( 'PON_VALOR', 2, _ren_excel, 'NOMBRE' )
+   EXCEL( 'PON_VALOR', 3, _ren_excel, 'No. IMSS' )
+   EXCEL( 'PON_VALOR', 4, _ren_excel, 'RFC' )
+   _ren_excel := _ren_excel + 1
+   EXCEL( 'PON_VALOR', 2, _ren_excel, 'MOVIMIENTO' )
+   EXCEL( 'PON_VALOR', 3, _ren_excel, 'FECHA' )
+   EXCEL( 'PON_VALOR', 4, _ren_excel, 'SUELDO' )
+   EXCEL( 'PON_VALOR', 5, _ren_excel, 'VAR IMSS' )
+   EXCEL( 'PON_VALOR', 6, _ren_excel, 'INT IMSS' )
+   EXCEL( 'PON_VALOR', 7, _ren_excel, 'VAR INFO' )
+   EXCEL( 'PON_VALOR', 8, _ren_excel, 'INT INFO' )
+   _ren_excel := _ren_excel + 1
+FIN_SI
+
+_num := 0
+USA_ARCHIVO( 'EMPPRIN', 'EMPRH' , 'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+  SI ( _vigentes )
+     SI ( ES_VIGENTE ( FECHA_HOY ))
+        datos_trabajador
+     FIN_SI
+  SI_NO
+     datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte
+
+DECIMALES := 0
+SI ( _graficar = 1 )
+  CREA_GRAFICA( &grafica )
+FIN_SI
+
+IMPRIME ;; IMPRIME
+IMP ( 'TOTALES GLOBALES' ) ;; IMPRIME
+$indice := 'TOTAL'
+sub_totales

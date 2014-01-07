@@ -1,0 +1,199 @@
+#CALCULO INVERTIDO DE IMPUESTOS
+#NO EDITAR
+#DESCRIPCION
+#Calcula el ISPT invertido dando como parametros el total deseado y las percepciones extras.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+NUEVO_PARAMETRO_TAB ('EMPLEADO','EMPPRIN/CLAVE/CATALOG DE TRABAJADORES', $empleado)
+NUEVO_PARAMETRO ('MONTO','', _monto)
+NUEVO_PARAMETRO ('DIAS','7', _dias)
+NUEVO_PARAMETRO ('EXTRAS','', _extras)
+NUEVO_PARAMETRO ( 'TABLA ISPT', LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','ISPT','ISPT'), $ispt )
+NUEVO_PARAMETRO ( 'TABLA SUBSIDIO', LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','SUBS','SUBS'), $subs )
+NUEVO_PARAMETRO ( 'TABLA CRED', LEE_INI('TABLAS IMPUESTO ' + 'EMPRESA':'CLAVE','CRED','CRED'), $cred )
+NUEVO_PARAMETRO ( 'FACTOR DE MENSUALIZACION', '30.4166', _factorm )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+SALIDA := $salida
+
+#VARIABLES GLOBALES
+_ispt   := 0
+_cred   := 0
+_sueldo := 0
+_int    := 0
+_imss   := 0
+_minimo := 0
+_aux1   := 0
+_3mindf := 0
+_tope   := 0
+_fecha  := FECHA_HOY
+_total  := 0
+_credi  := 0
+_dif    := 0
+_presicion := 5
+
+#BASES DE DATOS
+ABRE_BASE( 'EMPPRIN' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+SI ( TRAE_REGISTRO( 'EMPPRIN', $empleado ) = FALSO )
+  MENSAJE('EL TRABAJADOR SELECCIONADO NO EXISTE' ) ;; IMPRIME
+  TERMINA_REPORTE
+FIN_SI
+
+SI ( TRAE_REGISTRO_VIG ( 'MINIMO', _fecha ) = 0 )
+  IMP ( 'NO SE HA ENCONTRADO EL SUELDO MINIMO PARA EL PERIODO ACTUAL DEL TIPO DE NOMINA SELECCIONADO' ) ;; IMPRIME
+  TERMINA_REPORTE
+FIN_SI
+SI ( TRAE_REGISTRO_VIG ( 'PAGOIMSS', 'PERIODO':'FECHA INICIAL' ) = 0 )
+  IMP ( 'NO SE HAN ENCONTRADO LOS PORCENTAJES DE PAGO AL IMSS PARA EL PERIODO ACTUAL DEL TIPO DE NOMINA SELECCIONADO' ) ;; IMPRIME
+  TERMINA_REPORTE
+FIN_SI
+SI ( TRAE_REGISTRO ( 'SUCURSAL', TRAE_DSP ( 'S', _fecha )))
+   SI ( TRAE_REGISTRO ( 'PATRONAL', 'SUCURSAL':'REGISTRO PATRONAL' ))
+      SI ( 'PATRONAL':'ZONA ECONOMICA' = 'A' )
+         _minimo := 'MINIMO':'MINIMO A'
+      FIN_SI
+      SI ( 'PATRONAL':'ZONA ECONOMICA' = 'B' )
+         _minimo := 'MINIMO':'MINIMO B'
+      FIN_SI
+      SI ( 'PATRONAL':'ZONA ECONOMICA' = 'C' )
+         _minimo := 'MINIMO':'MINIMO C'
+      FIN_SI
+   SI_NO
+      IMP ( 'REGISTRO PATRONAL INVALIDO DE LA SUCURSAL ', 'SUCURSAL':'CLAVE' ) ;; IMPRIME
+      TERMINA_REPORTE
+   FIN_SI
+SI_NO
+   IMP ( 'SUCURSAL INVALIDA DE TRABAJADOR ', 'EMPPRIN':'CLAVE' ) ;; IMPRIME
+   TERMINA_REPORTE
+FIN_SI
+
+SI (TRAE_REGISTRO ('TABISPT', 'ISPT'))
+   _ispt := ISPT_INVERTIDO( _monto + _extras )
+FIN_SI
+_sueldo := _ispt - _extras
+_sueldo := _sueldo / _dias
+_max   := 100
+_veces := 0
+_factor := 0
+_ajuste := 1
+_mayor  := 0
+_menor  := 0
+_aprox  := 0
+_aux2   := 0
+
+SUB_RUTINA checa_ajuste
+   SI ( _factor < 1 )
+     _factor := _ajuste
+   FIN_SI
+   _aprox := _monto - _total
+   SI ( _aprox < 0 )
+     _aprox := _aprox * -1
+   FIN_SI
+   SI ( _aprox >= _presicion )
+     SI ( _dif > 0 )
+       _sueldo := _sueldo + _factor
+       _mayor := 1
+       SI ( _menor = 1 )
+         _ajuste := _ajuste / 2
+         _menor := 0
+       FIN_SI
+     SI_NO
+       _sueldo := _sueldo - _factor
+       _menor := 1
+       SI ( _mayor = 1 )
+         _ajuste := _ajuste / 2
+         _mayor := 0
+       FIN_SI
+     FIN_SI
+   FIN_SI
+FIN_SUB_RUTINA
+
+REPITE
+   _veces := _veces + 1
+#Calculo de IMSS
+   _int  := INTEGRA_IMSS ( _fecha, _sueldo, VAR_IMSS_ACTUAL( _fecha, _fecha ) )
+   SI ( _sueldo <= (_minimo + 0.01))
+      _imss := 0
+   SI_NO
+      SI ((_int < _minimo ) AND (('EMPPRIN':'SEMANA REDUCIDA' <> 0) OR ('EMPPRIN':'JORNADA REDUCIDA' <> 0)))
+         _int := _minimo
+      FIN_SI
+# CUOTA EyM PRESTACIONES EN ESPECIE (ART.25)
+      _imss := _int * _dias * ('PAGOIMSS':'EG ESPECIE EMPLEADO' / 100) 
+# CUOTA EyM PRESTACION EN ESPECIE - EXCEDENTE 3SMIN DF (ART.106)
+      _3mindf := 'MINIMO':'MINIMO A' * 3
+      SI (_int > _3mindf)
+         _imss := _imss + ((_int - _3mindf) * _dias * ('PAGOIMSS':'EG 3SMGDF EMPLEADO' / 100))
+      FIN_SI
+# CUOTA EyM PRESTACION EN DINERO (ART.107)
+      _imss := _imss + (_int * _dias * (('PAGOIMSS':'EG DINERO EMPLEADO') / 100) )
+# CUOTA INVALIDEZ Y VIDA (ART.147)
+# CUOTA CESANTIA Y VEJEZ (ART.168)
+      _tope := 'MINIMO':'TOPE IVCM'
+      SI (_int > _tope)
+         _imss := _imss + (_tope * _dias * (('PAGOIMSS':'INVALIDEZ Y VIDA EMPLEADO' + 'PAGOIMSS':'CESANTIA Y VEJEZ EMPLEADO') / 100))
+      SI_NO
+         _imss := _imss + (_int * _dias * (('PAGOIMSS':'INVALIDEZ Y VIDA EMPLEADO' + 'PAGOIMSS':'CESANTIA Y VEJEZ EMPLEADO') / 100))
+      FIN_SI
+   FIN_SI
+  
+   #CALCULO DE IMPUESTOS
+   _aux1 := ((_sueldo * _dias) + _extras )
+   _aux1 := _aux1 / _dias
+   _aux1 := _aux1 * _factorm
+   SI (TRAE_REGISTRO ('TABISPT', $ispt))
+      _ispt := CALCULA_ISPT (_aux1)
+   FIN_SI
+   SI (TRAE_REGISTRO ('TABISPT', $subs))
+      _ispt := _ispt - CALCULA_SUBSIDIO (_aux1)
+      _aux2 := CALCULA_SUBSIDIO (_aux1)
+   FIN_SI
+   SI (TRAE_REGISTRO ('TABISPT', $cred))
+     _ispt := _ispt - CALCULA_ISPT (_aux1)
+     _aux2 := CALCULA_ISPT (_aux1)
+   FIN_SI
+   _aux2 := _ispt
+   _ispt := _ispt / _factorm * _dias
+   SI (_ispt < 0)
+      _ispt := 0
+      _cred := _ispt
+   SI_NO
+      _cred := 0
+   FIN_SI
+   _total  := ((_sueldo * _dias) + _extras ) - _ispt + _cred - _imss
+   _dif    :=  _monto - _total
+   _factor := _dif / _monto * 200
+   checa_ajuste
+HASTA(( _aprox < _presicion ) OR ( _veces > _max ) )
+
+#IMPRESION DE DATOS
+IMPRIME
+IMP ( 'Cálculo Invertido de Impuestos' ) ;; IMPRIME
+IMPRIME
+IMP ( 'EMPPRIN':'NOMBREP', ' ', 'EMPPRIN':'NOMBREM', ' ', 'EMPPRIN':'NOMBREN' ) ;; IMPRIME
+DECIMALES := 2
+IMP ( 'Monto Deseado       : ', DER( $(_monto), 12 )  ) ;; IMPRIME
+DECIMALES := 0
+IMP ( 'Dias                : ', DER( .(_dias), 12 )   ) ;; IMPRIME
+DECIMALES := 2
+IMP ( 'Percepciones Extras : ', DER( $(_extras), 12 ) ) ;; IMPRIME
+IMP ( '---------------------------------- ' ) ;; IMPRIME
+IMP ( 'Sueldo              : ', DER( $(_sueldo), 12 ), COL(40), DER($(_sueldo * _dias),12) ) ;; IMPRIME
+IMP ( 'Percepciones Extras : ', COL(40), DER($(_extras),12) ) ;; IMPRIME
+IMP ( 'IMSS                : ', COL(40), DER($(_imss),12) ) ;; IMPRIME
+SI ( _ispt <> 0 )
+  IMP ( 'ISPT                : ', COL(40), DER($(_ispt),12) ) ;; IMPRIME
+FIN_SI
+SI ( _cred <> 0 )
+  IMP ( 'Crédito al Salario  : ', COL(40), DER($(_cred),12) ) ;; IMPRIME
+FIN_SI
+IMP ( COL(40), DER('------------',12) ) ;; IMPRIME
+_total := ((_sueldo * _dias) + _extras ) - _imss - _ispt + _cred
+IMP ( 'TOTAL               : ', COL(40), DER($(_total),12) ) ;; IMPRIME
+DECIMALES := 2
+IMP ( 'TOTAL DE CALCULOS   : ', _veces ) ;; IMPRIME

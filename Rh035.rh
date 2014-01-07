@@ -1,0 +1,236 @@
+#FORMATO DC-3
+#CONTRATO POR TIEMPO DETERMINADO
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Impresion de Contrato por tiempo determinado a Empleados
+#FIN DESCRIPCION
+FORMATO_FECHA := 7
+
+$empresa := 'EMPRESA':'CLAVE'
+$giro   := LEE_INI( 'DC3_' + $empresa, 'ACTIVIDAD', 'Actividad de la empresa' )
+$rt     := LEE_INI( 'DC3_' + $empresa, 'REP_TRABAJADORES', '' )
+$re     := LEE_INI( 'DC3_' + $empresa, 'REP_EMPRESA', '' )
+$agente := LEE_INI( 'DC3_' + $empresa, 'AGENTE', '' )
+$rfc    := LEE_INI( 'DC3_' + $empresa, 'RFC', '' )
+NUEVO_PARAMETRO     ('CLAVE INICIAL','', $cve_inicial)
+NUEVO_PARAMETRO     ('CLAVE FINAL'  ,'', $cve_final)
+NUEVO_PARAMETRO_TAB ('EMPLEADOS'    ,'EMPPRIN/CLAVE/TABLA DE EMPLEADOS', &empleados ) 
+NUEVO_PARAMETRO_FEC ('FECHA CURSO'        ,'', _fi)
+NUEVO_PARAMETRO_TAB ('CURSO'  ,'CURSO/CLAVE/TABLA DE CURSOS', $curso)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+NUEVO_PARAMETRO     ('INSTRUCTOR(ES)'  , $instructor, $instructor)
+NUEVO_PARAMETRO     ('AGENTE CAP.'  , $agente, $agente )
+NUEVO_PARAMETRO     ('GIRO EMPRESA'  , $giro, $giro)
+NUEVO_PARAMETRO     ('RFC'  , $rfc, $rfc )
+NUEVO_PARAMETRO     ('REP. EMPRESA'  , $re, $re)
+NUEVO_PARAMETRO     ('REP. TRAB.'  , $rt, $rt)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+ESCRIBE_INI( 'DC3_' + $empresa, 'ACTIVIDAD', $giro )
+ESCRIBE_INI( 'DC3_' + $empresa, 'REP_TRABAJADORES', $rt )
+ESCRIBE_INI( 'DC3_' + $empresa, 'REP_EMPRESA', $re )
+ESCRIBE_INI( 'DC3_' + $empresa, 'AGENTE', $agente )
+ESCRIBE_INI( 'DC3_' + $empresa, 'RFC', $rfc )
+
+$letra := 'Arial'
+FORMATO_PESOS := 2
+SALIDA := 'P'
+MODO_IMPRESION ( 'GRAFICO' )
+LETRA ( 'LETRA NORMAL' )
+DRAFT := 'S'
+
+VAR_T ( &tabla_sql )
+$emp  := ''
+_cont := 0
+_hrs  := 0
+$saux := ''
+
+AGREGA_VALOR_COL ( &tabla_sql, 0, 'SELECT EMPPRIN.CLAVE, EMPPRIN.NOMBREP || " " || EMPPRIN.NOMBREM || " " || EMPPRIN.NOMBREN AS NOMBRE, EMPPRIN.RFC' )
+AGREGA_VALOR_COL ( &tabla_sql, 0, '       ,CURSO. CLAVE AS CLAVE_CURSO, CURSO. DESCRIPCION, CURSO. COSTO, EMPCURSO. HORAS, EMPCURSO. EVALUACION' )
+AGREGA_VALOR_COL ( &tabla_sql, 0, '       ,EMPCURSO. FECHA_INICIAL AS FECHA_CURSO, EMPCURSO. FECHA_FINAL AS FECHAF_CURSO, EMPCURSO. DC3' )
+AGREGA_VALOR_COL ( &tabla_sql, 0, 'FROM EMPPRIN, EMPCURSO, CURSO' )
+AGREGA_VALOR_COL ( &tabla_sql, 0, 'WHERE EMPCURSO.CLAVE = EMPPRIN. CLAVE AND CURSO. CLAVE = "' + $curso + '"' )
+AGREGA_VALOR_COL ( &tabla_sql, 0, '      AND EMPCURSO. FECHA_INICIAL = :_fi' )
+AGREGA_VALOR_COL ( &tabla_sql, 0, '      AND EMPCURSO. CURSO = "' + $curso + '" AND EMPCURSO. DC3 = "SI"'  )
+
+SI ( $cve_inicial <> '' )
+   AGREGA_VALOR_COL ( &tabla_sql, 0, '      AND EMPPRIN. CLAVE >= "' + $cve_inicial + '"' )
+FIN_SI
+
+SI ( $cve_final <> '' )
+   AGREGA_VALOR_COL ( &tabla_sql, 0, '      AND EMPPRIN. CLAVE <= "' + $cve_final + '"' )
+FIN_SI
+
+$emps := TRAE_SELECCION ( &empleados )
+SI ( $emps <> '' )
+   AGREGA_VALOR_COL ( &tabla_sql, 0, '      AND EMPPRIN. CLAVE IN (' + $emps + ')' )
+FIN_SI
+
+CREA_CONSULTA ( 'EMPPRIN', &tabla_sql )
+PARAMETRO_SQL ( 'EMPPRIN', '_fi', _fi )
+
+MUESTRA_AVANCE( 'EMPPRIN', 'Emp. Actual: ' + 'EMPPRIN':'CLAVE' )
+
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSUC'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPDEP'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPPUES' , 'CLAVE' )
+PRIMER_REGISTRO ( 'EMPPRIN' )
+
+SI ( TRAE_REGISTRO ( 'CURSO', $curso ) = FALSO )
+   IMP ( 'CURSO INEXISTENTE... RECTIFIQUE !' )
+   TERMINA_REPORTE
+FIN_SI
+
+ABRE_BASE ( 'PATRONAL' )
+PRIMER_REGISTRO ( 'PATRONAL' )
+
+SUB_RUTINA DIBUJA_FORMATO
+
+   ###############  FORMA
+   IMPRIME_IMAGEN( 'SEC_TRAB', 100, 250, 200, 200 )
+   IMPRIME_REC ( 70, 560, 1900, 80 )
+   IMPRIME_REC ( 70, 639, 1900, 130 )
+   IMPRIME_REC ( 70, 768, 980, 130 )
+   IMPRIME_REC ( 70, 768, 1900, 130 )
+   IMPRIME_REC ( 70, 930, 1900, 80 )
+   IMPRIME_REC ( 70, 1009, 1900, 130 )
+   IMPRIME_REC ( 70, 1138, 980, 130 )
+   IMPRIME_REC ( 70, 1138, 1900, 130 )
+   IMPRIME_REC ( 70, 1267, 1900, 130 )
+   IMPRIME_REC ( 70, 1425, 1900, 80 )
+   IMPRIME_REC ( 70, 1504, 1900, 130 )
+   IMPRIME_REC ( 70, 1633, 520 , 130 )
+   IMPRIME_REC ( 70, 1633, 1900, 130 )
+   IMPRIME_REC ( 70, 1762, 1900, 130 )
+   IMPRIME_REC ( 70, 1891, 1900, 220 )
+   IMPRIME_REC ( 70, 2130, 1900, 400 )
+
+   ###############  CICLOS
+   _cont := 0
+   MIENTRAS ( _cont < 14 )
+      IMPRIME_LINEA ( (  _cont * 65 ) + 130, 820, (  _cont * 65 ) + 130, 900 )
+       _cont :=  _cont + 1
+   FIN_MIENTRAS
+
+   _cont := 0
+   MIENTRAS ( _cont < 14 )
+      IMPRIME_LINEA ( ( _cont * 65 ) + 130, 1190, ( _cont * 65 ) + 130, 1270 )
+      _cont := _cont + 1
+   FIN_MIENTRAS
+   _cont := 0
+   MIENTRAS (  _cont < 12 )
+      IMPRIME_LINEA ( ( _cont * 65 ) + 1170, 1190, ( _cont * 65 ) + 1170, 1270 )
+      _cont := _cont + 1
+   FIN_MIENTRAS
+
+   ###############  ENCABEZADOS
+   CAMBIA_LETRA( $letra, 12, '\N' ) IMPRIME_SIN_SALTO
+   IMP_RECT( 'Secretaría del Trabajo y Previsión Social', 70, 250, 1900, 80, 'CEN' )
+   CAMBIA_LETRA( $letra, 18, '\N' ) IMPRIME_SIN_SALTO
+   IMP_RECT( 'CONSTANCIA DE HABILIDADES LABORALES', 70, 350, 1900, 80, 'CEN' )
+   CAMBIA_LETRA( $letra, 14, '\N' ) IMPRIME_SIN_SALTO
+   IMP_RECT( 'Formato DC-3', 70, 450, 1900, 80, 'CEN' )
+   IMP_RECT( 'DATOS DEL TRABAJADOR', 70, 570, 1900, 80, 'CEN' )
+   IMP_RECT( 'DATOS DE LA EMPRESA', 70, 945, 1900, 80, 'CEN' )
+   IMP_RECT( 'DATOS DEL PROGRAMA DE CAPACITACIÓN Y ADIESTRAMIENTO', 70, 1440, 1900, 80, 'CEN' )
+
+   ###############  TITULOS
+   CAMBIA_LETRA( $letra, 10, '\N' ) IMPRIME_SIN_SALTO
+   IMP_XY ( 75, 640, 'Nombre' )
+   IMP_XY ( 75, 769, 'Registro Federal de Contribuyentes' )
+   IMP_XY ( 1051, 769, 'Puesto' )
+   IMP_XY ( 75, 1010, 'Nombre o razón social' )
+   IMP_XY ( 75, 1139, 'Registro Federal de Contribuyentes' )
+   IMP_XY ( 1051, 1139, 'Registro patronal del I.M.S.S.' )
+   IMP_XY ( 75, 1268, 'Actividad específica o giro' )
+   IMP_XY ( 75, 1505, 'Nombre del programa o curso' )
+   IMP_XY ( 100, 1634, 'Duración en horas' )
+   IMP_XY ( 600, 1634, 'Periodo de' )
+   IMP_XY ( 600, 1694, 'ejecucion' )
+   IMP_XY ( 850, 1694, 'De' )
+   IMP_XY ( 1430, 1694, 'a' )
+   IMP_XY ( 1010, 1640, 'Año   Mes    Dia' )
+   IMP_XY ( 1590, 1640, 'Año   Mes    Dia' )
+   IMP_XY ( 100, 1763, 'Nombre del agente capacitor' )
+   IMP_XY ( 100, 1892, 'Nombre y firma del instructor' )
+
+   IMP_XY ( 250, 2250, 'Representante de los trabajadores' )
+   IMP_XY ( 1230, 2250, 'Representante de la empresa' )
+   IMP_XY ( 400, 2470, 'Nombre y firma' )
+   IMP_XY ( 1350, 2470, 'Nombre y firma' )
+   IMPRIME_LINEA ( 250, 2465, 850, 2465 )
+   IMPRIME_LINEA ( 1130, 2465, 1850, 2465 )
+   IMP_RECT( $rt, 250, 2420, 600, 80, 'CEN' )
+   IMP_RECT( $re, 1130, 2420, 720, 80, 'CEN' )
+
+   CAMBIA_LETRA( $letra, 8, '' ) IMPRIME_SIN_SALTO
+   IMP_RECT( 'Los datos se asientan en esta constancia bajo protesta de decir la verdad, apercibidos de de la responsabilidad en que incurre todo', 70, 2135, 1900, 80, 'CEN' )
+   IMP_RECT( 'aquel que no se conduce con la verdad.', 70, 2175, 1900, 80, 'CEN' )
+FIN_SUB_RUTINA
+
+SUB_RUTINA PON_DATOS
+   CAMBIA_LETRA( $letra, 10, '\N' ) IMPRIME_SIN_SALTO
+
+   IMP_XY ( 200, 700, 'EMPPRIN':'NOMBRE' )
+   IMP_XY ( 1400, 700, 'EMPLEADO : ' + 'EMPPRIN':'CLAVE' )
+   $saux := FORMATO ( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' )
+   _cont := 0
+   MIENTRAS ( _cont < 15 )
+      IMP_XY (( _cont * 65 ) + 90, 830, SUBSTR ( $saux, 1, 1 ))
+      $saux := SUBSTR ( $saux, 2, 15 )
+      _cont := _cont + 1
+   FIN_MIENTRAS
+   SI ( TRAE_REGISTRO ( 'PUESTO', TRAE_DSP ( 'P', _fi )))
+      IMP_XY ( 1100, 830, 'PUESTO':'DESCRIPCION' )
+   FIN_SI
+
+   IMP_XY ( 200, 1070, 'EMPRESA':'NOMBRE' )
+   $saux := $rfc
+   SI ( LONGITUD( $saux ) = 14 )
+     $saux := ' ' + $saux
+   FIN_SI
+   _cont := 0
+   MIENTRAS ( _cont < 15 )
+      IMP_XY (( _cont * 65 ) + 90, 1200, SUBSTR ( $saux, 1, 1 ))
+      $saux := SUBSTR ( $saux, 2, 15 )
+      _cont := _cont + 1
+   FIN_MIENTRAS
+   $saux := FORMATO ( 'PATRONAL':'REGISTRO PATRONAL', 'XXXXXXXXXX-X' )
+   _cont := 0
+   MIENTRAS ( _cont < 12 )
+      IMP_XY (( _cont * 65 ) + 1190, 1200, SUBSTR ( $saux, 1, 1 ))
+      $saux := SUBSTR ( $saux, 2, 15 )
+      _cont := _cont + 1
+   FIN_MIENTRAS
+   IMP_XY ( 200, 1340, $giro )
+   IMP_XY ( 200, 1570, 'EMPPRIN':'DESCRIPCION' )
+   _hrs := 'EMPPRIN':'HORAS' 
+   DECIMALES := 0
+   IMPRIME ;; IMPRIME
+   IMP ( COL (10), _hrs )
+   #IMP XY ( 200, 1620,  hrs ) ;; IMPRIME_SIN_SALTO
+   $saux := FECHA ( 'EMPPRIN':'FECHA_CURSO')
+   $saux := SUBSTR ( $saux, 5, 2 ) + '      ' + SUBSTR ( $saux, 3, 2 ) + '      ' + SUBSTR ( $saux, 1, 2 )
+   IMP_XY ( 1025, 1700, $saux )
+   $saux := FECHA ( 'EMPPRIN':'FECHAF_CURSO')
+   $saux := SUBSTR ( $saux, 5, 2 ) + '      ' + SUBSTR ( $saux, 3, 2 ) + '      ' + SUBSTR ( $saux, 1, 2 )
+   IMP_XY ( 1600, 1700, $saux )
+   IMP_XY ( 200, 1830, $agente )
+   IMP_XY ( 200, 2060, $instructor )
+
+FIN_SUB_RUTINA
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   DIBUJA_FORMATO
+   PON_DATOS
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+   AVANZA_HOJA ;; IMPRIME
+FIN_MIENTRAS
+
+TERMINA_REPORTE

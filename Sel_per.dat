@@ -1,0 +1,26 @@
+#DESCRIPCION
+#Este archivo es una utileria para pedir el periodo para los reportes de nomna.
+#FIN_DESCRIPCION
+
+_per_sel := 0
+$nom_sel := TRAE_VALOR_TABLA( &in, 11, 6 )
+ABRE_BASE( 'TIPONOM' )
+SI ((( $nom_sel <> '' ) AND (POS(',', $nom_sel) = 0 )) OR ( TOTAL_REGISTROS ( 'TIPONOM' ) = 1 ))
+  SI ( TOTAL_REGISTROS ( 'TIPONOM' ) = 1 )
+    PRIMER_REGISTRO ( 'TIPONOM' )
+    $nom_sel := 'TIPONOM':'CLAVE'
+  SI_NO
+    $nom_sel := SUBSTR( $nom_sel, 2, LONGITUD( $nom_sel ) - 2 )
+  FIN_SI
+  BORRA_PARAMETROS
+  DECIMALES := 0
+  NUEVO_PARAMETRO ( 'PERIODO ' + $nom_sel, .( 'TIPONOM':'ACTUAL' ), _per_sel )
+  LEE_PARAMETROS
+  SI ( TRAE_REGISTRO ( 'TIPONOM', $nom_sel ) )
+    SI ( TRAE_REGISTRO ( 'PERIODO', $nom_sel, _per_sel ) )
+      SI ( CAMBIA_PERIODO( 'TIPONOM':'CLAVE', _per_sel, FALSO ) = FALSO )
+        MENSAJE( 'EL PERIODO ' + .(_per_sel) + ' NO PUDO SER CONSULTADO...' )
+      FIN_SI
+    FIN_SI
+  FIN_SI
+FIN_SI

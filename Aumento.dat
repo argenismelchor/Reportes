@@ -1,0 +1,160 @@
+#AUMENTO MASIVO DE SALARIOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este proceso genera un aumento de salario a los trabajadores vigentes de la empresa.
+#Pide la fecha y tipo del aumento. Mientras no se indique grabar este reporte no afecta los kardex de los empleados.
+#Este proceso imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal. De los sueldos imprime el sueldo anterior, el nuevo y el aumento.
+#Este proceso tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ('FECHA','',_ff)
+NUEVO_PARAMETRO_SEL ('TIPO', 'PESOS/PORCENTAJE', _tipo_aumento)
+NUEVO_PARAMETRO_CHEQ('ARRASTRAR VARIABLE', '', _arr_var )
+NUEVO_PARAMETRO_CHEQ('GRABAR DATOS', '', _grabar )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+#Parametro Extras
+_monto := 0
+_lv    := 0
+
+SI ( _tipo_aumento = 0 )
+  NUEVO_PARAMETRO ( 'MONTO', '', _monto )
+SI_NO
+  NUEVO_PARAMETRO ( 'PORCENTAJE', '', _monto )
+FIN_SI
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+ENCABEZADO
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   _lv := LONGITUD ( VERSION_GIRO )
+   IMP ( COL (1) , NOMBRE_REPORTE, COL (COLUMNAS - _lv) , VERSION_GIRO ) ;; IMPRIME
+   IMP ( COL (1) , CLAVE_REPORTE , CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+   IMP ( CENTRA ('Aumento Masivo de Salarios al ' + FECHA (_ff) ) );; IMPRIME
+   IMP ( REPITETXT('=',80));; IMPRIME
+   SI ( CD_DC = 0 )
+     IMP ( COL(1), 'Clave', COL(10), 'Nombre', COL(50), DER('SUCURSAL', 10), COL(60), DER('DEPTO', 10), COL(70), DER('PUESTO', 10) );; IMPRIME
+   SI_NO
+     IMP ( COL(1), 'Clave', COL(10), 'Nombre', COL(50), DER('SUCURSAL', 10), COL(60), DER('C.C.', 10), COL(70), DER('PUESTO',10) );; IMPRIME
+   FIN_SI
+   IMP ( REPITETXT('-',80) );; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL (1) , 'Fecha : ', FECHA (FECHA_HOY), '    ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+RENGLONES     := 65
+COLUMNAS      := 80
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_A ( $filtro )
+$val_tabla:=''
+_i:=0
+_sal_anterior:=0
+_sal_nuevo:=0
+_var_imss:=0
+_var_info:=0
+_int_imss:=0
+_int_info:=0
+_ant := 0
+
+#Subrutina diversas
+
+SUB_RUTINA agrega_movimiento
+  SI ( _grabar = 1 )
+    SI (( 'EMPSDO':'FECHA' <> _ff ) O
+        ( 'EMPSDO':'TIPO' <> 'M' ))
+       AGREGA_REGISTRO( 'EMPSDO' )
+    FIN_SI
+    'EMPSDO':'CLAVE' := 'EMPPRIN':'CLAVE'
+    'EMPSDO':'FECHA' := _ff
+    'EMPSDO':'TIPO' := 'M'
+    'EMPSDO':'SDO1' := _sal_nuevo  
+    'EMPSDO':'SDO2' := _var_imss
+    'EMPSDO':'SDO3' := _int_imss
+    'EMPSDO':'SDO4' := _var_info
+    'EMPSDO':'SDO5' := _int_info
+    'EMPSDO':'BAJA IMSS' := 0
+    GRABA_BASE( 'EMPSDO' )
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+  IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 35 ) )
+  IMP ( COL(50), DER('EMPPRIN':'SUC_CLAVE', 10), COL(60), DER('EMPPRIN':'DEP_CLAVE', 10), COL(70), DER('EMPPRIN':'PUE_CLAVE', 10) )
+  IMPRIME
+  DECIMALES:=2
+  TRAE_MOV_FECHA ( _ff )
+  SI ( 'EMPSDO':'TIPO' = 'B' )
+      REGISTRO_ANTERIOR ( 'EMPSDO' )
+  FIN_SI
+  _sal_anterior := 'EMPSDO':'SDO1'
+  SI (_tipo_aumento = 0)
+    DECIMALES  := 2
+    _sal_nuevo := _sal_anterior + _monto
+  SI_NO
+    DECIMALES  := 8
+    _sal_nuevo := _sal_anterior + ( (_monto / 100) * _sal_anterior )
+    DECIMALES  := 2
+    _sal_nuevo := _sal_nuevo
+  FIN_SI
+  SI ( _arr_var = 1 )
+    _var_imss := 'EMPSDO':'SDO2'
+    _var_info := 'EMPSDO':'SDO4'
+  SI_NO
+    _var_imss := 0
+    _var_info := 0
+  FIN_SI
+  DECIMALES := 2 
+  _int_imss := INTEGRA_IMSS( _ff, _sal_nuevo, _var_imss )
+  _int_info := INTEGRA_INFONAVIT( _ff, _sal_nuevo, _var_info )
+  IMP( COL(8), 'Salario Anterior: ', DER($(_sal_anterior), 8), '     Salario Nuevo: ',  DER($(_sal_nuevo), 8)) 
+  SI (_tipo_aumento=0)   
+    IMP( COL(65), 'Aumento: ', .(_monto) )
+  SI_NO
+    DECIMALES:=0
+    IMP( COL(65), 'Aumento: ', .(_monto), ' %' )
+  FIN_SI
+  IMPRIME
+  agrega_movimiento
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+  SI ( ES_VIGENTE ( _ff ))
+    datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte

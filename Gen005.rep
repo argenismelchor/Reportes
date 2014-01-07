@@ -1,0 +1,70 @@
+#SUELDO ACTUAL Y ANTERIOR
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra todos los trabajadores vigentes con su sueldo actual y el anterior. Se pide la fecha a la cual se ha de buscar el movimiento salarial
+#Este reporte imprime de los trabajadores la clave, nombre, sdo actual, int actual, sdo anterior, int anterior.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA', '', _ff )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+COLUMNAS      := 80
+RENGLONES     := 65
+FORMATO_PESOS := 2
+FORMATO_FECHA := 3
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   encabezado_ini
+   $titulo_reporte := 'SUELDO ACTUAL Y ANTERIOR AL ' + FECHA( _ff )
+   IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' , COL (40) , DER ( 'SDO ACT' , 10 ) , COL (50) , DER ( 'INT ACT' , 10 ) , COL (60) , DER ( 'SDO ANT' , 10 ) , COL (70) , DER ( 'INT ANT' , 10 ) ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+#Variables Globales
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL (1) , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 28 ) )
+   DECIMALES := 2
+   SI ( 'EMPSDO':'TIPO' <> 'B' )
+      IMP ( COL (40) , DER ( $ ( 'EMPSDO':'SDO1' ) , 10 ) , COL (50) , DER ( $ ( 'EMPSDO':'SDO3' ) , 10 ) )
+   FIN_SI
+   REGISTRO_ANTERIOR ( 'EMPSDO' )
+   SI ( 'EMPSDO':'TIPO' <> 'B' )
+      IMP ( COL (60) , DER ( $ ( 'EMPSDO':'SDO1' ) , 10 ) , COL (70) , DER ( $ ( 'EMPSDO':'SDO3' ) , 10 ) )
+   FIN_SI
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO' , 'CLAVE' )
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE ( _ff ) )
+      TRAE_MOV_FECHA ( _ff )
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte

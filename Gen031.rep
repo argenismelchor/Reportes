@@ -1,0 +1,255 @@
+#IMPORTACION DATOS PRINCIPALES
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Importacion datos de una archivo de texto ALTAS1.TXT del directorio de trabajo con el siguiente formato:
+#CAMPO       COL LON JUST.  FORMATO
+#CLAVE         1  10  IZQ
+#NOMBRE       11  30  IZQ
+#PATERNO      41  30  IZQ
+#MATERNO      71  30  IZQ
+#AFILIACION  101  11  IZQ
+#RFC         112  13  IZQ
+#INGRESO     125   8  IZQ  DDMMAAAA
+#BAJA        133   8  IZQ  DDMMAAAA
+#SUCURSAL    141  10  IZQ
+#DEPTO.      151  10  IZQ
+#PUESTO      161  10  IZQ
+#TIPO NOMINA 171   3  IZQ
+#SC          175   1  IZQ
+#CUENTA TARJ.177  20  IZQ
+#SUELDO DIA  198  10  DER  XXXXX.XX
+#SUELDO VAR  208  10  DER  XXXXX.XX
+#SUELDO INT  218  10  DER  XXXXX.XX
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO ('ARCHIVO DE ALTA', DIRECTORIO_TRABAJO + '\ALTAS1.TXT', $archivo )
+NUEVO_PARAMETRO_CHEQ ('AGREGAR BAJAS', '', _baj  )
+LEE_PARAMETROS
+
+#SALIDA := $salida
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ('IMPORTACION DE DATOS PRINCIPALES')) ;; IMPRIME
+   IMP ( REPITETXT('=',90)) ;; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(40), 'ACCION', COL(50), DER('TABLA',10) );; IMPRIME
+   IMP ( REPITETXT('-',90) );; IMPRIME;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+CREA_BASE_TXT ( 'TABLA', $archivo, 'FIJO' )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'CLAVE', 1   , 10  )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'NOM'  , 11  , 30 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'AP'   , 41  , 30 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'AM'   , 71  , 30 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'IMSS' , 101 , 11 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'RFC'  , 112 , 13 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'ING'  , 125 , 8 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'BAJA' , 133 , 8 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'SUC'  , 141 , 10 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'DEP'  , 151 , 10 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'PUE'  , 161 , 10 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'TNOM' , 171 , 3 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'SC'   , 175 , 1 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'CTAR' , 177 , 20 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'SD'   , 198 , 10 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'SV'   , 208 , 10 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'SI'   , 218 , 10 )
+
+ABRE_BASE_TXT ( 'TABLA', 'EDICION' )
+
+ABRE_BASE ( 'EMPPRIN' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPDEP', 'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPPUES','CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPSUC', 'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+# DECLARACION DE VARIABLES  GLOBALES
+$clat   := ''
+$saux   := ''
+_dia    := 0
+_mes    := 0
+_año    := 0
+_fecha  := 0
+_fechab := 0
+$tipo   := ''
+_mas    := 0
+_act    := 0
+$depto  := ''
+$suc    := ''
+
+MUESTRA_AVANCE( 'TABLA', 'AVANCE...' )
+PRIMER_REGISTRO ( 'TABLA' )
+MIENTRAS ( FIN_BASE ( 'TABLA' ) = FALSO )
+
+#######################################################    VERIFICAR SI EXISTE EL TRABAJADOR. SI NO EXISTE SE INSERTA Y SI EXISTE SE ACTUALIZA
+
+ SI ( TRAE_REGISTRO( 'EMPPRIN', 'TABLA':'CLAVE' ) = FALSO )
+   AGREGA_REGISTRO ('EMPPRIN')
+  'EMPPRIN':'CLAVE' := 'TABLA':'CLAVE'
+  $tipo := 'AGREGANDO'
+  _mas := _mas + 1
+ SI_NO
+  $tipo := 'ACTUALIZ'
+  _act := _act + 1
+ FIN_SI
+
+#######################################################    ASIGNACION NOMBRE Y APELLIDOS
+
+  'EMPPRIN':'NOMBREN' := 'TABLA':'NOM'
+  'EMPPRIN':'NOMBREP' := 'TABLA':'AP'
+  'EMPPRIN':'NOMBREM' := 'TABLA':'AM'
+
+  IMP ( COL(1), 'TABLA':'CLAVE', COL (10), SUBSTR( 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN', 1, 28) )
+  IMP ( COL(40), $tipo, COL(50), 'EMPPRIN' ) ;; IMPRIME
+#######################################################    NUMERO DE IMSS
+  
+  'EMPPRIN':'AFILIACION':= 'TABLA':'IMSS'
+
+#######################################################    NUMERO RFC
+
+  'EMPPRIN':'RFC':= 'TABLA':'RFC'
+
+#######################################################    FECHA INGRESO ( DDMMAAAA)
+
+  _dia := VALOR ( SUBSTR( 'TABLA':'ING', 1, 2 ) )
+  _mes := VALOR ( SUBSTR( 'TABLA':'ING', 3, 2 ) )
+  _año := VALOR ( SUBSTR( 'TABLA':'ING', 5, 4 ) )
+  _fecha := CALCULA_FECHA ( _año, _mes, _dia )  
+  'EMPPRIN':'INGRESO' := _fecha
+
+
+
+#######################################################    SUCURSAL
+
+  SI ( TRAE_REGISTRO( 'EMPSUC', 'TABLA':'CLAVE', _fecha ) = FALSO )
+    AGREGA_REGISTRO ('EMPSUC')
+    'EMPSUC':'CLAVE' := 'TABLA':'CLAVE'
+    'EMPSUC':'FECHA ENTRADA' := _fecha
+    'EMPSUC':'FECHA SALIDA' := CALCULA_FECHA( 2099, 12, 31 )
+    IMP ( COL(40), 'AGREGANDO', COL(50), 'EMPSUC', COL(60), 'TABLA':'SUC' ) ;; IMPRIME    
+  SI_NO
+    IMP ( COL(40), 'ACTUALIZ', COL(50), 'EMPSUC', COL(60), 'TABLA':'SUC' ) ;; IMPRIME    
+  FIN_SI
+  'EMPSUC':'CATALOGO':= 'TABLA':'SUC'
+  GRABA_BASE( 'EMPSUC' )
+
+#######################################################    DEPARTAMENTO
+
+  SI ( TRAE_REGISTRO( 'EMPDEP', 'TABLA':'CLAVE', _fecha ) = FALSO )
+    AGREGA_REGISTRO ('EMPDEP')
+    'EMPDEP':'CLAVE' := 'TABLA':'CLAVE'
+    'EMPDEP':'FECHA ENTRADA' := _fecha
+    'EMPDEP':'FECHA SALIDA' := CALCULA_FECHA( 2099, 12, 31 )
+    IMP ( COL(40), 'AGREGANDO', COL(50), 'EMPDEP', COL(60), 'TABLA':'DEP' ) ;; IMPRIME    
+  SI_NO
+    IMP ( COL(40), 'ACTUALIZ', COL(50), 'EMPDEP', COL(60), 'TABLA':'DEP' ) ;; IMPRIME    
+  FIN_SI
+  'EMPDEP':'CATALOGO':= 'TABLA':'DEP'
+  GRABA_BASE( 'EMPDEP' )
+
+#######################################################    PUESTO
+
+  SI ( TRAE_REGISTRO( 'EMPPUES', 'TABLA':'CLAVE', _fecha ) = FALSO )
+    AGREGA_REGISTRO ('EMPPUES')
+    'EMPPUES':'CLAVE' := 'TABLA':'CLAVE'
+    'EMPPUES':'FECHA ENTRADA' := _fecha
+    'EMPPUES':'FECHA SALIDA' := CALCULA_FECHA( 2099, 12, 31 )
+    IMP ( COL(40), 'ACTUALIZ', COL(50), 'EMPPUES', COL(60), 'TABLA':'PUE' ) ;; IMPRIME    
+  SI_NO
+    IMP ( COL(40), 'AGREGANDO', COL(50), 'EMPPUES', COL(60), 'TABLA':'PUE' ) ;; IMPRIME    
+  FIN_SI
+  'EMPPUES':'CATALOGO':= 'TABLA':'PUE'
+  GRABA_BASE( 'EMPPUES' )
+
+#######################################################    TIPO DE NOMINA  ( SEM,QUI,MEN,DEC )
+
+ 'EMPPRIN':'TIPO_NOM':= 'TABLA':'TNOM'
+
+#######################################################   1 = SINDICALIZADO / 0 = CONFIANZA
+
+ 'EMPPRIN':'CUOTA_SINDICAL' := VALOR ('TABLA':'SC')
+
+#######################################################   CTA. TARJETA
+
+ 'EMPPRIN':'CTA_TARJETA' := 'TABLA':'CTAR'
+ 'EMPPRIN':'PE' := 'P'
+ GRABA_BASE( 'EMPPRIN' )
+  
+#######################################################    ASIGNACION SUELDOS
+
+  SI ( TRAE_REGISTRO( 'EMPSDO', 'TABLA':'CLAVE', _fecha, 'A' ) = FALSO )
+    AGREGA_REGISTRO ('EMPSDO')
+    'EMPSDO':'CLAVE' := 'TABLA':'CLAVE'
+    'EMPSDO':'FECHA' := _fecha
+    'EMPSDO':'TIPO'  := 'A'
+    IMP ( COL(40), 'AGREGANDO', COL(50), 'EMPSDO' )
+  SI_NO
+    IMP ( COL(40), 'ACTUALIZ', COL(50), 'EMPSDO' )
+  FIN_SI
+
+############################################ SUELDO DIARIO
+
+  $saux := QUITA_CARACTER( ' ', 'TABLA':'SD' )
+  'EMPSDO':'SDO1':= VALOR( $saux )
+
+############################################ SUELDO VARIABLE IMSS E INF.
+
+  $saux := QUITA_CARACTER( ' ', 'TABLA':'SV' )
+  'EMPSDO':'SDO2':= VALOR( $saux )
+  'EMPSDO':'SDO4':= VALOR( $saux )
+
+############################################ SUELDO DIARIO INTEGRADO  IMSS E INF.
+
+  $saux := QUITA_CARACTER( ' ', 'TABLA':'SI' )
+  'EMPSDO':'SDO3':= VALOR( $saux )
+  'EMPSDO':'SDO5':= VALOR( $saux )
+  GRABA_BASE ('EMPSDO')
+  IMP ( COL(60), DER( $('EMPSDO':'SDO1'), 10) ) ;; IMPRIME
+
+#######################################################    FECHA BAJA ( DDMMAAAA)
+
+  SI ( _baj = 1 ) 
+    _dia := VALOR ( SUBSTR( 'TABLA':'BAJA', 1, 2 ) )
+    _mes := VALOR ( SUBSTR( 'TABLA':'BAJA', 3, 2 ) )
+    _año := VALOR ( SUBSTR( 'TABLA':'BAJA', 5, 4 ) )
+    SI (( _dia <> 0 ) AND ( _mes <> 0 ) AND ( _año <> 0 ))
+       _fechab := CALCULA_FECHA ( _año, _mes, _dia )  
+  
+  #######################################################    ASIGNACION BAJA
+  
+       SI ( TRAE_REGISTRO( 'EMPSDO', 'TABLA':'CLAVE', _fechab, 'B' ) = FALSO )
+         AGREGA_REGISTRO ('EMPSDO')
+         'EMPSDO':'CLAVE' := 'TABLA':'CLAVE'
+         'EMPSDO':'FECHA' := _fechab
+         'EMPSDO':'TIPO'  := 'B'
+         GRABA_BASE('EMPSDO')
+       FIN_SI
+    FIN_SI
+  FIN_SI
+
+  SIGUIENTE_REGISTRO( 'TABLA' )
+
+FIN_MIENTRAS
+
+IMPRIME ;; IMPRIME
+DECIMALES := 0
+IMP ( 'EMPLEADOS AGREGADOS    : ', _mas ) ;; IMPRIME
+IMP ( 'EMPLEADOS ACTUALIZADOS : ', _act ) ;; IMPRIME
+
+TERMINA_REPORTE

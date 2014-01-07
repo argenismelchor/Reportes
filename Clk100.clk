@@ -1,0 +1,186 @@
+#TRANSFERENCIA DE ACCESOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 1.0
+#DESCRIPCION
+#Este reporte permite transferir los accesos.
+#FIN_DESCRIPCION
+
+_bitacora := 0
+ABRE_BASE( 'TIPONOM' )
+PRIMER_REGISTRO( 'TIPONOM' )
+SI ( TRAE_REGISTRO( 'PERIODO', 'TIPONOM':'CLAVE', 'TIPONOM':'ACTUAL' ) )
+  #
+FIN_SI
+
+FORMATO_FECHA := 0
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA', $salida)
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL', FECHA( 'PERIODO':'FECHA INICIAL' ), _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL', FECHA( 'PERIODO':'FECHA FINAL' ), _ff )
+NUEVO_PARAMETRO_TAB ( 'TIPO NOMINA', 'TIPONOM/CLAVE/TIPOS DE NOMINA', $tiponom )
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR', '', _grabar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+NUEVO_PARAMETRO_CHEQ ( 'TRANSFERIR', 'FALTAS', _trans_faltas     )
+NUEVO_PARAMETRO_CHEQ ( '',           'HORAS EXTRAS', _trans_he   )
+NUEVO_PARAMETRO_CHEQ ( '',           'RETARDOS', _trans_retardos )
+NUEVO_PARAMETRO_CHEQ ( '',           'MEDIAS FALTAS', _trans_mf  )
+NUEVO_PARAMETRO_CHEQ ( '',           'CHECAR FESTIVOS', _checar_festivo  )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_lv := 0
+FORMATO_HORA  := 6
+SI (( _grabar = 1 ) AND ( _bitacora = 1 ))
+  MODO_IMPRESION( 'DIRECTO' )
+  FORMATO_FECHA := 6
+SI_NO
+  ENCABEZADO
+     LETRA ( 'LETRA ENFATISADA' )
+     IMPRIME
+     _lv := LONGITUD ( VERSION_GIRO )
+     IMP ( COL (1) , NOMBRE_REPORTE , COL (COLUMNAS - _lv) , VERSION_GIRO ) ;; IMPRIME
+     IMP ( COL (1) , CLAVE_REPORTE , CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+     IMP ( CENTRA ('TRANSFERENCIA DEL ' + FECHA (_fi) + ' AL ' + FECHA (_ff) ) ) ;; IMPRIME
+     IMP ( REPITETXT ( '=' , 80 ) ) ;; IMPRIME
+     IMP ( COL (1) , 'CLAVE' , COL (10) , 'FECHA' , COL (40) , 'INCIDENCIA', COL (60) , 'MONTO', COL (70) , DER( 'DECIMAL', 10 ) ) ;; IMPRIME
+     IMP ( REPITETXT ( '-' , 80 ) ) ;; IMPRIME ;; IMPRIME 
+     LETRA ( 'LETRA NORMAL' ) ;; IMPRIME
+  FIN_ENCABEZADO
+  
+  PIE
+     IMPRIME
+     DECIMALES := 0
+     LETRA ( 'LETRA ENFATISADA' )
+     IMPRIME
+     IMP ( COL (1) , 'Fecha : ' , FECHA (FECHA_HOY) , '    ' , 'Hora : ' , HORA (HORA_ACTUAL) , COL (65) , 'PAGINA : ' , PAGINA ) ;; IMPRIME
+     LETRA ( 'LETRA NORMAL' ) ;; IMPRIME
+     DECIMALES := 2
+  FIN_PIE
+  FORMATO_FECHA := 3
+FIN_SI
+SALIDA_REPORTE( DIRECTORIO_TRABAJO + '\BITATRANS.LOG' )
+
+SALIDA := $salida
+
+INCLUYE LIBREL.DAT
+
+#VARIABLES LOCALES
+_iaux          := 0
+_ffin          := 0
+_fechae        := 0
+_fechas        := 0
+
+SUB_RUTINA formato_trabajador
+  checa_festivos
+  _faux := _fi
+  _turno_grabado := 0
+  carga_dia_turno
+  #ESTO VALIDA QUE SI SU HORARIO ES NOCTURNO VERIFIQUE EL DIA ANTERIOR.
+  _faux := _fi
+  _ffin := _ff
+  MIENTRAS( _faux <= _ffin )
+   SI ( ES_VIGENTE( _faux ) )
+    inicializa_valores
+    carga_dia_turno
+    calcula_dia
+    SI ( _hay_checada )
+      SI (( _actualizar_turno = 1 ) AND ( _turno_grabado = 0 ))
+        actualiza_turno
+      FIN_SI
+      DECIMALES := 8      
+      #SI ES DOMINGO GENERA PRIMA DOMINICAL
+      SI ( _calc_primadom = 1 )
+        genera_prima
+      FIN_SI
+      #RETARDOS
+      SI (( _trans_retardos = 1 ) AND ( _calc_retardo * 100 > 0 ))
+        _retardo := _calc_retardo
+        #NO SE GENERAN RETARDOS EN DIAS FESTIVOS
+        _festivo    := DIAS_INHABILES( _faux, _faux, 'EMPPRIN':'CALENDARIO', 0, 0 ) 
+        SI ( _festivo = 0 )
+           genera_retardo
+        FIN_SI
+      FIN_SI
+      #MEDIA FALTAS
+      SI (( _trans_mf = 1 ) AND ( _calc_mf = 1 ))
+        genera_media_falta
+      FIN_SI
+      #CHECA TIEMPO EXTRA
+      SI (( _trans_he = 1 ) AND ( _calc_extra > 0 ))
+        _he := _calc_extra
+        genera_he
+        #CHECA SI TRABAJO EN DIA FESTIVO
+      FIN_SI
+      SI ( _calc_festivo = 1 )
+        genera_festivo
+      FIN_SI
+      SI ( _calc_festivo_trab = 1 )
+        genera_festivo
+        #_he := _calc_extra
+        #TIEMPO EXTRA NORMAL
+        #SI ( _he > 0 )
+        #  genera_he
+        #FIN_SI
+        #genera_festivo_trab
+      FIN_SI
+    SI_NO
+      #NO HAY REGISTRO DE CHECADA
+      SI (( _trans_faltas = 1 ) OR ( _checar_festivo = 1 ))
+        carga_excepciones
+        #$excepcion := 'AUSENTE'
+        SI ( $excepcion = 'AUSENTE' )
+            #NO TIENE NINGUNA INCIDENCIA POR LO QUE SE CONSIDERA COMO FALTA
+            genera_falta
+        FIN_SI
+        SI ( $excepcion = 'FESTIVO' )
+            #EL DIA ESTA MARCADO COMO INHABIL Y SE PAGA 1 DIA FESTIVO
+            genera_festivo
+        FIN_SI
+      FIN_SI
+    FIN_SI
+   FIN_SI
+   _faux := _faux + 1
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+PON_VALOR_TABLA( &in, _quien_checa_col, _quien_checa_ren, $quien_checa_fil )
+$campos_extras := 'E. TURNO, E. CALENDARIO'
+$condiciones_extras := 'E. TURNO <> ""'
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPRELOJ', 'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPSDO',   'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPAUS',   'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPINC',   'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPVACA',  'CLAVE' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPRET',   'CLAVE' )
+SI ( _actualizar_turno = 1 )
+  USA_ARCHIVO( 'EMPPRIN', 'EMPEXT', 'CLAVE' )
+FIN_SI
+
+carga_politicas
+IMP ( '#BITACORA DE TRANSFERENCIA' )
+IMPRIME
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE( _fi, _ff ) )
+     SI ( TRAE_REGISTRO ( 'TURNO1', 'EMPPRIN':'TURNO' ) )
+       MUESTRA_AVANCE( 'EMPPRIN', 'CALC: ' + 'EMPPRIN':'CLAVE' )
+       datos_trabajador
+     FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

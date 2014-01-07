@@ -1,0 +1,90 @@
+#CREDENCIALES TAKATA
+#CREDENCIALES GENERADAS
+#VERSION 2.500
+#USUARIO =*
+#DESCRIPCION
+#Reporte de credenciales generado por el modulo de credenciales.
+#imprime el formato definido en el generador de credenciales.
+#FIN_DESCRIPCION
+#
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+NUEVO_PARAMETRO     ('EMPLEADO', '', $empleado )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+MODO_IMPRESION ( 'GRAFICO')
+_ff := FECHA_HOY
+FORMATO_FECHA := 2
+SALIDA  := $salida
+_hlargo := 2794
+_hancho := 2159
+
+### VARIABLES GLOBALES DEL REPORTE
+_x := 0
+_y := 0
+_sep_x := 100
+_sep_y := 100
+_ini_x := 100
+_ini_y := 100
+_no_cred := 1
+_largo := 1080
+_ancho := 850
+_cred  := 0
+
+SUB_RUTINA formato_trabajador
+  _y := _sep_y + _ini_y
+  IMPRIME_REC( _x, _y, 850, 1080 )
+  IMPRIME_IMAGEN( 'EMPPRIN':'FOTO', _x + 532, _y + 215, 270, 279 )
+  CAMBIA_LETRA( 'Courier New', 10, '\N' )
+  VE_XY( _x + 22, _y + 350 ) ;;  IMP ( SUBSTR('EMPPRIN':'CLAVE', 1, 10) ) ;; IMPRIME
+  VE_XY( _x + 22, _y + 388 ) ;;  IMP ( SUBSTR('EMPPRIN':'NOMBREN', 1, 25) ) ;; IMPRIME
+  VE_XY( _x + 22, _y + 426 ) ;;  IMP ( SUBSTR('EMPPRIN':'NOMBREP', 1, 25) ) ;; IMPRIME
+  VE_XY( _x + 22, _y + 467 ) ;;  IMP ( SUBSTR('EMPPRIN':'NOMBREM', 1, 25) ) ;; IMPRIME
+  CAMBIA_LETRA( 'Arial', 14, '\N' )
+  VE_XY( _x + 156, _y + 192 ) ;;  IMP ( 'Seat Belts Inc.' ) ;; IMPRIME
+  CAMBIA_LETRA( 'Courier New', 12, '' )
+  VE_XY( _x + 32, _y + 251 ) ;;  IMP ( 'Equipo Automotriz' ) ;; IMPRIME
+  CAMBIA_LETRA( 'Courier New', 10, '' )
+  VE_XY( _x + 30, _y + 296 ) ;;  IMP ( 'Americana, S.A. de C.V.' ) ;; IMPRIME
+  AVANZA_HOJA
+  IMPRIME
+
+  IMPRIME_REC( _x, _y, 850, 1080 )
+  _y := -300
+  CAMBIA_LETRA( 'Courier New', 10, '\N' )
+  VE_XY( _x + 217, _y + 568 ) ;;  IMP ( 'POLITICA DE CALIDAD' ) ;; IMPRIME
+  CAMBIA_LETRA( 'Courier New', 8, '' )
+  VE_XY( _x + 37, _y + 631 ) ;;  IMP ( 'proveer componentes de la mas alta calidad.' ) ;; IMPRIME
+  VE_XY( _x + 37, _y + 687 ) ;;  IMP ( 'procesos de manufactura. recursos. servicios.' ) ;; IMPRIME
+  VE_XY( _x + 37, _y + 738 ) ;;  IMP ( 'información y sistemas que permitan a nuestras' ) ;; IMPRIME
+  VE_XY( _x + 37, _y + 781 ) ;;  IMP ( 'plantas proporcionar productos de alta calidad' ) ;; IMPRIME
+  VE_XY( _x + 37, _y + 827 ) ;;  IMP ( 'a nuestros clientes a tiempo mientras se' ) ;; IMPRIME
+  VE_XY( _x + 37, _y + 868 ) ;;  IMP ( 'maximizan las ganancias para' ) ;; IMPRIME
+  CAMBIA_LETRA( 'Courier New', 10, '\N' )
+  VE_XY( _x + 555, _y + 862 ) ;;  IMP ( 'TAKATA' ) ;; IMPRIME
+  CAMBIA_LETRA( 'Courier New', 8, '' )
+  VE_XY( _x + 37, _y + 908 ) ;;  IMP ( 'a nivel mundial.' ) ;; IMPRIME
+  CODIGO_BARRAS( 'EMPPRIN':'CLAVE', _x + 151, _y + 967, 509, 93 )
+  #AVANZA_HOJA
+  #IMPRIME
+FIN_SUB_RUTINA
+
+#lee_parametros_seleccion
+#lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+ABRE_BASE( 'EMPPRIN' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPRH', 'CLAVE' )
+
+SI ( TRAE_REGISTRO( 'EMPPRIN', $empleado ) )
+    _x:=_sep_x
+   formato_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+SI_NO
+  MENSAJE( 'LA CLAVE DEL EMPLEADO ' + $empleado  + ' NO EXISTE' )
+FIN_SI
+TERMINA_REPORTE

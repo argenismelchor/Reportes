@@ -1,0 +1,212 @@
+#IMPORTACION TOTALES DE NOMINA
+#NO EDITAR
+#USUARIO =*
+#IMPORTACIONES DE CAPTURAS NOMINA
+#VERSION 2.500
+#DESCRIPCION
+#Importacion datos de una archivo de texto NOMINA.TXT del directorio de trabajo con el siguiente formato:
+#CAMPO       COL LON JUST. FORMATO
+#CLAVE         1  10  IZQ
+#CONCEPTO     11  10  IZQ
+#CAP1         21  10  DER XXXXX.XX
+#CAP2         31  10  DER XXXXX.XX
+#TOTAL        41  10  DER XXXXX.XX
+#FIN          51   1  DER '#'
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO      ( 'ARCHIVO', DIRECTORIO_TRABAJO + '\NOMINA.TXT', $archivo )
+NUEVO_PARAMETRO_TAB  ( 'TIPO NOMINA', 'TIPONOM/CLAVE/TIPOS DE NOMINA', $tiponom )
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR', '', _grabar )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+CREA_BASE_TXT ( 'TABLA', $archivo, 'FIJO' )
+DEFINE_CAMPO_TXT ( 'TABLA', 'CLAVE' , 1 , 10 )
+DEFINE_CAMPO_TXT ( 'TABLA', 'CONCEPTO' , 11, 10 )
+DEFINE_CAMPO_TXT ( 'TABLA', 'CAP1' , 21, 10 )
+DEFINE_CAMPO_TXT ( 'TABLA', 'CAP2' , 31, 10 )
+DEFINE_CAMPO_TXT ( 'TABLA', 'CAP3' , 41, 10 )
+DEFINE_CAMPO_TXT ( 'TABLA', 'FIN'  , 51, 1 )
+ABRE_BASE_TXT    ( 'TABLA', 'EDICION' )
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ('IMPORTACION DE CAPTURAS')) ;; IMPRIME
+   IMP ( REPITETXT('=',90)) ;; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(40), 'ACCION', COL(50), DER('CONCEPTO',10), COL(60), DER('CAP1',10), COL(70), DER('CAP2',10), COL(80), DER('CAP3',10) );; IMPRIME
+   IMP ( REPITETXT('-',90) );; IMPRIME;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+FORMATO_PESOS := 2
+FORMATO_FECHA := 2
+DECIMALES := 2
+VAR_T( &emp )
+_dato_fecha := 730000
+$clave    := ''
+$concepto := ''
+_cap1     := 0
+_cap2     := 0
+_cap3     := 0
+_fecha    := 0
+$saux     := ''
+_repetido := 0
+_existe   := 0
+$cap1     := ''
+$cap2     := ''
+$cap3     := ''
+_tcap1    := 0
+_tcap2    := 0
+_tcap3    := 0
+
+SUB_RUTINA carga_fecha
+  _fecha := CALCULA_FECHA( VALOR( SUBSTR( $saux, 7, 4) ), VALOR( SUBSTR( $saux, 4, 2) ), VALOR( SUBSTR( $saux, 1, 2) ) )
+FIN_SUB_RUTINA
+
+SUB_RUTINA quita_blancos
+  MIENTRAS( SUBSTR( $saux, 1, 1 ) = ' ' )
+    $saux := ELIMINA( $saux, 1, 1 )
+  FIN_MIENTRAS
+  MIENTRAS( SUBSTR( $saux, LONGITUD( $saux ), 1 ) = ' ' )
+    $saux := ELIMINA( $saux, LONGITUD( $saux ), 1 )
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_valores
+  $concepto := 'TABLA':'CONCEPTO'
+
+  $saux := 'TABLA':'CAP1'
+  #quita_blancos
+  SI ( POS('/', $saux) > 0 )
+    carga_fecha
+    _cap1 := _fecha
+  SI_NO
+    _cap1 := VALOR( $saux )
+  FIN_SI
+
+  $saux := 'TABLA':'CAP2'
+  #quita_blancos
+  SI ( POS('/', $saux) > 0 )
+    carga_fecha
+    _cap2 := _fecha
+  SI_NO
+    _cap2 := VALOR( $saux )
+  FIN_SI
+
+  $saux := 'TABLA':'CAP3'
+  #quita_blancos
+  SI ( POS('/', $saux) > 0 )
+    carga_fecha
+    _cap3 := _fecha
+  SI_NO
+    _cap3 := VALOR( $saux )
+  FIN_SI
+  SI ( _cap1 < _dato_fecha )
+    $cap1 := $( _cap1 )
+  SI_NO
+    $cap1 := FECHA( _cap1 )
+  FIN_SI
+  SI ( _cap2 < _dato_fecha )
+    $cap2 := $( _cap2 )
+  SI_NO
+    $cap2 := FECHA( _cap2 )
+  FIN_SI
+  SI ( _cap3 < _dato_fecha )
+    $cap3 := $( _cap3 )
+  SI_NO
+    $cap3 := FECHA( _cap3 )
+  FIN_SI
+FIN_SUB_RUTINA
+
+SI ( TRAE_REGISTRO ( 'TIPONOM', $tiponom ) )
+  SI ( TRAE_REGISTRO ( 'PERIODO', $tiponom, 'TIPONOM':'ACTUAL' ) = FALSO )
+    MENSAJE ( 'ERROR AL CONSULTAR EL PERIODO ' + $tiponom + '-' + .( 'TIPONOM':'ACTUAL' ) )
+  FIN_SI
+FIN_SI
+
+ABRE_BASE ( 'EMPPRIN' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPNOM', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'TABLA' )
+MIENTRAS ( FIN_BASE( 'TABLA' ) = FALSO )
+  $clave := 'TABLA':'CLAVE'
+  SI ( TRAE_REGISTRO ( 'EMPPRIN', $clave ) )
+    carga_valores
+    IMP ( COL(1), 'TABLA':'CLAVE', COL (10), SUBSTR( 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN', 1, 28) )
+    _repetido := 0
+    _existe := 0
+    SI ( TRAE_REGISTRO( 'CONCEPTO', $concepto ) = FALSO )
+      IMP ( COL(40), 'ERROR', COL(50), DER( $concepto, 10), COL(60), 'NO SE ENCUENTRA' ) ;; IMPRIME
+    FIN_SI
+
+    SI ( 'CONCEPTO':'MULTIPLE' = 1 )
+      SI ( _cap1 > _dato_fecha )
+        SI ( TRAE_REGISTRO( 'NOMINA', $concepto ) )
+          _existe := 1
+        FIN_SI
+        SI ( _existe = 1 )
+          REPITE
+            SI ( CAP1( $concepto ) = _cap1 )
+              _repetido := 1
+            FIN_SI
+            SIGUIENTE_REGISTRO( 'NOMINA' )
+          HASTA( 'NOMINA':'CLAVE' <> $concepto )
+        FIN_SI
+      FIN_SI
+    FIN_SI
+
+    SI ( _repetido = 0 )
+      SI (( CONCEPTO_CAPTURADO ( $concepto ) = FALSO ) OR ( 'CONCEPTO':'MULTIPLE' = 1 ))
+        CAPTURA_CONCEPTO( $concepto )
+        IMP ( COL(40), 'AGREGANDO', COL(50), DER($concepto, 10), COL(60), DER( $cap1, 10 ), COL(70), DER( $cap2, 10 ), COL(80), DER( $cap3, 10 ) ) ;; IMPRIME
+      SI_NO
+        IMP ( COL(40), 'ACTUALIZ', COL(50), DER($concepto,10), COL(60), DER( $cap1, 10 ), COL(70), DER( $cap2, 10 ), COL(80), DER( $cap3, 10 ) ) ;; IMPRIME
+      FIN_SI
+      CAP1 ( $concepto ) := _cap1
+      CAP2 ( $concepto ) := _cap2
+      TOTAL( $concepto ) := _cap3
+      SI ( _grabar = 1 )
+        GRABA_BASE( 'EMPNOM' )
+      FIN_SI
+      _tcap1 := _tcap1 + _cap1
+      _tcap2 := _tcap2 + _cap2
+      _tcap3 := _tcap3 + _cap3
+    SI_NO
+      IMP ( COL(40), 'REPETIDO', COL(50), DER( $concepto, 10), COL(60), DER( $cap1, 10 ), COL(70), DER( $cap2, 10 ), COL(80), DER( $cap3, 10 ) ) ;; IMPRIME
+    FIN_SI
+  SI_NO
+    IMP ( COL(1), 'TABLA':'CLAVE', COL(40), 'ERROR', COL(50), 'EMPLEADO NO ENCONTRADO...' ) ;; IMPRIME
+    $saux := 'TABLA':'CLAVE'
+    AGREGA_VALOR_COL( &emp, 0, $saux )
+  FIN_SI
+  SIGUIENTE_REGISTRO ( 'TABLA' )
+FIN_MIENTRAS
+
+IMPRIME IMPRIME
+IMP ( 'TOTALES DE IMPORTACION' ) IMPRIME
+DECIMALES := 2
+IMP ( 'CAP1 : ', $( _tcap1 ) ) IMPRIME
+IMP ( 'CAP2 : ', $( _tcap2 ) ) IMPRIME
+IMP ( 'TOTAL: ', $( _tcap3 ) ) IMPRIME
+IMPRIME IMPRIME
+IMP( 'EMPLEADOS NO ENCONTRADOS EN LA BASE DE DATOS' ) IMPRIME
+IMPRIME_TABLA( &emp, 10 )
+
+TERMINA_REPORTE
+

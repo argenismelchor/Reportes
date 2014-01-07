@@ -1,0 +1,249 @@
+#RECIBOS PH ASIMILADOS
+#RECIBOS SAMSUNG
+#USUARIO =*
+#RECIBOS CON FORMATO
+#RECIBOS CON FORMATO
+#RECIBOS CON FORMATO
+#RECIBOS JUAREZ
+#RECIBOS JUAREZ
+#RECIBOS MONY
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte de recibos de Nomina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+$clavemp  := '' ;; $empresa  := '' ;; $rfc    := '' ;; $patronal := ''
+$periodo  := '' ;; $nombre   := '' ;; $puesto := '' ;; $depto    := ''
+$imss     := '' ;; $salario  := '' ;; $curp   := '' ;; $cuenta   := ''
+$concepto := '' ;; $descconc := '' ;; $monto  := '' ;; $cantidad := '' ;; $cantidadt := ''
+$horas    := ''
+
+_x:= 0 ;; _y:= 0  ;; _perc := 0 ;; _dedu := 0 ;; _veces := 0  ;; _horas := 0 ;; _horast := 0
+
+MODO_IMPRESION ( 'GRAFICO')
+TAMAÑO_HOJA  ( 2700 , 2000 )
+IMPRIME_IMAGEN('recibo.jpg', 2, 2, 2000, 2700)
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+
+
+  IMPRIME_IMAGEN  ( 'recibo' , 5 , 5 , 2000 , 2700 ) 
+  IMPRIME_IMAGEN('recibo.jpg', 2, 2, 2000, 2700)
+  CAMBIA_LETRA( 'Arial', 10, '\N' )
+
+  _y     := 0 
+  _veces := 1
+  REPITE 
+######argenis
+
+  SI ( _veces = 2 )
+     _y :=  _y + 60
+  FIN_SI
+
+  $clavemp  := 'EMPPRIN':'CLAVE'
+  $empresa  := 'EMPRESA':'NOMBRE'
+  $rfc      := 'EMPPRIN':'RFC'
+
+  ULTIMO_REGISTRO ( 'EMPSUC')
+  $patronal := 'EMPSUC':'CATALOGO'
+
+  SI ( TRAE_REGISTRO ( 'SUCURSAL' , $patronal ) ) 
+       $patronal := 'SUCURSAL':'NOMBRE'
+
+       SI ( TRAE_REGISTRO ( 'PATRONAL' , $patronal  ) ) 
+            $patronal := 'PATRONAL':'NOMBRE'
+          
+       FIN_SI
+
+  FIN_SI
+
+  FORMATO_FECHA := 3
+  $periodo := FECHA ( 'PERIODO':'FECHA INICIAL' ) + ' al ' + FECHA ( 'PERIODO':'FECHA FINAL'  ) 
+  $nombre  := 'EMPPRIN':'NOMBRE'
+  
+  ULTIMO_REGISTRO ( 'EMPPUES')
+  $puesto := 'EMPPUES':'CATALOGO'
+
+  SI ( TRAE_REGISTRO ( 'PUESTO' , $puesto ) ) 
+       $puesto := 'PUESTO':'DESCRIPCION'
+  FIN_SI
+
+  ULTIMO_REGISTRO ( 'EMPDEP')
+  $depto := 'EMPDEP':'CATALOGO'
+
+  SI ( TRAE_REGISTRO ( 'DEPTO' , $depto ) ) 
+      $depto := 'DEPTO':'DESCRIPCION'
+  FIN_SI
+
+  $imss := 'EMPPRIN':'AFILIACION'
+
+  ULTIMO_REGISTRO ( 'EMPSDO')
+  DECIMALES:= 2
+
+  #$salario := ('EMPEXT':'BANCO')
+ 
+  $curp    := 'EMPPRIN':'CURP'
+ $salario  := 'EMPPRIN':'CTA_TARJETA'
+  
+  IMP_XY ( _x + 1700 , _y + 210 , $clavemp )  
+
+  CAMBIA_LETRA( 'Arial', 7, '' )
+  IMP_XY ( _x + 1220 , _y + 220 , $periodo ) 
+  
+  CAMBIA_LETRA( 'Arial', 9, '\N' )
+  IMP_XY ( _x + 400 , _y + 100 , $empresa  ) 
+  IMP_XY ( _x + 400 , _y + 150 , $rfc      ) 
+  IMP_XY ( _x + 400 , _y + 200 , $patronal ) 
+
+  IMP_XY ( _x + 400 , _y + 340 , $nombre   ) 
+  IMP_XY ( _x + 400 , _y + 380 , $puesto   ) 
+  IMP_XY ( _x + 400 , _y + 420 , $depto    ) 
+  IMP_XY ( _x + 400 , _y + 450 , $rfc      ) 
+
+  IMP_XY ( _x + 1450 , _y + 330 , $imss      ) 
+  IMP_XY ( _x + 1450 , _y + 370 , '$' + $salario   ) 
+  IMP_XY ( _x + 1450 , _y + 410 , $cuenta    ) 
+  IMP_XY ( _x + 1450 , _y + 450 , $curp      ) 
+
+  IMPRIME_SIN_SALTO
+
+  _perc:= 0 ;; _dedu:= 0  ;; _horas := 0 ;; _horast := 0
+
+  CAMBIA_LETRA( 'Courier New', 8, '' )
+
+  PRIMER_REGISTRO ( 'NOMINA')
+  MIENTRAS ( FIN_BASE ( 'NOMINA') = FALSO ) 
+             $concepto := 'NOMINA':'CLAVE'
+             SI ( $concepto  = '10' ) 
+                   _horas := _horas + 'NOMINA':'CAP2' 
+             FIN_SI
+  SIGUIENTE_REGISTRO ( 'NOMINA')
+  FIN_MIENTRAS
+   PRIMER_REGISTRO ( 'NOMINA')
+   MIENTRAS ( FIN_BASE ( 'NOMINA') = FALSO ) 
+             $concepto := 'NOMINA':'CLAVE'
+             SI ( $concepto  = '11' ) 
+                   _horast := _horast + 'NOMINA':'CAP1' 
+             FIN_SI
+
+  SIGUIENTE_REGISTRO ( 'NOMINA')
+  FIN_MIENTRAS
+
+  SI ( _veces = 2 )
+     _y :=  _y + 20
+  FIN_SI
+
+  PRIMER_REGISTRO ( 'NOMINA')
+  MIENTRAS ( FIN_BASE ( 'NOMINA' ) = FALSO ) 
+       $concepto := 'NOMINA':'CLAVE'
+
+       DECIMALES := 2
+       SI ( $concepto = '30' )
+           $monto    := .('NOMINA':'CAP3' )
+       SI_NO
+           $monto    := .('NOMINA':'TOTAL' )
+       FIN_SI
+
+       $cantidad := ''
+       $cantidadt := ''
+
+       SI ( ( 'NOMINA':'TOTAL' <> 0)  OR  (  ( $concepto = '30')  AND ( 'NOMINA':'CAP3' <> 0 ) ) )
+       SI ( TRAE_REGISTRO ( 'CONCEPTO' , 'NOMINA':'CLAVE' ) ) 
+              $descconc:= 'CONCEPTO':'DESCRIPCION'
+
+              SI ( 'CONCEPTO':'PDC'  = 0 ) 
+                    IMP_XY ( _x + 150   , _y + 620 + _perc , $concepto    ) 
+                    IMP_XY ( _x + 220   , _y + 620 + _perc , $descconc    ) 
+
+                    SI ( $concepto = '10' ) 
+                         DECIMALES:= 0 
+                         $cantidad := .(_horas ) 
+                         IMP_XY ( _x + 600   , _y + 620 + _perc , $cantidad    ) 
+                    FIN_SI 
+
+                    SI ( $concepto = '11' ) 
+                         DECIMALES:= 0 
+                         $cantidadt := .(_horast ) 
+                         IMP_XY ( _x + 600   , _y + 620 + _perc , $cantidadt    ) 
+                    FIN_SI
+
+                    DECIMALES:= 2
+                    IMP_XY ( _x + 750   , _y + 620 + _perc , DER($monto,12) ) 
+                    _perc := ( _perc + 40 ) 
+              FIN_SI 
+  
+              SI ( 'CONCEPTO':'PDC'  = 1 ) 
+                    IMP_XY ( _x + 1050   , _y + 620 + _dedu , $concepto  ) 
+                    IMP_XY ( _x + 1150   , _y + 620 + _dedu , $descconc  ) 
+                    IMP_XY ( _x + 1500   , _y + 620 + _dedu , $cantidad  ) 
+                    IMP_XY ( _x + 1650   , _y + 620 + _dedu , DER($monto,12)) 
+                    _dedu := ( _dedu + 40 ) 
+              FIN_SI 
+            FIN_SI
+       FIN_SI
+
+  SIGUIENTE_REGISTRO ('NOMINA')
+  FIN_MIENTRAS
+
+
+SI(TOTAL('VALE') <> 0 )
+      IMP_XY ( _x + 300 , _y + 950  , 'TOTAL VALES:' + DER( TOTAL('VALE'),12 )      )
+FIN_SI
+
+ 
+  IMP_XY ( _x + 1650 , _y + 1060  , DER( TOTAL('DEDU'),12 )      ) 
+  IMP_XY ( _x + 1650 , _y + 1020  , DER( TOTAL('PERC'),12 )      ) 
+  #IMP_XY ( _x + 1650 , _y + 1060  , DER( TOTAL('DEDU'),12 )      ) 
+  SI ( _veces = 2 )
+     _y :=  _y - 20
+  FIN_SI
+  IMP_XY ( _x + 1650 , _y + 1190  , DER( TOTAL('TOTA'),12 )      ) 
+
+ 
+  _y := _y + 1300
+  _veces := _veces + 1
+  HASTA ( _veces > 2 ) 
+
+  AVANZA_HOJA 
+  IMPRIME
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E. RFC,E.CURP,E.CTA_TARJETA,E.AFILIACION'
+base_trabajadores
+
+ABRE_BASE ( 'PATRONAL')
+ABRE_BASE ( 'SUCURSAL')
+ABRE_BASE ( 'PUESTO' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSUC'  , 'CLAVE' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPPUES' , 'CLAVE' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO'  , 'CLAVE' ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPDEP'  , 'CLAVE' ) 
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+
+    SI ( TOTAL('TOTA' ) <> 0 ) 
+     datos_trabajador
+    FIN_SI
+
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+TERMINA_REPORTE

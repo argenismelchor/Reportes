@@ -1,0 +1,740 @@
+#DESCRIPCION
+#utileria estandar de los reportes.
+#NOTA: El hacer cambios a este archivo implica cambios en todos los reportes.
+#FIN_DESCRIPCION
+
+VAR_T ( &in )
+LIMPIA_TABLA ( &in )
+
+#Col 0=Se Utiliza el Indice 1=Identificador del Indice 2=Nombre del Indice 3=Tabla 4=Campo llave
+#    5=Descripcion del Indice 6=Campo en EmpPrin 7=Nivel 8=Salto 9=Total Parcial 10=Llave Actual
+#   11=Seleccion de Filtrado 12=Order by 13=Edo del Indice despues de consulta 14-> Libres
+
+_debuger := _debuger
+
+_in_cont:= 0
+$in_campo:= ''
+$in_tabla:= ''
+
+$param:= ''
+$valor_param := ''
+
+$cve_inicial:= $cve_inicial  #Indice la clave incial del Empl
+$cve_final  := $cve_final    #Indice la clave Final del Emp
+
+_reporte_nomina  := _reporte_nomina  #0 = Reporte Normal   1 = Reporte de nomina, necesario para cambio de archivo de nomina
+_reporte_ssocial := _reporte_ssocial #0 = Reporte Normal
+
+#0 = imprime 1 = omite
+_omitir_encabezados   := _omitir_encabezados
+_omitir_encabezado    := _omitir_encabezado
+_omitir_sub_totales   := _omitir_sub_totales
+_omitir_sub_total     := _omitir_sub_total
+_omitir_total_general := _omitir_total_general
+_omitir_color         := _omitir_color
+_indices_rh           := _indices_rh
+
+#0 = imprime 1 = omite
+$campos_extras      := $campos_extras
+$condiciones_extras := $condiciones_extras
+$bases_extras       := $bases_extras
+$ordenes_extras     := $ordenes_extras
+
+$campos_extras2  := ''
+$condiciones_extras2 := ''
+$bases_extras2   := ''
+$ordenes_extras2 := ''
+$ordenes_extras3 := ''
+$sal  := ''
+_abrir_base      := 1
+
+_incluir_suc := _incluir_suc  ;; # XXX_CLAVE
+_incluir_dep := _incluir_dep
+_incluir_pue := _incluir_pue
+
+_ff := _ff          #Fecha del Reporte
+
+INCLUYE UTIL2A.DAT
+
+$orden := 'RCEN'
+
+SUB_RUTINA salida_disco
+  SI (( $salida = 'DISCO' ) AND ( ARCHIVO_SALIDA = '' ))
+    MODO_IMPRESION ( 'DIRECTO' )
+    _omitir_encabezados   := 1
+    _omitir_sub_totales   := 1
+    _omitir_total_general := 1
+    BORRA_PARAMETROS
+    NUEVO_PARAMETRO ( 'ARCHIVO', DIRECTORIO_TRABAJO+'\SALIDA.TXT', $sal )
+    LEE_PARAMETROS
+    SALIDA_REPORTE( $sal )
+    BORRA_PARAMETROS
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA trae_valor_param
+  $valor_param := SUBSTR ( $param, 1, POS ( '/', $param )-1 )
+  $param := SUBSTR ( $param, POS ( '/', $param )+1, 255 )
+FIN_SUB_RUTINA
+
+SUB_RUTINA crea_indice
+  #Param= Identificador/Nombre/Tabla/Llave/Descripcion/Campo en Empprin/Nivel/Orden/estado al abrir
+  _in_cont := 0
+  MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+    _in_cont := _in_cont + 1
+  FIN_MIENTRAS
+  trae_valor_param PON_VALOR_TABLA ( &in, 1,  _in_cont, $valor_param )
+  trae_valor_param PON_VALOR_TABLA ( &in, 2,  _in_cont, $valor_param )
+  trae_valor_param PON_VALOR_TABLA ( &in, 3,  _in_cont, $valor_param )
+  trae_valor_param PON_VALOR_TABLA ( &in, 4,  _in_cont, $valor_param )
+  trae_valor_param PON_VALOR_TABLA ( &in, 5,  _in_cont, $valor_param )
+  trae_valor_param PON_VALOR_TABLA ( &in, 6,  _in_cont, $valor_param )
+  trae_valor_param PON_VALOR_TABLA ( &in, 7,  _in_cont, $valor_param )
+  trae_valor_param PON_VALOR_TABLA ( &in, 12, _in_cont, $valor_param )
+  trae_valor_param PON_VALOR_TABLA ( &in, 13, _in_cont, $valor_param )
+   PON_VALOR_TABLA ( &in, 10, _in_cont, '''' )
+FIN_SUB_RUTINA
+
+$param := 'R/REGISTRO PATRONAL/PATRONAL/CLAVE/NOMBRE/REGISTRO PATRONAL/1/SUC. "REGISTRO PATRONAL"/1/' crea_indice
+$param := 'R/SUCURSAL/SUCURSAL/CLAVE/NOMBRE/SUC_CLAVE/2/ES. CATALOGO/1/' crea_indice
+SI ( CD_DC = 0 )
+   $param := 'C/CENTRO DE COSTO/CENTROC/CLAVE/DESCRIPCION/CENTRO COSTO/1/DEP. "CENTRO COSTO"/1/' crea_indice
+   $param := 'C/DEPARTAMENTO/DEPTO/CLAVE/DESCRIPCION/DEP_CLAVE/2/ED. CATALOGO/1/' crea_indice
+SI_NO
+   $param := 'C/DEPARTAMENTO/DEPTO/CLAVE/DESCRIPCION/DEPARTAMENTO/1/DEP. "DEPARTAMENTO"/1/' crea_indice
+   $param := 'C/CENTRO DE COSTO/CENTROC/CLAVE/DESCRIPCION/DEP_CLAVE/2/ED. CATALOGO/1/' crea_indice
+FIN_SI
+$param := 'E/TIPO DE EMPLEADO/TIPOEMP/CLAVE/DESCRIPCION/TIPO EMPLEADO/1/PUE. "TIPO EMPLEADO"/1/' crea_indice
+$param := 'E/PUESTO/PUESTO/CLAVE/DESCRIPCION/PUE_CLAVE/2/EP. CATALOGO/1/' crea_indice
+$param := 'N/TIPO DE NOMINA/TIPONOM/CLAVE/DESCRIPCION/TIPO_NOM/1/E. TIPO_NOM/1/' crea_indice
+
+$campos_extras2 := $campos_extras2 + ',E.TURNO'
+$param := 'T/TURNO/TURNO1/CLAVE/DESCRIPCION/TURNO/1/E. TURNO/1/' crea_indice
+
+SUB_RUTINA indices_rh
+   SI ( SQL_SERVER )
+     $campos_extras2 := $campos_extras2 + ',E.TIPO_PAGO,E.BANCO_SAR,RH.FECHA_NACIMIENTO,RH.ESTADO_CIVIL,RH.ESCOLARIDAD'
+     $campos_extras2 := $campos_extras2 + ',RH.SEXO,E.INGRESO,E.NOMBREN,((DATEPART(MONTH,RH.FECHA_NACIMIENTO)*100)+DATEPART(DAY, RH.FECHA_NACIMIENTO)) AS MES_DIA_NACIMIENTO'
+     $bases_extras2  := $bases_extras2  + 'LEFT JOIN EMPRH RH ON RH.CLAVE = E.CLAVE'
+   SI_NO
+     $campos_extras2 := $campos_extras2 + ',E.TIPO_PAGO,E.BANCO_SAR,RH.FECHA_NACIMIENTO,RH.ESTADO_CIVIL,RH.ESCOLARIDAD'
+     $campos_extras2 := $campos_extras2 + ',RH.SEXO,E.INGRESO,E.NOMBREN,((EXTRACT(MONTH FROM RH.FECHA_NACIMIENTO)*100)+EXTRACT(DAY FROM RH.FECHA_NACIMIENTO)) AS MES_DIA_NACIMIENTO'
+     $bases_extras2 := $bases_extras2 + ' LEFT JOIN EMPRH RH ON RH. CLAVE = E2.CLAVE'
+     $condiciones_extras2 := $condiciones_extras2 +  'AND E2.CLAVE = E.CLAVE'
+   FIN_SI
+
+
+   $param := '1/TIPO DE PAGO/EMPPRIN/TIPO_PAGO/TIPO_PAGO/TIPO_PAGO/1/E. TIPO_PAGO/1/' crea_indice
+   $param := '2/AFORE/EMPPRIN/BANCO_SAR/BANCO_SAR/BANCO_SAR/1/E. BANCO_SAR/1/' crea_indice
+   $param := '3/FECHA DE NACIMIENTO/EMPPRIN/FECHA_NACIMIENTO/FECHA_NACIMIENTO/FECHA_NACIMIENTO/1/RH. FECHA_NACIMIENTO/0/' crea_indice
+   $param := '4/MES-DIA DE NACIMIENTO/EMPPRIN/MES_DIA_NACIMIENTO/MES_DIA_NACIMIENTO/MES_DIA_NACIMIENTO/1/RH. MES_DIA_NACIMIENTO/0/' crea_indice
+   $param := '5/ESTADO CIVIL/EMPRH/ESTADO_CIVIL/ESTADO_CIVIL/ESTADO_CIVIL/1/RH. ESTADO_CIVIL/1/' crea_indice
+   $param := '6/ESCOLARIDAD/EMPRH/ESCOLARIDAD/ESCOLARIDAD/ESCOLARIDAD/1/RH. ESCOLARIDAD/1/' crea_indice
+   $param := '7/SEXO/EMPRH/SEXO/SEXO/SEXO/1/RH. SEXO/1/' crea_indice
+   $param := '8/FECHA DE INGRESO/EMPPRIN/INGRESO/INGRESO/INGRESO/1/E. INGRESO/0/' crea_indice
+FIN_SUB_RUTINA
+
+VAR_T ( &tabla_sql    ) #Define el SQL
+
+_total_gen    := 0
+_columna_totales := _columna_totales SI ( _columna_totales = 0 ) _columna_totales := 60 FIN_SI
+_nivel        := 0
+_nivel_aux    := 0
+_sub_nivel    := 0   #Indica el subnivel que se imprime  1 o 2
+_sub_nivel_aux:= 0
+_raux2        := 0
+$saux         := ''
+$saux2        := ''
+$indice       := ''  #Nombre del indice que se imprime
+$indice_valor := ''  #Valor del indice que se imprime
+$indice_texto := ''  #Texto a imprimir del indice -descripcion-
+$empleado     := ''  #Clave de empleado actual
+_total_indices:= 0
+_indice_numero:= 0
+_decimales    := 0
+_avanzo       := 0   #Estatus de avance de hoja
+_indice_cla   := 0 
+
+SUB_RUTINA inicializa
+  _total_gen := 0
+  $indice := ''
+  $indice_valor := ''
+  $indice_texto := ''
+  $empleado := ''
+  _in_cont := 0
+  MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+   PON_VALOR_TABLA ( &in, 9 , _in_cont, '0' )
+   PON_VALOR_TABLA ( &in, 10, _in_cont, '''' )
+   _in_cont := _in_cont + 1
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA color_total
+  SI ( _omitir_color = 0 ) COLOR ( 'MARINO' ) FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA color_normal
+  SI ( _omitir_color = 0 ) COLOR ( 'NEGRO' ) FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA cambio_indice
+  #_sub_nivel  guarda el valor a regresar ( subnivel que cambio 1 o 2 )
+  #_nivel      trae el numero de indice a checar
+  _in_cont   := 0
+  _sub_nivel := 0
+  MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+    SI (( SUBSTR ( $orden, _nivel, 1 ) = TRAE_VALOR_TABLA ( &in, 1, _in_cont )) Y
+        ( TRAE_VALOR_TABLA ( &in, 0, _in_cont ) = '1' ))
+        $in_campo := TRAE_VALOR_TABLA ( &in, 6, _in_cont )
+        DECIMALES := 0
+        $saux := 'EMPPRIN':$in_campo
+        SI ( $saux <> TRAE_VALOR_TABLA ( &in, 10, _in_cont ))
+          _sub_nivel := VALOR ( TRAE_VALOR_TABLA ( &in, 7, _in_cont ))   _in_cont := 10000
+        FIN_SI
+    FIN_SI
+   _in_cont := _in_cont + 1
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA asteriscos
+  #_nivel  trae el numero de nivel de indece a imprimir
+  SI ( _sub_nivel < 2 )
+         SI ( _nivel = 1 ) IMP ( '   *        ' ) 
+   SI_NO SI ( _nivel = 2 ) IMP ( '   ***      ' )
+   SI_NO SI ( _nivel = 3 ) IMP ( '   *****    ' )
+   SI_NO SI ( _nivel = 4 ) IMP ( '   *******  ' )
+   SI_NO                   IMP ( '   *******->' )
+   FIN_SI FIN_SI FIN_SI FIN_SI
+  SI_NO
+         SI ( _nivel = 1 ) IMP ( '   **       ' )
+   SI_NO SI ( _nivel = 2 ) IMP ( '   ****     ' )
+   SI_NO SI ( _nivel = 3 ) IMP ( '   ******   ' )
+   SI_NO SI ( _nivel = 4 ) IMP ( '   ******** ' )
+   SI_NO                   IMP ( '   *******->' )
+   FIN_SI FIN_SI FIN_SI FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA trae_nombre_indice
+   #_nivel     trae el numero de nivel de indece a imprimir
+   #_sub_nivel trae el subnivel del indice a imprimir
+   $indice := ''
+   $indice_valor := ''
+   $indice_texto := ''
+   _in_cont := 0
+   _indice_numero := -1
+   MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+      SI (( SUBSTR ( $orden, _nivel, 1 ) = TRAE_VALOR_TABLA ( &in, 1, _in_cont )) Y
+          ( TRAE_VALOR_TABLA ( &in, 0, _in_cont ) = '1' ) Y
+          ( VALOR ( TRAE_VALOR_TABLA ( &in, 7, _in_cont )) = _sub_nivel ))
+         $indice := TRAE_VALOR_TABLA ( &in, 2, _in_cont )
+         $indice_valor := TRAE_VALOR_TABLA ( &in, 10, _in_cont )
+         $in_tabla := TRAE_VALOR_TABLA ( &in, 3, _in_cont )
+         $in_campo := TRAE_VALOR_TABLA ( &in, 5, _in_cont )
+         SI ( $in_tabla <> 'EMPPRIN' )
+            SI ( TRAE_REGISTRO ( $in_tabla, $indice_valor ))
+               $indice_texto  := $in_tabla:$in_campo
+            SI_NO
+               $indice_texto := 'ERROR ! NO ENCONTRADO'
+            FIN_SI
+         SI_NO
+            $indice_texto := 'EMPPRIN':$in_campo
+         FIN_SI
+         _indice_numero := _in_cont
+         _in_cont := 10000
+      FIN_SI
+     _in_cont := _in_cont + 1
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+#
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_sub_total
+   #_nivel     trae el numero de nivel de indece a imprimir
+   #_sub_nivel trae el subnivel del indice a imprimir
+
+   SI ( _sub_nivel = 1 )   #Si es indice de nivel 1 se imprime primero el sub total del indice 2
+      _sub_nivel := 2
+      imprime_sub_total
+      _sub_nivel := 1
+   FIN_SI
+
+   trae_nombre_indice   #Deja en $indice el nombre del indice a imprimir
+
+   SI (( $indice <> '' ) Y ( $indice_valor <> '''' ))
+      sub_totales
+   FIN_SI
+
+   SI (( _omitir_sub_totales = 0 ) Y ( _omitir_sub_total = 0 ) Y ( $indice <> '' ) Y ( $indice_valor <> '''' ))
+      _decimales := DECIMALES
+      DECIMALES  := 0
+      color_total
+      asteriscos ;; IMP ( 'Total Empleados en ', $indice, COL ( 45 ), ' (', $indice_valor, ') ', COL ( _columna_totales ), '-> ', DER ( VALOR ( TRAE_VALOR_TABLA ( &in, 9, _indice_numero )), 5 ))
+      PON_VALOR_TABLA ( &in, 9, _indice_numero, '0' )
+      DECIMALES  := _decimales
+      color_normal
+      IMPRIME
+   FIN_SI
+   _omitir_sub_total := 0
+FIN_SUB_RUTINA
+
+SUB_RUTINA encabezados
+#
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_enc
+   #_nivel     trae el numero de nivel de indece a imprimir
+   #_sub_nivel trae el subnivel del indice a imprimir
+
+   trae_nombre_indice   #Deja en $indice el nombre del indice a imprimir
+
+   SI ( $indice <> '' )
+      encabezados
+   FIN_SI
+
+   SI (( $indice_valor <> '''' ) Y ( _avanzo = 0 ) Y ( SALIDA <> 'D' )) #Checar salto de Pagina
+      _in_cont   := 0
+      MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+         SI (( SUBSTR ( $orden, _nivel, 1 ) = TRAE_VALOR_TABLA ( &in, 1, _in_cont )) Y
+             ( TRAE_VALOR_TABLA ( &in, 0, _in_cont ) = '1' ) Y
+             ( VALOR ( TRAE_VALOR_TABLA ( &in, 7, _in_cont )) = _sub_nivel ) Y
+             ( VALOR ( TRAE_VALOR_TABLA ( &in, 8, _in_cont )) = 1 ))
+             AVANZA_HOJA
+             _avanzo := 1
+             _in_cont := 10000
+         FIN_SI
+        _in_cont := _in_cont + 1
+      FIN_MIENTRAS
+   FIN_SI
+
+   SI (( _omitir_encabezados = 0 ) Y ( _omitir_encabezado = 0 ) Y ( $indice <> '' ))
+      color_total asteriscos ;; IMP ( $indice, COL ( 30 ), ' (', $indice_valor, ') ', COL ( 37 ), $indice_texto ) color_normal IMPRIME
+      IMPRIME
+   FIN_SI
+
+   _omitir_encabezado := 0
+
+   SI ( _sub_nivel = 1 )   #Si es indice de nivel 1 se imprime el encabezado del indice 2
+      _sub_nivel := 2
+      imprime_enc
+      _sub_nivel := 1
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA incrementa_contadores
+   SI ( $empleado <> 'EMPPRIN':'CLAVE' )
+      _in_cont   := 0
+      MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+         SI ( TRAE_VALOR_TABLA ( &in, 0, _in_cont ) = '1' )
+            PON_VALOR_TABLA ( &in, 9, _in_cont, VALOR ( TRAE_VALOR_TABLA ( &in, 9, _in_cont )) + 1 )
+            $in_campo := TRAE_VALOR_TABLA ( &in, 6, _in_cont )
+            $saux := 'EMPPRIN':$in_campo
+            PON_VALOR_TABLA ( &in, 10, _in_cont, $saux )
+         FIN_SI
+        _in_cont := _in_cont + 1
+      FIN_MIENTRAS
+      $empleado := 'EMPPRIN':'CLAVE'
+      _total_gen := _total_gen + 1
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+#
+FIN_SUB_RUTINA
+
+SUB_RUTINA datos_trabajador
+   #Impresión de sub totales
+   _nivel := 1
+   MIENTRAS ( _nivel <= LONGITUD ( $orden ))
+      cambio_indice
+      SI ( _sub_nivel <> 0 )
+         _sub_nivel_aux := _sub_nivel
+         _nivel_aux := _nivel
+         _sub_nivel := 1
+         _nivel     := LONGITUD ( $orden )
+         MIENTRAS ( _nivel_aux < _nivel )
+            imprime_sub_total
+            _nivel := _nivel - 1
+         FIN_MIENTRAS
+         _sub_nivel := _sub_nivel_aux
+         _nivel := _nivel_aux
+         imprime_sub_total
+         _nivel := 100
+      FIN_SI
+      _nivel := _nivel + 1
+   FIN_MIENTRAS
+
+
+   _nivel := 1
+   MIENTRAS ( _nivel <= LONGITUD ( $orden ))
+      cambio_indice
+      SI ( _sub_nivel <> 0 )
+         incrementa_contadores
+         SI (( SALIDA <> 'D' ) Y ( _omitir_encabezados = 0 )) IMPRIME FIN_SI
+         imprime_enc
+         _nivel := _nivel + 1
+         _sub_nivel := 1
+         MIENTRAS ( _nivel <= LONGITUD ( $orden ))
+            imprime_enc
+            _nivel := _nivel + 1
+         FIN_MIENTRAS
+         _nivel := 100
+      FIN_SI
+      _nivel := _nivel + 1
+   FIN_MIENTRAS
+   SI ( _nivel < 100 )
+      incrementa_contadores
+   FIN_SI
+
+   formato_trabajador
+
+   _avanzo := 0  #Se borra el estatus de avance de hoja
+FIN_SUB_RUTINA
+
+SUB_RUTINA termina_reporte
+   _sub_nivel := 1
+   _nivel := 4 imprime_sub_total _nivel := 3 imprime_sub_total _nivel := 2 imprime_sub_total _nivel := 1 imprime_sub_total
+   SI ( _omitir_total_general = 0 )
+      IMPRIME ;; IMPRIME
+      _decimales := DECIMALES
+      DECIMALES := 0 
+      IMP ( ' TOTAL DE EMPLEADOS -> ', DER ( _total_gen, 7 ))
+      DECIMALES := _decimales
+      IMPRIME
+      IMP ( ' * * * * * * * * * * * * * * *' ) ;; IMPRIME
+      IMP ( '* * * * * * * * * * * * * * *'  ) ;; IMPRIME
+   FIN_SI
+FIN_SUB_RUTINA
+
+_indice_1  := 0 _indice_2 := 0 _salto_1 := 0 _salto_2 := 0 _redefinir := 0
+VAR_T ( &tab_1 ) #Tablas para la lectura de parametros
+VAR_T ( &tab_2 )
+
+SUB_RUTINA lee_parametros_orden
+   $saux := ''
+   _in_cont   := 0
+   MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+      SI (( TRAE_VALOR_TABLA ( &in, 0, _in_cont ) = '1' ) Y
+          ( POS ( TRAE_VALOR_TABLA ( &in, 1, _in_cont ) + ') ', $saux ) = 0 ))
+          $saux := $saux + TRAE_VALOR_TABLA ( &in, 1, _in_cont ) + ') ' + TRAE_VALOR_TABLA ( &in, 2, _in_cont ) + '/'
+      FIN_SI
+     _in_cont := _in_cont + 1
+   FIN_MIENTRAS
+
+   $orden := ''
+   _raux2 := 1
+   MIENTRAS ( LONGITUD ( $saux ) > 0 )
+      BORRA_PARAMETROS
+      SI ( POS ( '/', $saux ) < LONGITUD ( $saux ))
+         NUEVO_PARAMETRO_SEL  ( 'INDICE No. ' + SUBSTR ( . ( _raux2 ), 1, 1 ), $saux, $saux2 )
+         LEE_PARAMETROS
+      SI_NO
+         $saux2 := $saux
+      FIN_SI
+      $orden := $orden + SUBSTR ( $saux2, 1, 1 )
+      $saux := SUBSTR ( $saux, 1, POS ( $saux2, $saux ) - 1 ) +
+               SUBSTR ( $saux, POS ( $saux2, $saux ) + LONGITUD ( $saux2 )+1, 255 )
+      _raux2 := _raux2 + 1
+   FIN_MIENTRAS
+   BORRA_PARAMETROS
+FIN_SUB_RUTINA
+
+SUB_RUTINA lee_parametros_indices
+   #
+FIN_SUB_RUTINA
+
+SUB_RUTINA lee_parametros_seleccion
+   _in_cont   := 0
+   NUEVO_PARAMETRO_SEL  ( 'ORDEN', 'POR CLAVE/ALFABETICO', _indice_cla )
+   NUEVO_PARAMETRO      ( 'EMPLEADO INIC.', '', $cve_inicial )
+   NUEVO_PARAMETRO      ( 'EMPLEADO FINAL', '', $cve_final )
+   SI ( _indices_rh = 0 )
+      NUEVO_PARAMETRO_CHEQ ( 'INDICES DE R.H.', 'INCLUIR', _indices_rh )
+   FIN_SI
+   MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+      SI ( TRAE_VALOR_TABLA ( &in, 13, _in_cont ) = '1' )
+         NUEVO_PARAMETRO_TAB  ( TRAE_VALOR_TABLA ( &in, 2, _in_cont), TRAE_VALOR_TABLA ( &in, 3, _in_cont )+'/'+TRAE_VALOR_TABLA ( &in, 4, _in_cont )+'/'+TRAE_VALOR_TABLA ( &in, 2, _in_cont), &tab_1 )
+      SI_NO
+         LIMPIA_TABLA ( &tab_1 )
+         _salto_1 := 0
+      FIN_SI
+      NUEVO_PARAMETRO_CHEQ ( 'INCLUIR INDICE', 'POR ' + TRAE_VALOR_TABLA ( &in, 2, _in_cont ), _indice_1 )
+      SI ( TRAE_VALOR_TABLA ( &in, 13, _in_cont ) = '1' )
+         NUEVO_PARAMETRO_CHEQ ( 'SALTAR HOJA CADA', TRAE_VALOR_TABLA ( &in, 2, _in_cont ), _salto_1 )
+      FIN_SI
+      SI ((( TRAE_VALOR_TABLA ( &in, 2, _in_cont + 1 ) <> '' ) Y 
+           ( TRAE_VALOR_TABLA ( &in, 7, _in_cont + 1 ) = '2' ) Y
+           ( TRAE_VALOR_TABLA ( &in, 1, _in_cont ) = TRAE_VALOR_TABLA ( &in, 1, _in_cont+1 ))) O
+          (( TRAE_VALOR_TABLA ( &in, 2, _in_cont + 1 ) <> '' ) Y 
+           ( TRAE_VALOR_TABLA ( &in, 7, _in_cont + 1 ) =  '1' ) Y
+           ( TRAE_VALOR_TABLA ( &in, 7, _in_cont + 1 ) <> '2' )))
+         SI ( TRAE_VALOR_TABLA ( &in, 13, _in_cont + 1 ) = '1' )
+           NUEVO_PARAMETRO_TAB  ( TRAE_VALOR_TABLA (&in, 2, _in_cont+1), TRAE_VALOR_TABLA (&in, 3, _in_cont+1)+'/'+TRAE_VALOR_TABLA ( &in, 4, _in_cont+1)+'/'+TRAE_VALOR_TABLA (&in, 2, _in_cont+1), &tab_2)
+         SI_NO
+            LIMPIA_TABLA ( &tab_2 )
+            _salto_2 := 0
+         FIN_SI
+         NUEVO_PARAMETRO_CHEQ ( 'INCLUIR INDICE', 'POR ' + TRAE_VALOR_TABLA ( &in, 2, _in_cont+1 ), _indice_2 )
+         SI ( TRAE_VALOR_TABLA ( &in, 13, _in_cont + 1 ) = '1' )
+            NUEVO_PARAMETRO_CHEQ ( 'SALTAR HOJA CADA', TRAE_VALOR_TABLA ( &in, 2, _in_cont+1 ), _salto_2 )
+         FIN_SI         
+         SI ( TRAE_VALOR_TABLA ( &in, 2, _in_cont + 2 ) = '' )
+            NUEVO_PARAMETRO_CHEQ ( 'REDEFINIR ORDEN', 'EN INDICES', _redefinir )
+         FIN_SI
+      SI_NO
+         SI ( TRAE_VALOR_TABLA ( &in, 2, _in_cont + 1 ) = '' )
+            NUEVO_PARAMETRO_CHEQ ( 'REDEFINIR ORDEN', 'EN INDICES', _redefinir )
+         FIN_SI
+         _indice_2 := -1
+      FIN_SI
+      LEE_PARAMETROS
+      SI ( _indices_rh = 1 )
+         _indices_rh := _in_cont
+         indices_rh
+         _in_cont := _indices_rh
+         _indices_rh := -1
+      FIN_SI
+      PON_VALOR_TABLA ( &in, 0, _in_cont, _indice_1 )
+      PON_VALOR_TABLA ( &in, 8, _in_cont, _salto_1 )
+      PON_VALOR_TABLA ( &in, 11,_in_cont, TRAE_SELECCION ( &tab_1 ))
+      SI ( _indice_2 <> -1 )
+         _in_cont := _in_cont + 1
+         PON_VALOR_TABLA ( &in, 0, _in_cont, _indice_2 )
+         PON_VALOR_TABLA ( &in, 8, _in_cont, _salto_2 )
+         PON_VALOR_TABLA ( &in, 11,_in_cont, TRAE_SELECCION ( &tab_2 ))
+      FIN_SI
+      _in_cont := _in_cont + 1
+      BORRA_PARAMETROS
+   FIN_MIENTRAS
+   SI ( TRAE_VALOR_TABLA ( &in, 0, 2 ) = '' )
+      LEE_PARAMETROS
+   FIN_SI
+   BORRA_PARAMETROS
+
+   SI ( _reporte_nomina  ) PON_VALOR_TABLA ( &in, 0, 6, 1 ) FIN_SI
+   SI ( _reporte_ssocial ) PON_VALOR_TABLA ( &in, 0, 0, 1 ) FIN_SI  
+
+   SI ( _redefinir = 1 )
+      lee_parametros_orden
+   SI_NO
+      $orden := ''
+      _in_cont   := 0
+      MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+         SI (( TRAE_VALOR_TABLA ( &in, 0, _in_cont ) = '1' ) Y ( POS ( TRAE_VALOR_TABLA ( &in, 1, _in_cont ), $orden ) = 0 ))
+               $orden := $orden + TRAE_VALOR_TABLA ( &in, 1, _in_cont )
+         FIN_SI
+        _in_cont := _in_cont + 1
+      FIN_MIENTRAS
+   FIN_SI
+
+   SI ( _reporte_nomina )
+      $orden := 'N' + SUBSTR ( $orden, 1, POS ( 'N', $orden )-1 ) +
+                      SUBSTR ( $orden, POS ( 'N', $orden )+1, 255 )
+   FIN_SI
+   SI ( _reporte_ssocial )
+      $orden := 'R' + SUBSTR ( $orden, 1, POS ( 'R', $orden )-1 ) +
+                      SUBSTR ( $orden, POS ( 'R', $orden )+1, 255 )
+   FIN_SI
+   salida_disco
+FIN_SUB_RUTINA
+
+SUB_RUTINA base_trabajadores
+   SALIDA := SUBSTR ( SALIDA, 1, 1 )
+   SI ( SALIDA = 'D' )
+      _omitir_sub_totales := 1
+      _omitir_encabezados := 1
+      _omitir_color       := 1
+   FIN_SI
+
+   LIMPIA_TABLA( &tabla_sql )
+
+#SELECT
+   AGREGA_VALOR_COL ( &tabla_sql, 0, 'SELECT E. CLAVE, E. NOMBREP || " " || E. NOMBREM || " " || E. NOMBREN AS NOMBRE, E. TIPO_NOM, E. INGRESO')
+#   AGREGA_VALOR_COL ( &tabla_sql, 0, 'SELECT E. CLAVE, E. TIPO_NOM, E. INGRESO')
+
+   SI (( _incluir_suc = 1 ) OR ((( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 0 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 1 ))) > 0 ) O
+       (( TRAE_VALOR_TABLA ( &in, 11, 0 ) + TRAE_VALOR_TABLA ( &in, 11, 1 )) <> '' )) )
+      AGREGA_VALOR_COL ( &tabla_sql, 0, ', ES. CLAVE, ES. CATALOGO AS SUC_CLAVE, ES. "FECHA SALIDA"')
+   FIN_SI
+
+   SI (( _incluir_dep = 1 ) OR ((( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 2 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 3 ))) > 0 ) O 
+       (( TRAE_VALOR_TABLA ( &in, 11, 2 ) + TRAE_VALOR_TABLA ( &in, 11, 3 )) <> '' )) )
+      AGREGA_VALOR_COL ( &tabla_sql, 0, ', ED. CLAVE, ED. CATALOGO AS DEP_CLAVE, ED. "FECHA SALIDA"')
+   FIN_SI
+
+   SI (( _incluir_pue = 1 ) OR ((( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 4 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 5 ))) > 0 ) O 
+       (( TRAE_VALOR_TABLA ( &in, 11, 4 ) + TRAE_VALOR_TABLA ( &in, 11, 5 )) <> '' )) )
+      AGREGA_VALOR_COL ( &tabla_sql, 0, ', EP. CLAVE, EP. CATALOGO AS PUE_CLAVE, EP. "FECHA SALIDA"')
+   FIN_SI
+
+   SI (( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 0 )) > 0 ) O ( TRAE_VALOR_TABLA ( &in, 11, 0 ) <> '' )) AGREGA_VALOR_COL ( &tabla_sql, 0, ', SUC. "REGISTRO PATRONAL", SUC. CLAVE') FIN_SI
+   SI (( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 4 )) > 0 ) O ( TRAE_VALOR_TABLA ( &in, 11, 4 ) <> '' )) AGREGA_VALOR_COL ( &tabla_sql, 0, ', PUE. "TIPO EMPLEADO"    , PUE. CLAVE') FIN_SI
+
+   SI (( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 2 )) > 0 ) O ( TRAE_VALOR_TABLA ( &in, 11, 2 ) <> '' ))
+      SI ( CD_DC = 0 )
+         AGREGA_VALOR_COL ( &tabla_sql, 0, ', DEP. "CENTRO COSTO", DEP. CLAVE') 
+      SI_NO
+         AGREGA_VALOR_COL ( &tabla_sql, 0, ', DEP. "DEPARTAMENTO", DEP. CLAVE') 
+      FIN_SI
+   FIN_SI
+
+   SI ( $campos_extras  <> '' ) AGREGA_VALOR_COL ( &tabla_sql, 0, ', ' + $campos_extras  ) FIN_SI
+   SI ( $campos_extras2 <> '' ) AGREGA_VALOR_COL ( &tabla_sql, 0, $campos_extras2 ) FIN_SI
+
+#FROM
+   AGREGA_VALOR_COL ( &tabla_sql, 0, 'FROM EMPPRIN E' )
+
+   SI (( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 0 )) > 0 ) O
+       ( TRAE_VALOR_TABLA ( &in, 11, 0 ) <> '' ))
+       AGREGA_VALOR_COL ( &tabla_sql, 0, ', SUCURSAL SUC' )
+   FIN_SI
+   SI (( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 2 )) > 0 ) O 
+       ( TRAE_VALOR_TABLA ( &in, 11, 2 ) <> '' ))
+      SI ( CD_DC = 0 )
+         AGREGA_VALOR_COL ( &tabla_sql, 0, ', DEPTO    DEP' )
+      SI_NO
+         AGREGA_VALOR_COL ( &tabla_sql, 0, ', CENTROC  DEP' )
+      FIN_SI
+   FIN_SI
+   SI (( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 4 )) > 0 ) O 
+       ( TRAE_VALOR_TABLA ( &in, 11, 4 ) <> '' ))
+      AGREGA_VALOR_COL ( &tabla_sql, 0, ', PUESTO   PUE' )
+   FIN_SI
+
+   SI (( _incluir_suc = 1 ) OR ((( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 0 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 1 ))) > 0 ) O
+       (( TRAE_VALOR_TABLA ( &in, 11, 0 ) + TRAE_VALOR_TABLA ( &in, 11, 1 )) <> '' )) )
+      AGREGA_VALOR_COL ( &tabla_sql, 0, ', EMPSUC  ES' )
+   FIN_SI
+   SI (( _incluir_dep = 1 ) OR ((( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 2 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 3 ))) > 0 ) O 
+       (( TRAE_VALOR_TABLA ( &in, 11, 2 ) + TRAE_VALOR_TABLA ( &in, 11, 3 )) <> '' )) )
+      AGREGA_VALOR_COL ( &tabla_sql, 0, ', EMPDEP  ED' )
+   FIN_SI
+   SI (( _incluir_pue = 1 ) OR ((( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 4 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 5 ))) > 0 ) O 
+       (( TRAE_VALOR_TABLA ( &in, 11, 4 ) + TRAE_VALOR_TABLA ( &in, 11, 5 )) <> '' )) )
+      AGREGA_VALOR_COL ( &tabla_sql, 0, ', EMPPUES EP' )
+   FIN_SI
+
+   SI ( $bases_extras  <> '' ) AGREGA_VALOR_COL ( &tabla_sql, 0, ', ' + $bases_extras  ) FIN_SI
+   SI ( $bases_extras2 <> '' ) AGREGA_VALOR_COL ( &tabla_sql, 0, $bases_extras2 ) FIN_SI
+
+#WHERE
+   $saux := ''
+   _in_cont := 0
+   MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+      $saux := $saux + TRAE_VALOR_TABLA ( &in, 11, _in_cont )
+      _in_cont := _in_cont + 1
+   FIN_MIENTRAS
+   SI ( _reporte_nomina = 1 )
+       AGREGA_VALOR_COL ( &tabla_sql, 0, 'WHERE' )
+       AGREGA_VALOR_COL ( &tabla_sql, 0, 'AND E. TIPO_NOM <> ""' )
+   FIN_SI
+   SI ((( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 0 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 1 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 2 )) + _incluir_suc + _incluir_dep + _incluir_pue +
+          VALOR ( TRAE_VALOR_TABLA ( &in, 0, 3 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 4 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 5 )) ) > 0 ) O 
+        ( $condiciones_extras + $condiciones_extras2 + $saux + $cve_inicial + $cve_final <> '' ))
+      SI ( _reporte_nomina <> 1 )
+        AGREGA_VALOR_COL ( &tabla_sql, 0, 'WHERE' )
+      FIN_SI
+      SI ( $cve_inicial <> '' ) AGREGA_VALOR_COL ( &tabla_sql, 0, 'AND E. CLAVE >= "' + $cve_inicial + '"' ) FIN_SI
+      SI ( $cve_final   <> '' ) AGREGA_VALOR_COL ( &tabla_sql, 0, 'AND E. CLAVE <= "' + $cve_final   + '"' ) FIN_SI
+      SI (( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 0 )) > 0 ) O ( TRAE_VALOR_TABLA ( &in, 11, 0 ) <> '' )) AGREGA_VALOR_COL ( &tabla_sql, 0, 'AND SUC. CLAVE = ES. CATALOGO' ) FIN_SI
+      SI (( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 2 )) > 0 ) O ( TRAE_VALOR_TABLA ( &in, 11, 2 ) <> '' )) AGREGA_VALOR_COL ( &tabla_sql, 0, 'AND DEP. CLAVE = ED. CATALOGO' ) FIN_SI
+      SI (( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 4 )) > 0 ) O ( TRAE_VALOR_TABLA ( &in, 11, 4 ) <> '' )) AGREGA_VALOR_COL ( &tabla_sql, 0, 'AND PUE. CLAVE = EP. CATALOGO' ) FIN_SI
+
+      SI (( _incluir_suc = 1 ) OR ((( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 0 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 1 ))) > 0 ) O
+          (( TRAE_VALOR_TABLA ( &in, 11, 0 ) + TRAE_VALOR_TABLA ( &in, 11, 1 )) <> '' )) )
+        AGREGA_VALOR_COL ( &tabla_sql, 0, 'AND E. CLAVE = ES. CLAVE AND ES. "FECHA ENTRADA" <= :_fech AND ES. "FECHA SALIDA" >= :_fech')
+      FIN_SI
+      SI (( _incluir_dep = 1 ) OR ((( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 2 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 3 ))) > 0 ) O 
+          (( TRAE_VALOR_TABLA ( &in, 11, 2 ) + TRAE_VALOR_TABLA ( &in, 11, 3 )) <> '' )) )
+        AGREGA_VALOR_COL ( &tabla_sql, 0, 'AND E. CLAVE = ED. CLAVE AND ED. "FECHA ENTRADA" <= :_fech AND ED. "FECHA SALIDA" >= :_fech')
+      FIN_SI
+      SI (( _incluir_pue = 1 ) OR ((( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 4 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 5 ))) > 0 ) O 
+          (( TRAE_VALOR_TABLA ( &in, 11, 4 ) + TRAE_VALOR_TABLA ( &in, 11, 5 )) <> '' )) )
+        AGREGA_VALOR_COL ( &tabla_sql, 0, 'AND E. CLAVE = EP. CLAVE AND EP. "FECHA ENTRADA" <= :_fech AND EP. "FECHA SALIDA" >= :_fech')
+      FIN_SI
+
+      _in_cont := 0
+      MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+         SI ( TRAE_VALOR_TABLA ( &in, 11, _in_cont ) <> '' )
+            AGREGA_VALOR_COL ( &tabla_sql, 0, 'AND ' + TRAE_VALOR_TABLA ( &in, 12, _in_cont ) + ' IN (' + TRAE_VALOR_TABLA ( &in, 11, _in_cont ) + ')' )
+         FIN_SI
+        _in_cont := _in_cont + 1
+      FIN_MIENTRAS
+
+      SI ( $condiciones_extras  <> '' ) AGREGA_VALOR_COL ( &tabla_sql, 0, 'AND ' + $condiciones_extras  ) FIN_SI
+      SI ( $condiciones_extras2 <> '' ) AGREGA_VALOR_COL ( &tabla_sql, 0, $condiciones_extras2 ) FIN_SI
+
+   FIN_SI
+   #Se quita el AND de la condición inicial
+   SI ( TRAE_INDICE_COL ( &tabla_sql, 0, 'WHERE' ) > 0 )
+     PON_VALOR_TABLA ( &tabla_sql, 0, TRAE_INDICE_COL ( &tabla_sql, 0, 'WHERE' ) + 1, '   ' + 
+                     SUBSTR ( TRAE_VALOR_TABLA ( &tabla_sql, 0, TRAE_INDICE_COL ( &tabla_sql, 0, 'WHERE' ) + 1 ), 4, 255 ))
+   FIN_SI
+
+#ORDER BY
+   AGREGA_VALOR_COL ( &tabla_sql, 0, 'ORDER BY' )
+   _raux2    := 0
+   MIENTRAS ( _raux2 < LONGITUD ( $orden ))
+      _in_cont := 0
+      MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+         SI (( TRAE_VALOR_TABLA ( &in, 0,  _in_cont ) = '1' ) Y
+             ( TRAE_VALOR_TABLA ( &in, 1,  _in_cont ) = SUBSTR ( $orden, _raux2+1, 1 )) Y
+             ( TRAE_VALOR_TABLA ( &in, 12, _in_cont ) <> '' ))
+            AGREGA_VALOR_COL ( &tabla_sql, 0, TRAE_VALOR_TABLA ( &in, 12, _in_cont ) + ',' )
+         FIN_SI
+         _total_indices := _total_indices + 1
+        _in_cont := _in_cont + 1
+      FIN_MIENTRAS
+      _raux2 := _raux2 + 1
+   FIN_MIENTRAS
+   SI ( $ordenes_extras  <> '' ) AGREGA_VALOR_COL ( &tabla_sql, 0, $ordenes_extras  + ',' ) FIN_SI
+   SI ( $ordenes_extras2 <> '' ) AGREGA_VALOR_COL ( &tabla_sql, 0, $ordenes_extras2 + ',' ) FIN_SI
+   SI ( _indice_cla = 0 ) AGREGA_VALOR_COL ( &tabla_sql, 0, 'E. CLAVE' ) SI_NO AGREGA_VALOR_COL ( &tabla_sql, 0, 'E. NOMBRE' )FIN_SI
+   SI ( $ordenes_extras3 <> '' ) AGREGA_VALOR_COL ( &tabla_sql, 0, ',' + $ordenes_extras3 ) FIN_SI
+
+#  DEBUGER
+SI ( _debuger ) 
+  IMPRIME
+  IMPRIME_TABLA( &tabla_sql, 1 )
+  TERMINA_REPORTE
+FIN_SI
+   CREA_CONSULTA   ( 'EMPPRIN', &tabla_sql )
+   SI ( _reporte_nomina )
+     checa_tipo_nomina
+   FIN_SI
+   SI ((( VALOR ( TRAE_VALOR_TABLA ( &in, 0, 0 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 1 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 2 )) + _incluir_suc + _incluir_dep + _incluir_pue +
+          VALOR ( TRAE_VALOR_TABLA ( &in, 0, 3 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 4 )) + VALOR ( TRAE_VALOR_TABLA ( &in, 0, 5 )) ) > 0 ) O 
+        ( TRAE_VALOR_TABLA ( &in, 11, 0 ) + TRAE_VALOR_TABLA ( &in, 11, 1 ) + TRAE_VALOR_TABLA ( &in, 11, 2 ) + 
+          TRAE_VALOR_TABLA ( &in, 11, 3 ) + TRAE_VALOR_TABLA ( &in, 11, 4 ) + TRAE_VALOR_TABLA ( &in, 11, 5 ) <> '' ))
+      SI ( _ff = 0 )
+        _ff := _fecha_consulta
+      FIN_SI
+      SI ( _ff = 0 )
+        _ff := FECHA_HOY
+      FIN_SI
+      PARAMETRO_SQL   ( 'EMPPRIN', '_fech', _ff )
+   FIN_SI
+   SI ( _abrir_base )
+      PRIMER_REGISTRO ( 'EMPPRIN' )
+      MUESTRA_AVANCE  ( 'EMPPRIN', 'PROCESANDO...'  )
+   FIN_SI
+
+#Avance de hoja
+   _avanzo := 1
+#Abrir Bases de Datos
+   _in_cont       := 0
+   _total_indices := 0
+   MIENTRAS ( TRAE_VALOR_TABLA ( &in, 2, _in_cont ) <> '' )
+      SI ( TRAE_VALOR_TABLA ( &in, 0, _in_cont ) = '1' )
+         ABRE_BASE ( TRAE_VALOR_TABLA ( &in, 3, _in_cont ))
+         PON_VALOR_TABLA ( &in, 0, _in_cont, TRAE_VALOR_TABLA ( &in, 13, _in_cont ))
+      FIN_SI
+      _total_indices := _total_indices + 1
+     _in_cont := _in_cont + 1
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+SUB_RUTINA A
+  #
+FIN_SUB_RUTINA

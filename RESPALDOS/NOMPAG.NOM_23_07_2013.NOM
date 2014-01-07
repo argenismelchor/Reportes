@@ -1,0 +1,247 @@
+#TOTALES DE PAGOS
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte de total de pagos
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/EXCEL', $salida)
+#NUEVO_PARAMETRO_SEL ( 'SEL' , 'DETALLE/TOTALES' , _tipo ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+     $columna   := 'NOMBRE/TIPO NOMINA'
+     _longitud  := 35
+     $justifica := 'IZQ'
+     $totales   := 'NO'
+     agrega_columna
+
+     $columna   := 'TIPONOM/TIPO DEPOSITO'
+     _longitud  := 15
+     $justifica := 'IZQ'
+     $totales   := 'NO'
+     agrega_columna
+
+     $columna   := 'BANCO/NUM DEPOSITO'
+     _longitud  := 20
+     $justifica := 'IZQ'
+     $totales   := 'NO'
+     agrega_columna
+
+     $columna   := 'MONTO/MONTO DEPOSITO'
+     _longitud  := 15
+     $justifica := 'IZQ'
+     $totales   := 'NO'
+     agrega_columna
+
+_condensado := 0
+$titulo_reporte := 'REPORTE DE TOTAL DE PAGOS'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+$tiponom := ''
+_cambio := 0 
+
+_numsant := 0 
+_totsant := 0 
+
+_numsant2 := 0 
+_totsant2 := 0 
+
+_numhsbc  := 0 
+_tothsbc  := 0 
+
+_numefe := 0
+_totefe := 0 
+ 
+# SUBRUTINAS GLOBALES
+
+SUB_RUTINA imprime_detalle
+ $valor := 'EMPPRIN':'NOMBRE'
+ imprime_columna
+
+ $valor := 'EMPPRIN':'TIPO_NOM'
+ imprime_columna
+
+ $valor := 'EMPPRIN':'BANCO'
+ imprime_columna
+
+ DECIMALES:= 2 
+ $valor :=  $ ( TOTAL ( 'TOTA' ) )
+ imprime_columna
+
+ imprime_renglon
+  
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA suma_pagos
+
+  SI ( 'EMPPRIN':'BANCO' = '1' ) 
+      _numsant := _numsant + 1
+      DECIMALES:= 2
+     _totsant := _totsant + TOTAL ( 'TOTA' ) 
+  FIN_SI
+
+  SI ( 'EMPPRIN':'BANCO' = '2' ) 
+     _numsant2 := _numsant2 + 1
+     DECIMALES:= 2
+    _totsant2 := _totsant2 + TOTAL ('TOTA' ) 
+  FIN_SI
+
+  SI ( 'EMPPRIN':'BANCO' = '3' ) 
+     _numhsbc  := _numhsbc + 1
+     DECIMALES:= 2
+    _tothsbc  := _tothsbc + TOTAL ( 'TOTA' ) 
+  FIN_SI
+
+  SI (  ( 'EMPPRIN':'BANCO' <> '1' )  AND ( 'EMPPRIN':'BANCO' <> '2' )  AND ( 'EMPPRIN':'BANCO' <> '3' ) AND  ( 'EMPPRIN':'CTA_TARJETA' <>  '' )   )
+      _numefe := _numefe
+      DECIMALES:= 2
+      _totefe := _totefe + TOTAL ( 'TOTA' ) 
+  FIN_SI
+
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA limpia_variables
+
+  _numsant  := 0 
+  _totsant  := 0 
+  
+  _numsant2 := 0 
+  _totsant2 := 0 
+  
+  _numhsbc  := 0 
+  _tothsbc  := 0 
+  
+  _numefe   := 0
+  _totefe   := 0 
+
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_resumen
+
+        $valor := 'EMPPRIN':'TIPO_NOM'
+        imprime_columna
+
+        $valor := 'SANTANDER NOMINA' 
+        imprime_columna
+ 
+        DECIMALES:= 2     
+        $valor := $(_numsant )
+        imprime_columna
+
+        $valor := $(_totsant )
+        imprime_columna
+        imprime_renglon
+
+        $valor := 'EMPPRIN':'TIPO_NOM'
+        imprime_columna
+
+        $valor := 'SANTANDER PREPAGO' 
+        imprime_columna
+ 
+        DECIMALES:= 2     
+        $valor := $(_numsant2 )
+        imprime_columna
+
+        $valor := $(_totsant2 )
+        imprime_columna
+        imprime_renglon
+
+        $valor := 'EMPPRIN':'TIPO_NOM'
+        imprime_columna
+
+        $valor := 'HSBC' 
+        imprime_columna
+ 
+        DECIMALES:= 2     
+        $valor := $(_numhsbc )
+        imprime_columna
+
+        $valor := $(_tothsbc )
+        imprime_columna
+        imprime_renglon
+
+        $valor := 'EMPPRIN':'TIPO_NOM'
+        imprime_columna
+
+        $valor := 'EFECTIVO' 
+        imprime_columna
+ 
+        DECIMALES:= 2     
+        $valor := $(_numefe )
+        imprime_columna
+
+        $valor := $(_totefe )
+        imprime_columna
+        imprime_renglon
+        imprime_renglon
+
+FIN_SUB_RUTINA
+
+
+SUB_RUTINA formato_trabajador
+
+   _cambio := 0 
+
+   SI ( $tiponom = '' ) 
+          $tiponom := 'EMPPRIN':'TIPO_NOM'   
+   FIN_SI
+
+   SI ( 'EMPPRIN':'TIPO_NOM' <> $tiponom )  
+        $tiponom := 'EMPPRIN':'TIPO_NOM' 
+        _cambio := 1
+   SI_NO
+        suma_pagos        
+   FIN_SI
+  
+   SI (  _cambio = 1 ) 
+        imprime_resumen
+        limpia_variables
+        suma_pagos
+   FIN_SI
+
+
+   imprime_detalle
+
+
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E.RFC,E.CTA_TARJETA,EX.BANCO,E.TIPO_NOM'
+$bases_extras  := 'EMPEXT EX'
+$condiciones_extras := 'E.CLAVE = EX.CLAVE'
+$ordenes_extras := 'E.TIPO_NOM,EX.BANCO' 
+base_trabajadores
+
+ABRE_BASE ( '_CUENTA_BANCO')
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( TOTAL ( 'TOTA' ) <> 0 ) 
+       formato_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+imprime_renglon
+imprime_resumen
+
+TERMINA_REPORTE

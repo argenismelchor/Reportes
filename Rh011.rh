@@ -1,0 +1,114 @@
+#NOTAS
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#GRAFICA
+#DESCRIPCION
+#Este reporte muestra las notas de los trabajadores de la empresa que pertenescan al Registro Patronal y sucursal especificado.
+#Este reporte puede ser general, departamental/centro de costo o por puesto y puede ser indexado por clave o nombre.
+#imprime la clave, el nombre, la sucursal, el departamento y el puesto del trabajador.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC  ( 'FECHA INICIAL' , '' , _fi )
+NUEVO_PARAMETRO_FEC  ( 'FECHA FINAL' , '' , _ff )
+NUEVO_PARAMETRO_TAB  ( 'TIPO' , 'NOTA/CLAVE/TIPO DE NOTAS' , &notas )
+NUEVO_PARAMETRO_CHEQ ( 'GRAFICA' , '' , _grafica )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+_lv           := 0
+
+ENCABEZADO
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   _lv := LONGITUD ( VERSION_GIRO )
+   IMP ( COL (1) , NOMBRE_REPORTE , COL (COLUMNAS - _lv) , VERSION_GIRO ) ;; IMPRIME
+   IMP ( COL (1) , CLAVE_REPORTE , CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ('Trabajadores Vigentes del ' + FECHA (_fi) + ' al ' + FECHA (_ff) ) ) ;; IMPRIME
+   IMP ( REPITETXT ( '=' , 80 ) ) ;; IMPRIME
+   IMP ( COL (1) , 'Clave' , COL (10) , 'Nombre' , COL (50) , DER ( 'SUCURSAL' , 10 ) )
+   SI ( CD_DC = 0 )
+      IMP ( COL (60) , DER ( 'DEPTO' , 10 ) )
+   SI_NO
+      IMP ( COL (60) , DER ( 'C.C.' , 10 ) )
+   FIN_SI
+   IMP ( COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   IMP ( COL (5) , 'NOTA' , COL (10) , 'FECHA' , COL (25) , 'DESCRIPCION' ) ;; IMPRIME
+   IMP ( COL (5) , 'NOTA' ) ;; IMPRIME
+   IMP ( REPITETXT ( '-' , 80 ) ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0 
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL (1) , 'Fecha : ' , FECHA (FECHA_HOY) , '    ' , 'Hora : ' , HORA (HORA_ACTUAL) , COL (65) , 'PAGINA : ' , PAGINA ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' ) ;; IMPRIME
+   DECIMALES := 2 
+FIN_PIE 
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &grafica )
+VAR_T ( &nota )
+VAR_N ( _col )
+VAR_N ( _ren )
+$ant_trab := '' 
+$aux      := ''
+_aux      := 0
+_ii       := 0
+$notas    := ''
+
+SUB_RUTINA formato_trabajador
+   SI ( $ant_trab <> 'EMPPRIN':'CLAVE' )
+      $ant_trab := 'EMPPRIN':'CLAVE'
+      IMP ( COL (1) , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 38 ) , COL (50) , DER ( 'EMPPRIN':'SUC_CLAVE' , 10 ) , COL (60) , DER ( 'EMPPRIN':'DEP_CLAVE' , 10 ) , COL (70) , DER ( 'EMPPRIN':'PUE_CLAVE' , 10 ) ) ;; IMPRIME
+   FIN_SI
+   DECIMALES := 0   
+   SI ( TRAE_REGISTRO ( 'NOTA' , 'EMPPRIN':'TIPO' ) )
+      IMP ( COL (5) , 'EMPPRIN':'TIPO' , COL (10) , FECHA ('EMPPRIN':'FECHA') , COL (25) , 'NOTA':'DESCRIPCION' ) ;; IMPRIME
+      CARGA_MEMO ( &nota , 'EMPPRIN' , 'NOTA' )
+      IMPRIME_TABLA ( &nota , 10 )
+##### total de notas
+      INCREMENTA_TABLA ( &grafica , 'TOTAL' , 'EMPPRIN':'TIPO' , 1 )
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+$campos_extras := 'N.CLAVE, N. FECHA, N. TIPO, N. NOTA'
+$bases_extras := 'EMPNOTA N'
+$condiciones_extras := 'N. CLAVE = E. CLAVE AND N. FECHA >= :FINI AND  N. FECHA <= :FFIN'
+$notas := TRAE_SELECCION( &notas )
+SI ( $notas <> '' )
+  $condiciones_extras := $condiciones_extras + ' AND N. TIPO IN (' + $notas + ')'
+FIN_SI
+base_trabajadores
+PARAMETRO_SQL( 'EMPPRIN' , 'FINI' , _fi )
+PARAMETRO_SQL( 'EMPPRIN' , 'FFIN' , _ff )
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE ( _ff ) )
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+
+SI ( _grafica = 1 )
+   CREA_GRAFICA( &grafica )
+FIN_SI
+TERMINA_REPORTE

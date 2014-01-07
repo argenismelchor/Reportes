@@ -1,0 +1,486 @@
+#PROMEDIOS VARIABLES
+#NO EDITAR
+#EXCEL
+#PROMEDIOS VARIABLES
+#VERSION 2.502
+#DESCRIPCION
+#Este reporte calcula los promedio variables mensuales en base a los conceptos estandares.
+#Este reporte imprime de los trabajadores la clave, nombre, la fecha, el sueldo, la nueva variable e integrado IMSS.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/EXCEL' , $salida )
+NUEVO_PARAMETRO_SEL ( 'BIMESTRE', '1/2/3/4/5/6', _bimestre )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+NUEVO_PARAMETRO_SEL ( 'DIAS A TOMAR'    , 'DIAS DE CALENDARIO/DIAS DE PAGO' , _cal_dias )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'SUELDO'
+_longitud  := 10
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+
+$columna   := 'ANT.'
+_longitud  := 5
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'FACTOR'
+_longitud  := 8
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'BASE'
+_longitud  := 10
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'DIAS'
+_longitud  := 5
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'FALTAS'
+_longitud  := 5
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INC'
+_longitud  := 5
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'VARIABLE'
+_longitud  := 9
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INT. IMSS.'
+_longitud  := 10
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'INT. ANT.'
+_longitud  := 10
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'DIF'
+_longitud  := 8
+$justifica := 'DER'
+$totales   := 'NO'
+agrega_columna
+
+
+_bimestre := _bimestre + 1
+DECIMALES := 0
+$bimestre := 'BIMESTRE' + .( _bimestre )
+FORMATO_FECHA := 6
+_ano := VALOR( SUBSTR( FECHA( FECHA_HOY ), 5, 4 ) )
+_ff  := 0
+SI ( _bimestre < 6 )
+  _ff := CALCULA_FECHA( _ano, ( _bimestre * 2 ) + 1, 01 )
+SI_NO
+  _ff := CALCULA_FECHA( _ano + 1, 01, 01 )
+FIN_SI
+_finicial := CALCULA_FECHA( _ano, ( _bimestre * 2 ) - 1, 01 )
+_ffinal   := CALCULA_FECHA( _ano, ( _bimestre * 2 ), 31 )
+
+FORMATO_FECHA := 0
+NUEVO_PARAMETRO_FEC ( 'FECHA MODIFICACION' , FECHA( _ff ) , _ff )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , FECHA( _finicial ) , _finicial )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL' , FECHA( _ffinal ) , _ffinal )
+NUEVO_PARAMETRO     ( 'DIFERENCIA' , '0.01' , _dif )
+NUEVO_PARAMETRO_CHEQ( 'GRABAR' , '' , _grabar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_condensado := 1
+$titulo_reporte := 'CALCULO DE SALARIOS VARIABLES AL' + FECHA( _ff )
+
+_lv := 0
+COLUMNAS      := 120
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+RENGLONES     := 65
+SALIDA        := 'PANTALLA'
+
+#Variables Globales
+VAR_N ( _sdo )
+VAR_T ( &conceptos )
+$tipo    := ''
+_cont    := 0
+_imp     := 0
+_aux1    := 0
+_aux2    := 0
+_int     := 0
+_tope    := 0
+$mes     := ''
+$antes   := ''
+$conc    := ''
+_dias    := 0
+_faltas  := 0
+_inc     := 0
+_factor  := 0
+_sdo3    := 0
+_ant     := 0
+$clave   := ''
+$nombre  := ''
+_ren     := 0
+_base    := 0
+_difi    := 0
+_monto   := 0
+_minimo  := 0
+SI ( TRAE_REGISTRO_VIG( 'MINIMO' , _ffinal )) 
+   DECIMALES := 2
+   _minimo  := 'Minimo':'MINIMO_A'
+FIN_SI
+_vales1  := 0
+_vales2  := 0
+$mes1    := ''
+$mes2    := ''
+$vale    := 'VALE'
+$vales   := 'VALES'
+_valor   := 0
+_sueldo_actual := 0
+VAR_A ( TIEMPO_EXTRA )
+VAR_T ( &base )
+_col_exc  := 0
+
+#Subrutina diversas
+
+SI ( _bimestre = 1 ) $mes1 := 'ENE' $mes2 := 'FEB' FIN_SI
+SI ( _bimestre = 2 ) $mes1 := 'MAR' $mes2 := 'ABR' FIN_SI
+SI ( _bimestre = 3 ) $mes1 := 'MAY' $mes2 := 'JUN' FIN_SI
+SI ( _bimestre = 4 ) $mes1 := 'JUL' $mes2 := 'AGO' FIN_SI
+SI ( _bimestre = 5 ) $mes1 := 'SEP' $mes2 := 'OCT' FIN_SI
+SI ( _bimestre = 6 ) $mes1 := 'NOV' $mes2 := 'NOV' FIN_SI
+
+
+
+SUB_RUTINA agrega_movimiento
+   DECIMALES := 2
+   SI ( TRAE_REGISTRO ( 'EMPSDO' , $clave , _ff ) = FALSO )
+      AGREGA_REGISTRO ( 'EMPSDO' )
+      'EMPSDO':'CLAVE' := $clave
+      'EMPSDO':'FECHA' := _ff
+      'EMPSDO':'TIPO'  := 'M'
+   FIN_SI
+   'EMPSDO':'SDO1' := _sdo
+   'EMPSDO':'SDO2' := _aux1
+   'EMPSDO':'SDO3' := _int
+   'EMPSDO':'SDO4' := _aux1
+   SI (_int > 'MINIMO':'TOPE INFONAVIT' )
+      _int := 'MINIMO':'TOPE INFONAVIT'
+   FIN_SI
+   'EMPSDO':'SDO5' := _int
+   GRABA_BASE ( 'EMPSDO' )
+FIN_SUB_RUTINA
+
+_ind  := 0
+_hex2 := 0
+_auxd := 0
+
+SUB_RUTINA formato_trabajador
+   SI( 'EMPPRIN':'CLAVE' = 'Q0126' )
+      _auxd := 1
+   FIN_SI
+   DECIMALES := 2
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+
+   $valor := $ (_sdo)
+   imprime_columna
+
+   $valor := $ (_ant)
+   imprime_columna
+
+   DECIMALES := 6
+   $valor := $ (_factor)
+   imprime_columna
+   DECIMALES := 2
+
+   $valor := $ (_base)
+   imprime_columna
+
+   $valor := $ (_dias)
+   imprime_columna
+
+   $valor := $ (_faltas)
+   imprime_columna
+
+   $valor := $ (_inc)
+   imprime_columna
+
+   $valor := $ (_aux1)
+   imprime_columna
+
+   _int   :=  (_sdo3+_aux1)
+
+   $valor := $ (_int)
+   imprime_columna
+
+   $valor := $ (_sdo3)
+   imprime_columna
+
+   _difi := _int - _sdo3
+
+   $valor := $ (_difi)
+   imprime_columna
+
+   imprime_renglon
+   
+   _col_exc   := 1
+   _ren_excel := _ren_excel - 1
+   _ind := 1
+   MIENTRAS( TRAE_VALOR_TABLA( &base, 0, _ind ) <> '' )
+     IMP ( COL(1 + (_ind*14)), TRAE_VALOR_TABLA( &base, 0, _ind ) + ': ' + $( VALOR(TRAE_VALOR_TABLA( &base, 1, _ind )) ) )
+     SI ( $salida = 'EXCEL')  
+        _col_exc := TRAE_INDICE_COL ( &columnas , 0 , '"' + TRAE_VALOR_TABLA( &base, 0, _ind )) + 1
+        _valor :=  VALOR(TRAE_VALOR_TABLA( &base, 1, _ind )) 
+        SI ( $valor = '' ) ;; $valor := '0' ;; FIN_SI
+        EXCEL ( 'PON_VALOR' , _col_exc , _ren_excel  , $(_valor))     
+        _col_exc := _col_exc + 1
+     FIN_SI
+     _ind := _ind + 1
+   FIN_MIENTRAS
+   IMPRIME
+     SI ( ($salida = 'EXCEL') AND ( _col_exc > 0 ) )
+        _ren_excel :=  _ren_excel + 1 
+     FIN_SI
+   SI ( _grabar = 1 )
+      agrega_movimiento
+   FIN_SI            
+FIN_SUB_RUTINA
+
+SUB_RUTINA calcula
+
+   LIMPIA_TABLA ( &base )
+   $clave  := 'EMPPRIN':'CLAVE'
+   $nombre := 'EMPPRIN':'NOMBRE'
+   DECIMALES := 2
+   _sdo    := 'EMPSDO':'SDO1'
+   _sdo3   := 'EMPSDO':'SDO3'
+   _aux1   := 0
+   SI ( _cal_dias = 0) 
+      _dias   := _ffinal - _finicial + 1
+      _faltas := TOTAL_FALTAS ( _finicial , _ffinal , 'S' )
+      _inc    := TRAE_INCAPACIDADES( _finicial , _ffinal , '*')
+      _dias   := _dias - ( _faltas + _inc ) 
+     SI_NO
+      _faltas := TOTAL_FALTAS ( _finicial , _ffinal , 'S' )
+      _inc    := TRAE_INCAPACIDADES( _finicial , _ffinal , '*')
+      _dias   := ACUM_MENSUAL( $bimestre, 'DIAS' )
+   FIN_SI
+   _factor := 0
+
+   DECIMALES := 2
+   _ant := ( _ff - 'EMPPRIN':'INGRESO' ) / 365
+   SI ( FRAC ( _ant ) > 0 )
+      _ant := _ant + 1
+   FIN_SI
+   SI ( 'EMPPRIN':'CLAVE' = 'MC09100156' )
+      _ant := _ant
+   FIN_SI
+   SI (( _ant < 1 ) OR ( FRAC ( _ant ) > 0.01))
+      _ant := TRUNCAR ( _ant ) + 1
+    SI_NO
+      _ant := TRUNCAR ( _ant )
+   FIN_SI
+
+   SI ( TRAE_REGISTRO ( 'PUESTO' , 'EMPPRIN':'PUE_CLAVE' ) )
+      MIENTRAS ( TRAE_REGISTRO ( 'FACTOR' , 'PUESTO':'TIPO EMPLEADO' , _ant ) = FALSO )
+         _ant := _ant - 1
+      FIN_MIENTRAS
+   FIN_SI
+   _ant := ( _ff - 'EMPPRIN':'INGRESO' ) / 365
+   SI ( FRAC ( _ant ) > 0 )
+      _ant := _ant + 1
+   FIN_SI
+   SI (( _ant < 1 ) OR ( FRAC ( _ant ) > 0.01))
+      _ant := TRUNCAR ( _ant ) + 1
+   SI_NO
+      _ant := TRUNCAR ( _ant )
+   FIN_SI
+
+   DECIMALES := 2
+   _ren := 0
+   $conc := TRAE_VALOR_TABLA( &conceptos, 0, _ren )
+   MIENTRAS ( $conc <> '' )
+     $conc := TRAE_VALOR_TABLA( &conceptos, 0, _ren )
+      SI ( $conc = 'P040') 
+         DECIMALES := 2
+      FIN_SI
+     _ren := _ren + 1     
+     _monto := ACUM_MENSUAL( $bimestre, $conc )     
+######################################################################################################
+############################ CONCIDERACIONES ESPECIALES POR CONCEPTOS ################################
+######################################################################################################
+     SI (( $conc = '19' ) OR ( $conc = '20' ))
+       _tope := _dias * _sdo3 * 0.10
+       SI ( _monto > _tope )
+         _monto := _monto - _tope
+       SI_NO
+         _monto := 0
+       FIN_SI
+     FIN_SI
+     SI ( $conc = '10' )
+#       #_sueldo_actual := SUELDO_ACTUAL( _finicial, _ffinal )
+#       _monto := ACUM_MENSUAL( $bimestre, 'HESS' )
+       _monto := ACUM_MENSUAL( $bimestre, $conc ) - ACUM_MENSUAL( $bimestre, 'XI10' )
+     FIN_SI
+     SI ( $conc = '27' ) 
+         DECIMALES := 2
+     FIN_SI
+
+     SI (( $conc = 'VALE' ) or ( $conc = 'VALES'))
+      _monto := 0
+        SI ( $conc = 'VALE' )
+               _vales1 := ACUM_MENSUAL ( $mes1 , $vale ) #+ ACUM_MENSUAL ( $mes1 , $vales )
+               _vales2 := ACUM_MENSUAL ( $mes2 , $vale ) #+ ACUM_MENSUAL ( $mes2 , $vales )      
+           
+              _tope := ( _minimo * 30.4166 ) * 0.40           
+            
+              SI ( _vales1 > _tope )   
+                  _vales1 := _vales1 - _tope
+              SI_NO
+                 _vales1 := 0
+              FIN_SI
+              SI ( _vales2 > _tope )   
+                  _vales2 := _vales2 - _tope
+              SI_NO
+                 _vales2 := 0
+              FIN_SI
+
+       
+             _monto := _vales1 + _vales2
+          
+         FIN_SI
+   FIN_SI
+   SI (( $conc = '30' ) or ( $conc = '30A' ))  
+      _monto := ACUM_MENSUAL ( $bimestre, $conc ) + ACUM_MENSUAL ( 'ESPECIAL', $conc ) 
+       SI ( _bimestre = 6 ) 
+                _monto := ACUM_MENSUAL ( $bimestre, $conc ) + ACUM_MENSUAL ( 'ESPECIAL', $conc ) + ACUM_MENSUAL ( 'AGUINALDO', $conc ) 
+       FIN_SI
+ 
+   FIN_SI
+######################################################################################################
+######################################################################################################
+######################################################################################################
+     SI ( _monto > 0 )
+       INCREMENTA_TABLA( &base, 'TOTAL', $conc, _monto )
+       _aux1 := _aux1 + _monto
+     FIN_SI
+   FIN_MIENTRAS
+# ---------- CALCULO DE LA VARIABLE DIARIA
+   DECIMALES := 6
+   _factor := 'FACTOR':'FACTOR'
+   _base   := _aux1
+   _aux1   := _aux1 / _dias
+   _int    := ( _factor * _sdo ) + _aux1
+   DECIMALES := 2
+   SI ( _int > 'MINIMO':'TOPE EG' )
+      _int := 'MINIMO':'TOPE EG'
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_incluir_pue := 1
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+#SALIDA_REPORTE ( 'EMPRESA':'PATH REPORTES' + '\MOVIMIEN.TXT' )
+
+#Definicion de variables en base a los parametros
+
+SI ( TRAE_REGISTRO_VIG ( 'MINIMO' , _ff ) = FALSO )
+   MENSAJE ( 'NO HAY MINIMO VIGENTE A LA FECHA' )
+FIN_SI
+
+base_trabajadores
+
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPINC' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO' , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPACUM' , 'CLAVE' )
+
+_auxd := 0
+PRIMER_REGISTRO( 'EMPPRIN' )
+
+# CONCEPTOS ESTANDARES
+PRIMER_REGISTRO( 'CONCEPTO' )
+MIENTRAS( FIN_BASE( 'CONCEPTO' ) = FALSO )
+  SI ( 'CONCEPTO':'CLAVE' = '03') 
+     DECIMALES := 2
+  FIN_SI
+  SI ( 'CONCEPTO':'GRABA_IMSS' = 1 )
+    $saux :=  'CONCEPTO':'CLAVE'
+    AGREGA_VALOR_COL ( &conceptos , 0 , $saux )
+    $columna   := '"' + $saux
+    _longitud  := 10
+    $justifica := 'IZQ'
+    $totales   := 'NO'
+    agrega_columna
+  FIN_SI
+  SIGUIENTE_REGISTRO( 'CONCEPTO' )
+FIN_MIENTRAS
+
+define_encabezado
+
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   _auxd := 0
+   SI( 'EMPPRIN':'CLAVE' = '1113' )
+      _auxd := 1
+   FIN_SI
+   SI ( ES_VIGENTE ( _ff ) )
+     #_aux2 := TRAE_INCAPACIDADES ( _ff , _ff , '*' )
+     _aux2 := 0
+     SI ( _aux2 = 0 )
+       TRAE_MOV_FECHA ( _ff - 1 )
+       calcula
+       SI (( ( _int - _sdo3 ) >= _dif ) O ( ( _int - _sdo3 ) <= -(_dif) ))
+          datos_trabajador
+       FIN_SI
+     FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

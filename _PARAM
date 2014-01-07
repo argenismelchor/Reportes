@@ -1,0 +1,82 @@
+# TABLAS DE IMPUESTOS MENSUALES
+   $ispt                 := 'TIPONOM':'TAB_ISR'
+   $subs                 := 'TIPONOM':'TAB_SUBS'
+   $ajuste_mensual       := 'TIPONOM':'AJUSTE_MENSUAL'
+# TABLAS DE IMPUESTOS ANUALES
+   $ispta                := 'TIPONOM':'TAB_ISR_ANUAL'
+# ESPESIFICA SI APLICAN AJUSTES MENSUALES EN LA NOMINA
+   $ajuste_anual         := 'S'
+# CREDITO INFONAVIT ( 1 = TRADICIONAL   2 = NUEVA FORMULA )
+   _infonavit            := 'TIPONOM':'TIPO_CALC_INFONAVIT'
+# TOTALES DE NOMINA
+   _totales              := 1
+# PARAMETROS DEL CALCULO CONSTANTES
+   _actualizar_activos   := 'TIPONOM':'ACTUALIZA_ACTIVOS'
+   $seg_vivienda         := 'TIPONOM':'DESC_SEG_VIVIENDA'
+
+# PAGO AUTOMÁTICO DE VACACIONES       ( S / N )
+   $vac_automatica       := 'TIPONOM':'VAC_AUTOMATICAS'
+
+# PAGO AUTOMÁTICO DE PRIMA VACACIONAL ( S / N )
+   $pv_automatica        := 'TIPONOM':'PV_ANIVERSARIO'
+
+# ACTIVAR SEMANA INGLESA 5 DÍAS    ( S / N )
+   $sem_ing              := 'TIPONOM':'SEMANA_INGLESA'
+
+# COSTO DE LA COMIDA.
+   _comida               := 'TIPONOM':'COSTO_COMIDA'
+
+# PAGO DEL FONDO DE AHORRO ( 1 = En cada nómina  2 = Final de Mes 3 = Deshabilitado )
+   _pago_fondo           := 'TIPONOM':'PAGO_FONDO'
+# PORCENTAJE DE FONDO DE AHORRO (0.13 = 13%). SI CAPTURA CERO ENTONCES NO SE DESCUENTA EL FONDO DE AHORRO.
+   _fondo_ahorro         := 'TIPONOM':'PORC_FONDO'
+# CONCEPTOS BASE PARA EL FONDO DE AHORRO 
+   $conceptos_fondo      := 'TIPONOM':'CONC_FONDO'
+
+# PAGO DE VALES DE DESPENSA ( 1 = En cada nómina  2 = Final de Mes  3 = Deshabilitado )
+   _pago_vales           := 'TIPONOM':'PAGO_VALES'
+# PORCENTAJE DE VALES DE DESPENSA  
+   _vales                := 'TIPONOM':'PORC_VALES'
+# CONCEPTOS BASE PARA EL CALCULO DE VALES DE DESPENSA
+   $conceptos_vales      := 'TIPONOM':'CONC_VALES'
+   SI ( 'TIPONOM':'PAGO_VALES_EFECTIVO' = 'S' ) 
+      $concepto_vale        := '29'
+    SI_NO
+      $concepto_vale        := 'VALE'
+   FIN_SI
+
+# PORCENTAJE DE PREMIO DE PUNTUALIDAD. SI CAPTURA CERO ENTONCES NO SE PAGA EL PREMIO.
+   _puntualidad          := 'TIPONOM':'PREMIO_PUNTUALIDAD'
+# PAGO AUTOMATICO DE PREMIO DE PUNTUALIDAD. SI CAPTURA > 0 ENTONCES SERA AUTOMATICO.
+   _pago_puntualidad     := 'TIPONOM':'PREMIO_PUNTUALIDAD'
+   _retardos_puntualidad := 'TIPONOM':'TOPE_PP_RETARDOS'
+   _faltas_puntualidad   := 'TIPONOM':'TOPE_PP_FALTAS'
+   _incap_puntualidad    := 'TIPONOM':'TOPE_PP_INCAPACIDADES'
+   _vacac_puntualidad    := 'TIPONOM':'TOPE_PP_VACACIONES'
+
+# PORCENTAJE DE PREMIO DE ASISTENCIA. SI CAPTURA CERO ENTONCES NO SE PAGA EL PREMIO.
+   _asistencia           := 'TIPONOM':'PREMIO_ASISTENCIA'
+# PAGO AUTOMATICO DE PREMIO DE ASISTENCIA. SI CAPTURA > 0 ENTONCES SERA AUTOMATICO.
+   _pago_asistencia      := 'TIPONOM':'PREMIO_ASISTENCIA'
+   _faltas_asistencia    := 'TIPONOM':'TOPE_PA_FALTAS'
+   _incap_asistencia     := 'TIPONOM':'TOPE_PA_INCAPACIDADES'
+   _vacac_asistencia     := 'TIPONOM':'TOPE_PA_VACACIONES'
+   $tipo_falta           := 'TIPONOM':'FALTAS_DESCONTAR'
+
+# PORCENTAJE DE PRIMA DOMINICAL ( 0.25 = 25% )
+   _prima_dominical      := 0.25
+
+# PORCENTAJE DE CUOTA SINDICAL ( 0.02 = 2% )
+   _cuota_sindical%      := 0.02
+
+# VALOR DE PROYECCION DE IMPUESTOS
+   DECIMALES             := 4
+   _proy_ispt            := 'TIPONOM':'PROY_ISR'
+   SI ( _proy_ispt = 0 ) 
+      MENSAJE ( 'PROYECCION DE BASEA GRAVADA, ESTA EN 0, FAVOR DE CAPTURARLA EN CATALOGOS-->DE NOMINA-->TIPOS DE NOMINA Y PERIODO') 
+      TERMINA_REPORTE
+   FIN_SI   
+
+# CANTIDAD A AJUSTAR EL TOTAL A PAGAR
+   _ajuste               := 'TIPONOM':'AJUSTE_NETO'
+

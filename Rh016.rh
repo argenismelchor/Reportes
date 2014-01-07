@@ -1,0 +1,136 @@
+#VENCIMIENTO DE CONTRATOS
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra los contratos proximamente a vencerse según las fechas dadas.
+#Este reporte pide el rango de fechas.
+#Este reporte imprime de los trabajadores la clave, nombre, sucursal, departamento, y puesto; de los contratos imprime fecha, duración y vencimiento.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO/EXCEL' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , '' , _fini )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL' , '' , _ffin )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_lv := 0
+
+ENCABEZADO   
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   _lv := LONGITUD ( VERSION_GIRO )
+   IMP ( COL (1) , NOMBRE_REPORTE , COL (COLUMNAS - _lv) , VERSION_GIRO ) ;; IMPRIME
+   IMP ( COL (1) , CLAVE_REPORTE , CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ('Del ' + FECHA (_fini) + ' al ' + FECHA (_ffin) ) ) ;; IMPRIME
+   IMP ( REPITETXT ( '=' , 80 ) ) ;; IMPRIME
+   SI ( CD_DC = 0 )
+      IMP ( COL (1) , 'Clave' , COL (10) , 'Nombre' , COL (50) , DER ( 'SUCURSAL' , 10 ) , COL (60) , DER ( 'DEPTO' , 10 ) , COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   SI_NO
+      IMP ( COL (1) , 'Clave' , COL (10) , 'Nombre' , COL (50) , DER ( 'SUCURSAL' , 10 ) , COL (60) , DER ( 'C.C.' , 10 ) , COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   FIN_SI
+   IMP ( COL (10) , 'Fecha Inicio' , COL (25) , 'DURACION' , COL (35) , 'Fecha Vencimiento' ) ;; IMPRIME
+   IMP ( REPITETXT ( '-' , 80 ) ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME 
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL (1) , 'Fecha : ' , FECHA (FECHA_HOY) , '    ' , 'Hora : ' , HORA (HORA_ACTUAL) , COL (65) , 'PAGINA : ' , PAGINA ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' ) ;; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+SI ( $salida = 'EXCEL' )
+   EXCEL ( 'PON_VALOR', 1, 1, 'CLAVE' )
+   EXCEL ( 'PON_VALOR', 2, 1, 'NOMBRE' )
+   EXCEL ( 'PON_VALOR', 3, 1, 'SUCURSAL' )
+   EXCEL ( 'PON_VALOR', 4, 1, 'DEPARTAMENTO' )
+   EXCEL ( 'PON_VALOR', 5, 1, 'PUESTO' )
+   EXCEL ( 'PON_VALOR', 6, 1, 'INICIO' )
+   EXCEL ( 'PON_VALOR', 7, 1, 'DURACION' )
+   EXCEL ( 'PON_VALOR', 8, 1, 'VENCIMIENTO' )
+FIN_SI
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+
+#Variables Globales
+_salir := 0
+_ren_act := 3
+_fcont := 0
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+  DECIMALES := 0
+  IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 38 ) )
+  IMP ( COL (50) , DER ( 'EMPPRIN':'SUC_CLAVE' , 10 ) , COL (60) , DER ( 'EMPPRIN':'DEP_CLAVE' , 10 ) , COL (70) , DER ( 'EMPPRIN':'PUE_CLAVE' , 10 ) )
+  IMPRIME
+  IMP ( COL (10) , FECHA ('EMPPRIN':'FECHA') , COL (25) , .('EMPPRIN':'DURACION') , ' Dias' , COL (35) , FECHA ( 'EMPPRIN':'FECHA_TERMINOC' )) ;; IMPRIME
+  DECIMALES := 2
+   SI ( $salida = 'EXCEL' )
+      EXCEL ( 'PON_VALOR', 1, _ren_act, 'EMPPRIN':'CLAVE' )
+      EXCEL ( 'PON_VALOR', 2, _ren_act, 'EMPPRIN':'NOMBRE' )
+      EXCEL ( 'PON_VALOR', 3, _ren_act, 'EMPPRIN':'SUC_CLAVE' )
+      EXCEL ( 'PON_VALOR', 4, _ren_act, 'EMPPRIN':'DEP_CLAVE' )
+      EXCEL ( 'PON_VALOR', 5, _ren_act, 'EMPPRIN':'PUE_CLAVE' )
+      EXCEL ( 'PON_VALOR', 6, _ren_act, FECHA ('EMPPRIN':'FECHA') )
+      EXCEL ( 'PON_VALOR', 7, _ren_act, 'EMPPRIN':'DURACION' )
+      EXCEL ( 'PON_VALOR', 8, _ren_act, FECHA ( 'EMPPRIN':'FECHA_TERMINOC' ))
+      _ren_act := _ren_act + 1
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+#lee_parametros_seleccion
+#lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+$campos_extras := 'C. TIPO, C. DURACION, C. FECHA, C. FECHA + C. DURACION - 1 AS C. FECHA_TERMINOC'
+$bases_extras := 'EMPCONT C'
+SI ( SQL_SERVER )
+  $condiciones_extras := '(C. CLAVE = E. CLAVE ) AND ( C. TIPO IN ("I", "R")) AND ( DATEADD( DAY, C. DURACION - 1, C. FECHA ) >= :FINI ) AND ( DATEADD( DAY, C. DURACION - 1, C. FECHA) <= :FFIN )'
+SI_NO
+  $condiciones_extras := '(C. CLAVE = E. CLAVE ) AND ( C. TIPO IN ("I", "R"))'
+FIN_SI
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPCONT', 'CLAVE' )
+
+_renovado := 0
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+  SI ( ES_VIGENTE( FECHA_HOY ) )
+   SI (( 'EMPPRIN':'FECHA_TERMINOC' >= _fini ) Y ( 'EMPPRIN':'FECHA_TERMINOC' <= _ffin ))
+      _fcont := 'EMPPRIN':'FECHA'
+      _renovado := 0
+      SI ( TRAE_REGISTRO( 'EMPCONT', 'EMPPRIN':'CLAVE', _fcont ) )
+        SIGUIENTE_REGISTRO( 'EMPCONT' )
+        MIENTRAS( FIN_BASE( 'EMPCONT' ) = FALSO )
+          SI ( 'EMPCONT':'TIPO' = 'R' )
+            _renovado := 1
+          FIN_SI
+          SIGUIENTE_REGISTRO( 'EMPCONT' )
+        FIN_MIENTRAS
+      FIN_SI
+      SI ( _renovado = 0 )
+        datos_trabajador
+      FIN_SI
+   FIN_SI
+  FIN_SI
+  SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte

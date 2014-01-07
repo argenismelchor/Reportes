@@ -1,0 +1,112 @@
+#DEPARTAMENTOS CD / CENTROS DE COSTOS DC
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte despliega el catalogo de departamentos cd / centros de costo dc. Este reporte pide el centro de costo a reportar.
+#Este reporte imprime la clave, la descripcion y el centro de costo.
+#FIN_DESCRIPCION
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_SEL ( 'ORDEN' , 'CLAVE/DESCRIPCION' , $orden )
+$ordenc := ''
+VAR_T ( &centro )
+SI ( CD_DC = 0 )
+  NUEVO_PARAMETRO_SEL ( 'POR C. DE COSTO' , 'SI/NO' , $ordenc )
+  NUEVO_PARAMETRO_TAB ( 'C. DE COSTO' , 'CENTROC/CLAVE/CENTROS DE COSTO' , &centro )
+SI_NO
+  NUEVO_PARAMETRO_SEL ( 'POR DEPTO' , 'SI/NO' , $ordenc )
+  NUEVO_PARAMETRO_TAB ( 'C. DE COSTO' , 'DEPTO/CLAVE/DEPARTAMENTOS' , &centro )
+FIN_SI
+LEE_PARAMETROS
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+SALIDA        := $salida
+INCLUYE ENCPIE.DAT
+
+SI ( $salida = 'DISCO' )
+   SALIDA_REPORTE ( DIRECTORIO_TRABAJO + '\TABDEPTO.TXT' )
+FIN_SI
+
+ENCABEZADO
+   SI ( CD_DC = 0 )
+     $titulo_reporte := 'Tabla de Departamentos'
+   SI_NO
+     $titulo_reporte := 'Tabla de CENTROS de COSTO'
+   FIN_SI
+   encabezado_ini
+   SI ( CD_DC = 0 )
+     IMP ( COL (1) , 'Clave' , COL (11) , 'DESCRIPCION' , COL (41) , 'CENTRO DE COSTO' ) ;; IMPRIME
+   SI_NO
+     IMP ( COL (1) , 'Clave' , COL (11) , 'DESCRIPCION' , COL (41) , 'DEPARTAMENTO' ) ;; IMPRIME
+   FIN_SI
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+### DEFINICION DE TABLA
+VAR_T ( &sql )
+AGREGA_VALOR_COL ( &sql, 0, 'SELECT *' )
+SI ( CD_DC = 0 )
+  AGREGA_VALOR_COL ( &sql, 0, 'FROM DEPTO, CENTROC' )
+  AGREGA_VALOR_COL ( &sql, 0, 'WHERE CENTROC.CLAVE = DEPTO."CENTRO COSTO"' )
+SI_NO
+  AGREGA_VALOR_COL ( &sql, 0, 'FROM CENTROC, DEPTO' )
+  AGREGA_VALOR_COL ( &sql, 0, 'WHERE DEPTO.CLAVE = CENTROC."DEPARTAMENTO"' )
+FIN_SI
+SI ( TRAE_VALOR_TABLA ( &centro, 0, 0 ) <> '*' )
+  SI ( CD_DC = 0 )
+    AGREGA_VALOR_COL ( &sql, 0, '      AND DEPTO."CENTRO COSTO" IN' )
+  SI_NO
+    AGREGA_VALOR_COL ( &sql, 0, '      AND CENTROC."DEPARTAMENTO" IN' )
+  FIN_SI
+  CREA_SELECCION_SQL ( &sql, &centro )
+FIN_SI
+SI ( $ordenc = 'SI' )
+   SI ( CD_DC = 0 )
+     AGREGA_VALOR_COL ( &sql, 0, 'ORDER BY CENTROC.CLAVE,' )
+   SI_NO
+     AGREGA_VALOR_COL ( &sql, 0, 'ORDER BY DEPTO.CLAVE,' )
+   FIN_SI
+SI_NO
+   AGREGA_VALOR_COL ( &sql, 0, 'ORDER BY' )
+FIN_SI
+SI ( $orden = 'CLAVE' )
+   SI ( CD_DC = 0 )
+     AGREGA_VALOR_COL ( &sql, 0, 'DEPTO.CLAVE' )
+   SI_NO
+     AGREGA_VALOR_COL ( &sql, 0, 'CENTROC.CLAVE' )
+   FIN_SI
+SI_NO
+   SI ( CD_DC = 0 )
+     AGREGA_VALOR_COL ( &sql, 0, 'DEPTO.DESCRIPCION' )
+   SI_NO
+     AGREGA_VALOR_COL ( &sql, 0, 'CENTROC.DESCRIPCION' )
+   FIN_SI
+FIN_SI
+CREA_CONSULTA ( 'TABLA', &sql )
+_tot := 0
+
+PRIMER_REGISTRO( 'TABLA' )
+### CICLO PRINCIPAL
+REPITE
+   SI ( CD_DC = 0 )
+     IMP ( COL(1), 'TABLA':'CLAVE', COL(11), 'TABLA':'DESCRIPCION', COL(41), 'TABLA':'CENTRO COSTO', COL(47), 'TABLA':'DESCRIPCION_1' ) ;; IMPRIME
+   SI_NO
+     IMP ( COL(1), 'TABLA':'CLAVE', COL(11), 'TABLA':'DESCRIPCION', COL(41), 'TABLA':'DEPARTAMENTO', COL(47), 'TABLA':'DESCRIPCION_1' ) ;; IMPRIME
+   FIN_SI
+   _tot := _tot + 1
+   SIGUIENTE_REGISTRO ( 'TABLA' )
+HASTA ( FIN_BASE ( 'TABLA' ))
+
+IMPRIME
+DECIMALES := 0
+SI ( CD_DC = 0 )
+  IMP ( COL(40), '--- Total : ', _tot, ' DEPARTAMENTO(S)' ) ;; IMPRIME
+SI_NO
+  IMP ( COL(40), '--- Total : ', _tot, ' CENTRO COSTO(S)' ) ;; IMPRIME
+FIN_SI

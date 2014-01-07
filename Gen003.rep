@@ -1,0 +1,118 @@
+#HISTORIAL DE PUESTOS
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra el historial de puestos de los empleados. 
+#Este reporte pide la fecha inicial, final y el rango de fechas de los puestos.
+#Este reporte imprime de los trabajadores la clave y nombre, fecha de ingreso, RFC y de los puestos la clave y la descripcion del puesto.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , '', _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL' , '', _ff )
+NUEVO_PARAMETRO_CHEQ( 'GRAFICA', '', _graf )
+NUEVO_PARAMETRO_CHEQ( 'VIGENTES', '', _vig )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_fvig := 0
+SI ( _vig = 1 )
+  NUEVO_PARAMETRO_FEC ( 'FECHA VIG.' , '', _fvig )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS 
+FIN_SI
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'HISTORIAL DE PUESTOS DEL ' + FECHA (_fi) + ' AL ' + FECHA (_ff)
+   encabezado_ini
+   IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' , COL (50) , 'F. INGRESO' , COL (65), 'RFC' ) ;; IMPRIME
+   IMP ( COL (7) , 'INICIO' , COL (20) , 'SALIDA' , COL (40) , 'CLAVE' , COL (50) , 'DESCRIPCION') ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+SALIDA        := $salida
+
+#Variables Globales
+VAR_T ( &subtotales )
+VAR_T ( &grafica )
+VAR_T ( &indices )
+_num_ind := 0
+$indice := ''
+$ant_trab := ''
+_columna_totales := 0
+$desc := ''
+$fsalida := ''
+
+#Subrutina diversas
+
+SUB_RUTINA imprime_empleado
+   SI ( $ant_trab <> 'EMPPRIN':'CLAVE' )
+      $ant_trab:='EMPPRIN':'CLAVE'
+      IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 35 ) )
+      IMP ( COL (50) , FECHA ('EMPPRIN':'INGRESO') , COL (65) , FORMATO ( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' ) ) ;; IMPRIME
+   FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   imprime_empleado
+   $ant_trab := 'EMPPRIN':'CLAVE'
+   DECIMALES := 0
+
+   SI ( _graf = 1 )
+     INCREMENTA_TABLA( &grafica, 'EMPPRIN':'CATALOGO', 'TOTAL', 1 )
+   FIN_SI
+
+   SI ( TRAE_REGISTRO( 'PUESTO', 'EMPPRIN':'CATALOGO' ) )
+     $desc := 'PUESTO':'DESCRIPCION'
+   SI_NO
+     $desc := 'PUESTO DESCONOCIDO'
+   FIN_SI
+
+   SI ( 'EMPPRIN':'SALIDA' < CALCULA_FECHA( 2099, 01, 01 ) )
+     $fsalida := FECHA('EMPPRIN':'SALIDA')
+   SI_NO
+     $fsalida := ' A LA FECHA'
+   FIN_SI
+   IMP ( COL(7), FECHA('EMPPRIN':'INICIO'), COL(20), $fsalida, COL (40), 'EMPPRIN':'CATALOGO', COL(50), $desc ) ;; IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+$campos_extras := 'E. RFC, D. "FECHA ENTRADA" AS INICIO, D. "FECHA SALIDA" AS SALIDA, D. CATALOGO' 
+$condiciones_extras := 'D.CLAVE = E.CLAVE AND D. "FECHA SALIDA" > :FINI AND D. "FECHA ENTRADA" < :FFIN'
+$bases_extras := 'EMPPUES D'
+
+base_trabajadores
+PARAMETRO_SQL( 'EMPPRIN', 'FINI', _fi )
+PARAMETRO_SQL( 'EMPPRIN', 'FFIN', _ff )
+
+LIMPIA_TABLA( &subtotales )
+
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI (( _vig = 0 ) OR ( ES_VIGENTE( _fvig ) = 1 ))
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+
+SI ( _graf = 1 )
+  CREA_GRAFICA( &grafica )
+FIN_SI

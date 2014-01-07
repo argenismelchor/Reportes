@@ -1,0 +1,300 @@
+#IMPORTACION DE RELOJ CHECADOR
+#VERSION 2.610
+#USUARIO =*
+#DESCRIPCION
+#Formato necesario
+#FIN_DESCRIPCION
+#AUTOR: ISC. EDUARDO PADILLA 19/01/2000
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO      ( 'ARCHIVO', DIRECTORIO_TRABAJO + '\RELOJ.TXT', $archivo )
+NUEVO_PARAMETRO_CHEQ ( 'IMPRIMIR ERRORES', '', _imp_errores )
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR SIN HORARIO', '', _sin_horario )
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR', '', _grabar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 3
+FORMATO_HORA  := 4
+SALIDA        := $salida
+_decimales    := 8
+DECIMALES     := 12
+
+#FACTOR MINUTO
+_fm := 0.000694444446
+
+COLUMNAS := 95
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'IMPORTACION DE RELOJ CHECADOR' )) IMPRIME
+   IMP ( REPITETXT( '=', COLUMNAS )) IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(52), 'FECHA', COL(68), 'HORA', COL(78), 'TIPO CHECADA' ) IMPRIME
+   IMP ( REPITETXT ('-', COLUMNAS )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 12
+FIN_PIE 
+
+##########   DEIFICION DEL FORMATO DE LECTURA
+CREA_BASE_TXT ( 'TABLA', $archivo, 'FIJO' )
+DEFINE_CAMPO_TXT ( 'TABLA', 'REGISTRO', 1, 13 )
+ABRE_BASE_TXT ( 'TABLA', 'EDICION' )
+
+##########   VARIABLES GLOBALES
+
+#VARIABLES DE LA CHECADA DEL EMPLEADO
+$registro   := ''
+$clave      := ''
+$nombre     := ''
+_fecha      := 0     #FECHA DE LA CHECADA
+_dia_semana := 0     #DIA DE LA CHECADA
+$dia_semana := ''    #DIA DE LA SEMANA LUN, MAR, MIE, ETC
+_ano        := 0
+_mes        := 0
+_dia        := 0
+_hora       := 0
+_hor        := 0
+_min        := 0
+$entrada    := ''
+$campo      := ''
+
+#VARIABLES PARA DETERMINAR CUAL CHECADA SE REALIZO
+_dif        := 0
+_num_checada:= 0
+_menor      := 0
+
+#VARIABLES DE TOTALES
+_total_reg  := 0
+_total_ok   := 0
+_total_error:= 0
+
+#CONTROL DE ERRORES
+_error      := 0
+$error      := ''
+
+#VARIABLES PARA VALIDACION DE REGISTROS DUPLICADOS
+$clave_antes := ''
+_hora_antes  := 0
+_min_val     := 5 * _fm  #5 MINUTOS DE FACTOR PARA DECIDIR SI ESTA DUPLICADO
+
+#VARIABLES DEL TURNO
+_reg_1 := 0  #ENTRADA PRINCIPAL
+_reg_2 := 0  #SALIDA A COMER
+_reg_3 := 0  #REGRESO DE COMER
+_reg_4 := 0  #SALIDA DE LA EMPRESA
+_var_1 := 0  #VARIABLE PRINCIPAL
+_var_2 := 0  #VARIABLE SECUNDARIA
+
+#VARIABLES DE LAS CHECADAS DEL EMPLEADO
+
+##########   SUBRUTINAS DIVERSAS
+
+SUB_RUTINA carga_registro
+  $registro := 'TABLA':'REGISTRO'
+
+  #SE ELIMINAN TODOS LOS CARACTERES QUE NO SEAN NUMEROS DEL FINAL DE LA CADENA PARA EVITAR EL CARACTER 10 Y 13
+  MIENTRAS( ( SUBSTR( $registro, LONGITUD( $registro ), 1 ) < '0' ) OR ( SUBSTR( $registro, LONGITUD( $registro ), 1 ) > '9' ) )
+    $registro := ELIMINA( $registro, LONGITUD( $registro ), 1 )
+  FIN_MIENTRAS
+
+  #DECODIFICACION DE LA FECHA DONDE EL AÑO ES EN BASE A LA FECHA DE HOY
+  _ano := VALOR( SUBSTR( FECHA( FECHA_HOY ), 8, 4 ) )
+  _mes := VALOR( SUBSTR( $registro, 1, 2 ) )
+  _dia := VALOR( SUBSTR( $registro, 3, 2 ) )
+  _fecha := CALCULA_FECHA( _ano, _mes, _dia )
+  _dia_semana := DIA_SEMANA( _fecha )
+
+  #DECODIFICACION DE LA HORA
+  _hor := VALOR( SUBSTR( $registro, 5, 2 ) )
+  _min := VALOR( SUBSTR( $registro, 7, 2 ) )
+  _hora := CALCULA_HORA( _hor, _min, 0 )
+
+  #DECODIFICACION DE LA CLAVE DEL EMPLEADO
+  $clave := ELIMINA( $registro, 1, 8 )
+  #SE AGREGA UN CERO PARA QUE CUADREN LAS CLAVES SI LA CLAVE ES MENOR A 5, ESTO ES SOLO PARA MOYMEN
+  #MIENTRAS ( LONGITUD( $clave ) < 5 )
+  #  $clave := '0' + $clave
+  #FIN_MIENTRAS
+
+  _total_reg := _total_reg + 1
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_error
+  SI ( _imp_errores = 1 )
+    IMP ( '*** EL EMPLEADO : ', $clave, ' ', $error ) ;; IMPRIME
+  FIN_SI
+  _error       := 1
+  _total_error := _total_error + 1    
+FIN_SUB_RUTINA
+
+#VALIDACION DE REGISTRO DUPLICADO CON LOS MINUTOS DEFINIDOS COMO TIEMPO DE DUPLICACION, POR DEFAULT SON 5 MINUTOS
+SUB_RUTINA checa_duplicado
+  SI ( ( $clave_antes = 'EMPPRIN':'CLAVE' ) AND ( ( _hora - _min_val < _hora_antes ) AND ( _hora + _min_val > _hora_antes ) ) )
+    $error := ' CHECO DOBLE A LAS ' + HORA( _hora )
+    imprime_error
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA carga_turno
+  SI ( 'EMPPRIN':'TURNO' <> '' )
+    SI ( TRAE_REGISTRO( 'TURNO1', 'EMPPRIN':'TURNO' ) )
+      SI ( _dia_semana = 2 ) $dia_semana := 'LUN' FIN_SI
+      SI ( _dia_semana = 3 ) $dia_semana := 'MAR' FIN_SI
+      SI ( _dia_semana = 4 ) $dia_semana := 'MIE' FIN_SI
+      SI ( _dia_semana = 5 ) $dia_semana := 'JUE' FIN_SI
+      SI ( _dia_semana = 6 ) $dia_semana := 'VIE' FIN_SI
+      SI ( _dia_semana = 7 ) $dia_semana := 'SAB' FIN_SI
+      SI ( _dia_semana = 1 ) $dia_semana := 'DOM' FIN_SI
+      $campo := 'ENTRADA_' + $dia_semana
+      _reg_1 := 'TURNO1':$campo
+      $campo := 'SALIDA_COM_' + $dia_semana
+      _reg_2 := 'TURNO1':$campo
+      $campo := 'REGRESO_COM_' + $dia_semana
+      _reg_3 := 'TURNO1':$campo
+      $campo := 'SALIDA_' + $dia_semana
+      _reg_4 := 'TURNO1':$campo
+      $campo := 'VARIABLE_PRINCIPAL_' + $dia_semana
+      _var_1 := 'TURNO1':$campo
+      $campo := 'VARIABLE_COMIDA_' + $dia_semana
+      _var_2 := 'TURNO1':$campo
+      #SI TODOS LOS HORARIOS SON 0 ENTONCES NO SE DEFINIERON
+      SI (( _sin_horario = 0 ) AND ( _reg_1 + _reg_2 + _reg_3 + _reg_4 = 0 ))
+        $error := 'NO TIENE DEFINIDO EL HORARIO PARA EL DIA ' + $dia_semana
+        imprime_error
+      FIN_SI
+    SI_NO
+      $error := 'TIENE EL TURNO ' + 'EMPPRIN':'TURNO' + ' QUE NO EXISTE EN EL CATALOGO'
+      imprime_error
+    FIN_SI
+  SI_NO
+    $error := 'NO TIENE TURNO ASIGNADO'
+    imprime_error
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA cual_checada
+  DECIMALES := 12
+  #_num_checada DETERMINA CUAL FUE LA CHECADA A LA QUE MAS SE APROXIMA
+  #PRIMERA CHECADA
+  _dif := _reg_1 - _hora
+  SI ( _dif < 0 ) _dif := _dif * -1 FIN_SI
+  _num_checada := 1
+  _menor := _dif
+  
+  #SEGUNDA CHECADA
+  _dif := _reg_2 - _hora
+  SI ( _dif < 0 ) _dif := _dif * -1 FIN_SI
+  SI ( _dif < _menor )
+    _num_checada := 2
+    _menor := _dif
+  FIN_SI
+
+  #TERCERA CHECADA
+  _dif := _reg_3 - _hora
+  SI ( _dif < 0 ) _dif := _dif * -1 FIN_SI
+  SI ( _dif < _menor )
+    _num_checada := 3
+    _menor := _dif
+  FIN_SI
+
+  #CUARTA CHECADA
+  _dif := _reg_4 - _hora
+  SI ( _dif < 0 ) _dif := _dif * -1 FIN_SI
+  SI ( _dif < _menor )
+    _num_checada := 4
+    _menor := _dif
+  FIN_SI 
+FIN_SUB_RUTINA
+
+SUB_RUTINA graba_checada
+  #SI NO TIENE EL REGISTRO DEL DIA ENTONCES SE AGREGA Y SE DEFINE EL HORARIO DE ESE DIA DE ACUERDO AL CATALOGO
+  SI ( TRAE_REGISTRO( 'EMPRELOJ', 'EMPPRIN':'CLAVE', _fecha ) = FALSO )
+    SI ( _grabar = 1 )
+      AGREGA_REGISTRO( 'EMPRELOJ' )
+      'EMPRELOJ':'CLAVE' := 'EMPPRIN':'CLAVE'
+      'EMPRELOJ':'FECHA' := _fecha
+      #HORAS DE ENTRADA
+      'EMPRELOJ':'ENTRADA_P' := _reg_1
+      'EMPRELOJ':'ENTRADA_S' := _reg_2
+      'EMPRELOJ':'SALIDA_S'  := _reg_3
+      'EMPRELOJ':'SALIDA_P'  := _reg_4
+    FIN_SI
+  FIN_SI
+  SI ( _num_checada = 1 ) $campo := 'ENTRADA_REAL_P' FIN_SI  
+  SI ( _num_checada = 2 ) $campo := 'ENTRADA_REAL_S' FIN_SI  
+  SI ( _num_checada = 3 ) $campo := 'SALIDA_REAL_S' FIN_SI  
+  SI ( _num_checada = 4 ) $campo := 'SALIDA_REAL_P' FIN_SI  
+  #SI EL USUARIO SELECCIONO GUARDAR ENTONCES SE MODIFICA EL VALOR AUN CUANDO YA EXISTA
+  SI ( _grabar = 1 )
+    'EMPRELOJ':$campo := _hora
+    GRABA_BASE( 'EMPRELOJ' )
+  FIN_SI
+FIN_SUB_RUTINA
+
+#ESTA RUTINA PRINCIPAL DEL EMPLEADO DONDE SE VERIFICAN TODOS LOS PARAMETROS
+SUB_RUTINA formato_trabajador
+  _error := 0
+  $nombre := 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN'
+  checa_duplicado
+  #CARGA EL TURNO DEL TRABAJADOR AL DIA DE LA CHECADA
+  SI ( _error = 0 )
+    carga_turno
+  FIN_SI
+  #VERIFICA CUAL DE LAS CHECADAS TRATO DE CHECAR
+  SI ( _error = 0 )
+    cual_checada
+  FIN_SI
+  #GRABA EL REGISTRO DE LA CHECADA
+  SI ( _error = 0 )
+    graba_checada
+  FIN_SI
+  #IMPRIME EL REGISTRO SIEMPRE Y CUANDO NO EXISTA ERROR PREVIO
+  SI ( _error = 0 )
+    SI ( _num_checada = 1 ) $entrada := 'ENTRADA PRINCIPAL' FIN_SI
+    SI ( _num_checada = 2 ) $entrada := 'SALIDA COMER' FIN_SI
+    SI ( _num_checada = 3 ) $entrada := 'REGRESO COMER' FIN_SI
+    SI ( _num_checada = 4 ) $entrada := 'SALIDA EMPRESA' FIN_SI
+    IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR( $nombre, 1, 40 ), COL(52), FECHA( _fecha ), COL(68), HORA( _hora ), COL(78), $entrada ) ;; IMPRIME
+    _total_ok := _total_ok + 1
+  FIN_SI
+  #VARIABLES NECESARIAS PARA SABER SI EL REGISTRO SE DUPLICA
+  $clave_antes := 'EMPPRIN':'CLAVE'
+  _hora_antes  := _hora
+FIN_SUB_RUTINA
+
+#SE ABRE LA BASE DE EMPLEADOS RELACIONADA CON LA DE LAS CHECADAS
+ABRE_BASE( 'EMPPRIN' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPRELOJ', 'CLAVE' )
+
+PRIMER_REGISTRO( 'TABLA' )
+MIENTRAS( FIN_BASE( 'TABLA' ) = FALSO )
+  #DECODIFICA DE LA LINEA DEL ARCHIVO DE TEXTO CADA UNO DE LOS CAMPOS COMO CLAVE, FECHA Y HORA DE CHECADA
+  carga_registro
+  SI ( TRAE_REGISTRO( 'EMPPRIN', $clave ) )
+    formato_trabajador
+  SI_NO
+    $error := ' NO EXISTE EN LA BASE DE EMPLEADOS'
+    imprime_error
+  FIN_SI
+  SIGUIENTE_REGISTRO( 'TABLA' )
+FIN_MIENTRAS
+
+#IMPRIME EL RESULTADO DE LA IMPORTACION
+IMPRIME ;; IMPRIME
+DECIMALES := 0
+IMP ( '*** TOTAL REGISTROS         : ', $( _total_reg   ) ) ;; IMPRIME
+IMP ( '*** IMPORTADOS EXITOSAMENTE : ', $( _total_ok    ) ) ;; IMPRIME
+IMP ( '*** REGISTROS CON ERROR     : ', $( _total_error ) ) ;; IMPRIME
+TERMINA_REPORTE

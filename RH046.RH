@@ -1,0 +1,162 @@
+#MATRIZ DE CURSOS
+#EXCEL
+#USUARIO =*
+#NO EDITAR
+#VERSION 2.5
+#DESCRIPCION
+#Este reporte genera solamente por EXCEL la matriz de empleados con cursos relacionados por puesto.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'EXCEL', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'MATRIZ DE CURSOS POR PUESTO AL ' + FECHA( FECHA_HOY )
+   encabezado_ini
+   IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+  pie_estandar
+FIN_PIE
+
+# PARAMETROS
+DECIMALES     := 2
+COLUMNAS      := 80
+RENGLONES     := 65
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+_inix := 3
+_iniy := 11
+
+# VARIABLES GLOBALES
+VAR_T ( &empleados )
+AGREGA_VALOR_REN( &empleados, 0, 'CLAVE' )
+AGREGA_VALOR_REN( &empleados, 0, 'NOMBRE' )
+$empleado := ''
+$curso    := ''
+VAR_T ( &trabajadores )
+_indice   := 0
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   IMPRIME
+   $empleado := 'EMPPRIN':'CLAVE'
+   PON_VALOR_TABLA( &trabajadores, 0, _indice, $empleado )
+   AGREGA_VALOR_COL( &empleados, 0, $empleado )
+   SI ( TRAE_REGISTRO( 'PUESTO', 'EMPPRIN':'PUE_CLAVE' ) )
+     PRIMER_REGISTRO( 'CURSOPUE' )
+     MIENTRAS ( FIN_BASE( 'CURSOPUE' ) = FALSO )
+       $curso := 'CURSOPUE':'CLAVE_CURSO'
+       AGREGA_VALOR_REN( &trabajadores, _indice, $curso )
+       SI ( TRAE_INDICE_REN ( &empleados, 0, $curso ) < 0 )
+         AGREGA_VALOR_REN( &empleados, 0, $curso )
+       FIN_SI
+       DECIMALES := 2
+       SIGUIENTE_REGISTRO( 'CURSOPUE' )
+     FIN_MIENTRAS
+   FIN_SI
+   _indice   := _indice + 1
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+ABRE_BASE   ( 'CURSOPUE' )
+CREA_INDICE ( 'CURSOPUE', 'PUESTOCURSO' )
+ABRE_BASE   ( 'PUESTO' )
+USA_ARCHIVO ( 'PUESTO', 'CURSOPUE', 'CLAVE' )
+
+_incluir_pue := 1
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+  SI ( ES_VIGENTE( FECHA_HOY ) )
+    datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+CIERRA_BASE( 'EMPPRIN' )
+
+ABRE_BASE   ( 'EMPCURSO' )
+CREA_INDICE ( 'EMPCURSO', 'CLAVE;CURSO' )
+ABRE_BASE   ( 'EMPPRIN' )
+
+# ASIGNACION DE CURSOS A TABLA
+_renglon := 1
+_columna := 0
+_indice := 0
+$empleado := TRAE_VALOR_TABLA( &empleados, 0, _renglon )
+MIENTRAS ( $empleado <> '' )
+  $empleado := QUITA_CARACTER( ' ', $empleado )
+  SI ( TRAE_REGISTRO( 'EMPPRIN', $empleado ) )    
+    _indice := TRAE_INDICE_COL( &trabajadores, 0, $empleado )
+    PON_VALOR_TABLA( &empleados, 1, _renglon, 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN' )
+    _columna := 2
+    $curso := TRAE_VALOR_TABLA( &empleados, _columna, 0 )
+    MIENTRAS( $curso <> '' )
+      SI ( TRAE_REGISTRO( 'EMPCURSO', 'EMPPRIN':'CLAVE', $curso ) )
+        ASIGNA_VALOR_TABLA( &empleados, $curso, 'EMPPRIN':'CLAVE', 100 )      
+      SI_NO
+        SI ( _indice >= 0 )
+          SI ( TRAE_INDICE_REN( &trabajadores, _indice, $curso ) > 0 )
+            ASIGNA_VALOR_TABLA( &empleados, $curso, 'EMPPRIN':'CLAVE', -1 )
+          FIN_SI
+        FIN_SI
+      FIN_SI
+      _columna := _columna + 1
+      $curso := TRAE_VALOR_TABLA( &empleados, _columna, 0 )
+    FIN_MIENTRAS
+  FIN_SI
+  _renglon := _renglon + 1
+  $empleado := TRAE_VALOR_TABLA( &empleados, 0, _renglon )
+FIN_MIENTRAS
+
+# CREACION DE MATRIZ A EXCEL.
+EXCEL( 'ABRIR_HOJA', 0, 0, DIRECTORIO_TRABAJO + '\CURSOS.XLS' )
+_columna := 2
+$curso := TRAE_VALOR_TABLA( &empleados, _columna, 0 )
+MIENTRAS( $curso <> '' )
+  SI ( TRAE_REGISTRO( 'CURSO', $curso ) )
+    EXCEL( 'PON_VALOR', _columna + ( _inix - 2 ), _iniy - 1, 'CURSO':'DESCRIPCION' )
+  FIN_SI
+  _columna := _columna + 1
+  $curso := TRAE_VALOR_TABLA( &empleados, _columna, 0 )
+FIN_MIENTRAS
+
+_renglon := 1
+_columna := 0
+$empleado := TRAE_VALOR_TABLA( &empleados, 0, _renglon )
+MIENTRAS ( $empleado <> '' )
+  $empleado := QUITA_CARACTER( ' ', $empleado )
+  EXCEL( 'PON_VALOR', 1, _renglon + ( _iniy - 1 ), $empleado )
+  EXCEL( 'PON_VALOR', 2, _renglon + ( _iniy - 1 ), TRAE_VALOR_TABLA( &empleados, 1, _renglon ) )
+  _columna := 2
+  $curso := TRAE_VALOR_TABLA( &empleados, _columna, 0 )
+  MIENTRAS( $curso <> '' )
+    SI ( VALOR_TABLA( &empleados, $curso, $empleado ) > 0 )
+      EXCEL( 'PON_VALOR', _columna + ( _inix - 2 ), _renglon + ( _iniy - 1 ) , VALOR_TABLA( &empleados, $curso, $empleado ) )
+    SI_NO
+      SI ( VALOR_TABLA( &empleados, $curso, $empleado ) < 0 )
+        EXCEL( 'PON_VALOR', _columna + ( _inix - 2 ), _renglon + ( _iniy - 1 ) , 'X' )
+      FIN_SI
+    FIN_SI
+    _columna := _columna + 1
+    $curso := TRAE_VALOR_TABLA( &empleados, _columna, 0 )
+  FIN_MIENTRAS
+  _renglon := _renglon + 1
+  $empleado := TRAE_VALOR_TABLA( &empleados, 0, _renglon )
+FIN_MIENTRAS
+
+TERMINA_REPORTE

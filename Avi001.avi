@@ -1,0 +1,402 @@
+#ARCHIVOS PLANOS PARA IMSS FIRMA DIGITAL
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.6
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'DISCO', $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , '' , _fi )
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL'   , '' , _ff )
+NUEVO_PARAMETRO_TAB ( 'Registro'      , 'PATRONAL/CLAVE/REGIISTROS PATRONALES' , $patronal ) 
+NUEVO_PARAMETRO_SEL  ('MARCAR MOVIM','NO/SI', _marcar )
+NUEVO_PARAMETRO     ( 'N° Clinica'    , '000' , $clinica  ) 
+NUEVO_PARAMETRO     ( 'N° Guia'    , '00000' , $guia  ) 
+NUEVO_PARAMETRO_CHEQ     ( 'ES POR IDSE','' , $idse  ) 
+
+LEE_PARAMETROS
+BORRA_PARAMETROS
+NUEVO_PARAMETRO_SEL ( 'TIPO MOVIMIENTO' , 'BAJAS/MODIFICACIONES/ALTAS' , _tipo_mov )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+$archivo  := ''
+SI ( $salida = 'DISCO' )
+   NUEVO_PARAMETRO     ( 'ARCHIVO', '\\SERVIDOR\IMSS\.TXT' , $archivo  )
+   LEE_PARAMETROS
+   BORRA_PARAMETROS
+   SALIDA_REPORTE ( $archivo )
+   MODO_IMPRESION ('DIRECTO')   
+FIN_SI 
+
+SALIDA := $salida
+
+# PARAMETROS
+DECIMALES := 0
+COLUMNAS := 80
+RENGLONES := 65
+FORMATO_FECHA := 6
+FORMATO_PESOS := 3
+
+# VARIABLES GLOBALES
+$numero_patronal := ''
+$paterno   := ''
+$materno   := ''
+$nombres   := ''
+$integrado := ''
+$clave     := ''
+$integrado  := ''
+_rep       := 0
+$fecha     := ''
+$mov       := ''
+_fecha := 0
+$causa_baja := ''
+
+
+#IMPRESION REGISTRO DEL DETALLE DE EMPLEADOS.
+
+$causa_baja := ''
+$fm         := ''
+SUB_RUTINA formato_trabajador
+
+
+SI ( TRAE_REGISTRO ( 'EMPSDO' , 'EMPPRIN':'CLAVE' , 'EMPPRIN':'FECHA') = VERDADERO ) 
+
+      SI ('EMPPRIN':'AVISO_IMSS' = '' )   
+
+   IMP(COL(1),'PATRONAL':'REGISTRO PATRONAL')
+   IMP(COL(12),'EMPPRIN':'AFILIACION')
+
+$paterno   := 'EMPPRIN':'NOMBREP'
+$materno   := 'EMPPRIN':'NOMBREM'
+$nombres   := 'EMPPRIN':'NOMBREN'
+
+######CAMBIA VOCALES CON ACENTOS.
+   SI ( POS ( 'í' , $paterno ) <> 0  )
+      $paterno := REEMPLAZA ( 'í' , 'I' , $paterno )
+   FIN_SI
+   SI ( POS ( 'á' , $paterno ) <> 0  )
+      $paterno := REEMPLAZA ( 'á' , 'A' , $paterno )
+   FIN_SI
+   SI ( POS ( 'ó' , $paterno ) <> 0  )
+      $paterno := REEMPLAZA ( 'ó' , 'O' , $paterno )
+   FIN_SI
+   SI ( POS ( 'ú' , $paterno ) <> 0  )
+      $paterno := REEMPLAZA ( 'ú' , 'U' , $paterno )
+   FIN_SI
+   SI ( POS ( 'é' , $paterno ) <> 0  )
+      $paterno := REEMPLAZA ( 'é' , 'E' , $paterno )
+   FIN_SI
+   SI ( POS ( 'ñ' , $paterno ) <> 0  )
+      $paterno := REEMPLAZA ( 'ñ' , '#' , $paterno )
+   FIN_SI
+   SI ( POS ( 'Ñ' , $paterno ) <> 0  )
+      $paterno := REEMPLAZA ( 'Ñ' , '#' , $paterno )
+   FIN_SI
+
+
+   ######CAMBIA VOCALES CON ACENTOS.
+   SI ( POS ( 'í' , $materno ) <> 0  )
+      $materno := REEMPLAZA ( 'í' , 'I' , $materno )
+   FIN_SI
+   SI ( POS ( 'á' , $materno ) <> 0  )
+      $materno := REEMPLAZA ( 'á' , 'A' , $materno )
+   FIN_SI
+   SI ( POS ( 'ó' , $materno ) <> 0  )
+      $materno := REEMPLAZA ( 'ó' , 'O' , $materno )
+   FIN_SI
+   SI ( POS ( 'ú' , $materno ) <> 0  )
+      $materno := REEMPLAZA ( 'ú' , 'U' , $materno )
+   FIN_SI
+   SI ( POS ( 'é' , $materno ) <> 0  )
+      $materno := REEMPLAZA ( 'é' , 'E' , $materno )
+   FIN_SI
+   SI ( POS ( 'ñ' , $materno ) <> 0  )
+      $materno := REEMPLAZA ( 'ñ' , '#' , $materno )
+   FIN_SI
+   SI ( POS ( 'Ñ' , $materno ) <> 0  )
+      $materno := REEMPLAZA ( 'Ñ' , '#' , $materno )
+   FIN_SI
+
+
+   ######CAMBIA VOCALES CON ACENTOS.
+   SI ( POS ( 'í' , $nombres ) <> 0  )
+      $nombres := REEMPLAZA ( 'í' , 'I' , $nombres )
+   FIN_SI
+   SI ( POS ( 'á' , $nombres ) <> 0  )
+      $nombres := REEMPLAZA ( 'á' , 'A' , $nombres )
+   FIN_SI
+   SI ( POS ( 'ó' , $nombres ) <> 0  )
+      $nombres := REEMPLAZA ( 'ó' , 'O' , $nombres )
+   FIN_SI
+   SI ( POS ( 'ú' , $nombres ) <> 0  )
+      $nombres := REEMPLAZA ( 'ú' , 'U' , $nombres )
+   FIN_SI
+   SI ( POS ( 'é' , $nombres ) <> 0  )
+      $nombres := REEMPLAZA ( 'é' , 'E' , $nombres )
+   FIN_SI
+   SI ( POS ( 'ñ' , $nombres ) <> 0  )
+      $nombres := REEMPLAZA ( 'ñ' , '#' , $nombres )
+   FIN_SI
+   SI ( POS ( 'Ñ' , $nombres ) <> 0  )
+      $nombres := REEMPLAZA ( 'Ñ' , '#' , $nombres )
+   FIN_SI
+
+
+
+
+IMP(COL(23),$paterno,COL(50),$materno,COL(77),$nombres)
+DECIMALES := 2
+
+#SI (('EMPSDO':'TIPO' = 'A') O ('EMPSDO':'TIPO' = 'R') O ('EMPSDO':'TIPO' = 'M'))
+SI (('EMPPRIN':'TIPO' = 'A') O ('EMPPRIN':'TIPO' = 'R') O ('EMPPRIN':'TIPO' = 'M'))
+
+    $integrado := .( 'EMPPRIN':'SDO3' )
+       SI ( POS ( '.' , $integrado ) <> 0 )
+          $integrado := SUBSTR( $integrado ,1 , POS ( '.' , $integrado ) -1  ) + SUBSTR( $integrado , POS ( '.' , $integrado ) + 1 , 2 )
+       FIN_SI
+
+    _rep := LONGITUD ( $integrado )
+    MIENTRAS ( _rep < 6 )
+        
+    $integrado := '0' + $integrado
+    
+    _rep := LONGITUD ( $integrado ) 
+        
+    FIN_MIENTRAS
+    
+    SI_NO
+   
+    $integrado := '000000000000000'
+
+FIN_SI
+
+    IMP(COL(104),$integrado)
+
+SI ( $idse = 'SI')
+
+    IMP(COL(110),$integrado)
+
+FIN_SI
+
+
+
+SI ('EMPPRIN':'TIPO' = 'A' );; $mov := '08' ;; FIN_SI
+SI ('EMPPRIN':'TIPO' = 'R' );; $mov := '08' ;; FIN_SI
+SI ('EMPPRIN':'TIPO' = 'B' );; $mov := '02' ;; FIN_SI
+SI ('EMPPRIN':'TIPO' = 'M' );; $mov := '07' ;; FIN_SI
+
+$clave := 'EMPPRIN':'CLAVE'
+
+
+   SI ( 'EMPPRIN':'TIPO' <> 'B' )
+        #IMP( COL(128) , '0' )  ;; # 0 = Semana Normal; 6 = para menos de 8 Hrs. ;1-5 dias laborados 
+        SI ( ('EMPPRIN':'SDO1' <> 0) AND ('EMPPRIN':'SDO2' = 0 )  )
+            IMP( COL(117) , '0' )         ;; # 0 = Salario fijo
+        FIN_SI
+        SI ( ('EMPPRIN':'SDO1' <> 0) AND ('EMPPRIN':'SDO2' <> 0) )
+            IMP( COL(117) , '2' )         ;; # 1 = Salario Mixto
+        FIN_SI
+        SI ( ('EMPPRIN':'SDO1' <> 0) AND ('EMPPRIN':'SDO2' <> 0) )
+            IMP( COL(117) , '1' )         ;; # 2 = Salario Variable
+        FIN_SI
+
+        FORMATO_FECHA := 6	#ddmmaaaa
+
+
+      SI ( 'EMPPRIN':'PE' = 'P')
+        IMP(COL(116),'1')    
+      FIN_SI
+
+      SI ( 'EMPPRIN':'PE' = 'E')
+        IMP(COL(116),'2')    
+      FIN_SI
+
+        IMP(COL(118),'0')    
+      
+        IMP( COL(119) , FECHA(('EMPPRIN':'FECHA')))
+
+        IMP( COL(127) , '000')
+
+        IMP( COL(132) , $mov)
+
+        _rep := LONGITUD ( $clave ) 
+
+        MIENTRAS ( _rep < 5 )
+        
+        $clave := '0' + $clave
+        
+        _rep := LONGITUD ( $clave ) 
+        
+        FIN_MIENTRAS
+
+
+        IMP( COL(134) , $guia)
+
+        IMP( COL(139) , $clave)
+
+        IMP( COL(150) , 'EMPPRIN':'RFC')
+
+        IMP( COL(168) , '9')
+
+   SI_NO
+
+        FORMATO_FECHA := 6	#ddmmaaaa
+                
+        IMP( COL(119) , FECHA(('EMPPRIN':'BAJA IMSS')))
+
+        IMP( COL(132) , $mov)
+
+        _rep := LONGITUD ( $clave ) 
+
+        MIENTRAS ( _rep < 5 )
+        
+        $clave := '0' + $clave
+        
+        _rep := LONGITUD ( $clave ) 
+        
+        FIN_MIENTRAS
+
+       IMP( COL(134) , $guia)
+
+        IMP( COL(139) , $clave)
+
+
+        $causa_baja := 'EMPPRIN':'CAUSA BAJA'
+
+        SI ( $causa_baja = '' )
+             $causa_baja := '002'
+#            MENSAJE('TIPO DE BAJA NO LOCALIZADA')  
+#            TERMINA_REPORTE
+        FIN_SI
+   
+        SI ( TRAE_REGISTRO ('BAJA' , $causa_baja) = VERDADERO )
+             $causa_baja := 'BAJA':'BAJA_IMSS'
+        FIN_SI
+
+        SI ( $causa_baja = '' )
+             $causa_baja := '002'
+#            MENSAJE('TIPO DE BAJA NO LOCALIZADA')  
+#            TERMINA_REPORTE
+        FIN_SI
+
+        _rep := LONGITUD ( $causa_baja ) 
+
+        MIENTRAS ( _rep < 6 )
+        
+        $causa_baja := '0' + $causa_baja
+        
+        _rep := LONGITUD ( $causa_baja ) 
+        
+        FIN_MIENTRAS
+
+
+
+        IMP( COL(144) ,$causa_baja)
+
+        IMP( COL(150) , 'EMPPRIN':'RFC')
+
+        IMP( COL(168) , '9')
+FIN_SI
+      
+   IMPRIME      
+      
+        SI ( _marcar = 1 ) 
+           #SI ( TRAE_REGISTRO ( 'EMPSDO' , 'EMPPRIN':'CLAVE' , 'EMPPRIN':'FECHA', 'EMPPRIN':'ID' ) = VERDADERO ) 
+           SI ( TRAE_REGISTRO ( 'EMPSDO' , 'EMPPRIN':'CLAVE' , 'EMPPRIN':'FECHA' ) = VERDADERO ) 
+             SI ( 'EMPSDO':'TIPO' = 'EMPPRIN':'TIPO' )
+               'EMPSDO':'AVISO_IMSS' := 'EMPSDO':'FECHA'    
+                GRABA_BASE ('EMPSDO')
+             FIN_SI
+           FIN_SI
+        FIN_SI  
+      
+      
+     FIN_SI
+ 
+FIN_SI
+
+
+
+
+FIN_SUB_RUTINA                                                                                                                                                                                                                                                 
+
+
+INCLUYE UTIL2.DAT
+_omitir_encabezados   := 1
+_omitir_encabezado    := 1
+_omitir_sub_totales   := 1
+_omitir_sub_total     := 1
+_omitir_total_general := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+$campos_extras := 'E. RFC, E.PE ,  E. NOMBREM, E. AFILIACION , E. NOMBREP, E. NOMBREN, E. CURP, M. FECHA, M. SDO1, M. SDO2, M. SDO3, M. TIPO, M. "BAJA IMSS", M. "CAUSA BAJA", M.AVISO_IMSS'
+$bases_extras := 'EMPSDO M'
+$condiciones_extras := 'M.CLAVE = E.CLAVE'
+
+$tmov := ''
+SI ( _tipo_mov  = 0 ) ;; $tmov := $tmov + '"B",' ;; FIN_SI
+SI ( _tipo_mov  = 1 ) ;; $tmov := $tmov + '"M",' ;; FIN_SI
+SI ( _tipo_mov  = 2 ) ;; $tmov := $tmov + '"A",' ;; FIN_SI
+SI ( _tipo_mov  = 2 ) ;; $tmov := $tmov + '"R",' ;; FIN_SI  # Esto es para que tome tanto altas como reingresos.
+
+$tmov := ELIMINA( $tmov, LONGITUD( $tmov ), 1 )
+SI ( $tmov <> '' )
+  $condiciones_extras := $condiciones_extras + ' AND M. TIPO IN ( ' + $tmov + ' ) AND M. FECHA >= :FI AND M. FECHA <= :FF'
+FIN_SI
+ABRE_BASE ('PATRONAL')
+ base_trabajadores
+ PARAMETRO_SQL ( 'EMPPRIN', 'FI', _fi )
+ PARAMETRO_SQL ( 'EMPPRIN', 'FF', _ff )
+
+
+# I M P R E S I O N   R E G I S T R O   D E   H E A D E R.
+#( Esta Información se presenta una sola vez por Registro Patronal y tipo de Movimiento. )
+   #IMP( COL(1) , 'HDRIMSS     X003040834   T') ;;  #IMPRIME      
+# I M P R E S I O N   R E G I S T R O   D E   C O N T R O L.
+   SI ( TRAE_REGISTRO ( 'PATRONAL' , $patronal ) )
+      $numero_patronal := 'PATRONAL':'REGISTRO PATRONAL'
+   FIN_SI
+   #IMP( COL(1) , 'CNTL' )
+   #IMP( COL(5) , $numero_patronal ) ;; #longitud debe de ser de 11
+
+
+   _total_empleados := 0
+   PRIMER_REGISTRO ( 'EMPPRIN' )
+   MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+         _total_empleados :=    _total_empleados + 1
+      SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+   FIN_MIENTRAS
+   DECIMALES := 0
+   RELLENO:= '0'
+   IMP ( COL(16) , DER ( .( _total_empleados ) , 5 )  )
+   SI ( _tipo_mov = 0 )
+      #IMP( COL(21) , '02')
+   FIN_SI   
+   SI ( _tipo_mov = 1 )
+      #IMP( COL(21) , '07')
+   FIN_SI   
+   SI ( _tipo_mov = 2   )  
+      #IMP( COL(21) , '08')
+   FIN_SI  
+   #IMPRIME     # ------------------------------------------------------------ print
+
+  
+# I M P R E S I O N    R E G I S T R O    D E   D E T A L L E 1
+   #IMP( COL(1) , 'PAT')
+   #IMP( COL(4) , $numero_patronal ) ;; #longitud debe de ser de 11
+   #IMP( COL(15) , '0')
+   #IMPRIME      
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+ABRE_BASE('BAJA')
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+TERMINA_REPORTE

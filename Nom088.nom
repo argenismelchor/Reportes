@@ -1,0 +1,144 @@
+#DEPOSITO DE NOMINA BBV
+#VERSION 1.000
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Genera un archivo ASCII con los totales de depósitos de nómina en BBV ( BANCO BILBAO VIZCAYA ).
+#FIN_DESCRIPCION
+#
+_fi := 0
+_ff := 0
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO     ( 'No.Cliente' , '9999' , $cliente )
+NUEVO_PARAMETRO     ( 'Cta.Empresa' , '999999999999' , $cuenta )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_PESOS := 3
+FORMATO_FECHA := 2
+SI ( $salida = 'DISCO' )
+   SALIDA := 'PANTALLA'
+   SALIDA_REPORTE ( DIRECTORIO_TRABAJO + '\DEPOSITO.TXT' ) 
+SI_NO
+   SALIDA := $salida
+FIN_SI
+RENGLONES := 9999
+COLUMNAS  := 150
+DRAFT     := 'S'
+
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &totales )
+VAR_T ( &indices )
+VAR_A ( _dep     )
+VAR_N ( _tod     )
+VAR_N ( _tot     )
+VAR_N ( _total   )
+VAR_N ( _l       )
+_num_ind := 0
+$tipo    := ''
+_cont    := 0
+_imp     := 0
+$indice  := ''
+
+SUB_RUTINA sumatoria
+   DECIMALES := 2
+   _cont     := 0
+   $tipo     := ''
+   MIENTRAS ( _cont <= 8 )
+      SI ( _cont = 0 ) ;; $tipo := 'REGISTRO PATRONAL' ;; FIN_SI
+      SI ( _cont = 1 ) ;; $tipo := 'SUCURSAL' ;; FIN_SI
+      SI ( _cont = 2 ) ;; $tipo := 'CENTRO DE COSTO' ;; FIN_SI
+      SI ( _cont = 3 ) ;; $tipo := 'DEPARTAMENTO' ;; FIN_SI
+      SI ( _cont = 4 ) ;; $tipo := 'PUESTO' ;; FIN_SI
+      SI ( _cont = 5 ) ;; $tipo := 'TIPO DE NOMINA' ;; FIN_SI
+      SI ( _cont = 6 ) ;; $tipo := 'TIPO DE EMPLEADO' ;; FIN_SI
+      SI ( _cont = 7 ) ;; $tipo := 'TURNO' ;; FIN_SI
+      SI ( _cont = 8 ) ;; $tipo := 'TOTAL' ;; FIN_SI
+      SI ( TRAE_INDICE_COL ( &indices , 0 , $tipo ) >= 0 )
+      #
+      FIN_SI
+      _cont := _cont + 1
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador 
+   _cont  := _cont  + 1
+   DECIMALES := 2
+   _total := _total + TOTAL ('TOTA')
+   DECIMALES := 0
+   IMP ( COL (1)  , '0' , $cliente , COL (6) , 'EMPPRIN':'RFC' , COL (22) , ' ' , COL (30) , ' ' , COL (31) , '01' )
+   IMP ( COL (33) , $cuenta , COL (45) , '00' , 'EMPPRIN':'CTA_TARJETA' , COL (57) , '000000000000000' )
+   DECIMALES := 2
+   _l := LONGITUD ( $ (TOTAL ('TOTA')) ) 
+   IMP ( COL (72 - _l) , $ (TOTAL ('TOTA')) , COL (72) , '20' )
+   IMP ( COL (74) , VALOR_FECHA (_ff) )
+   IMP ( COL (80) , '00000000' , COL (88) , '01' , COL (90) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 38 ) , COL (130) , '00000' )
+   DECIMALES := 0
+   _l := LONGITUD ( .(_cont) )
+   IMP ( COL (135 - _l) , .(_cont) , COL (135) , '000000' , COL (141) , ' ' , COL (150) , ' ' )
+   IMPRIME
+   DECIMALES := 2
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+#
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_reporte_nomina       := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+
+# Definicion de variables en base a los parametros
+SALIDA   := $salida
+$ind_act := ''
+$nom_ind := ''
+
+# Definicion de la tabla de indices utilizados
+REPITE
+   $nom_ind := TRAE_VALOR_TABLA ( &in , 2 , _num_ind )
+   $ind_act := TRAE_VALOR_TABLA ( &in , 0 , _num_ind )
+   SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+      AGREGA_VALOR_COL ( &indices , 0 , $nom_ind )
+   FIN_SI
+   _num_ind := _num_ind + 1
+HASTA (  $nom_ind = '' )
+AGREGA_VALOR_COL ( &indices , 0 , 'TOTAL' )
+
+$campos_extras := 'E.CTA_TARJETA, E. RFC'
+base_trabajadores
+
+# ---------- Registro Encabezado
+DECIMALES := 0
+IMP ( COL (1)   , 'X' , $cliente , COL (6) , '  ' , COL (8) , 'EMPRESA':'RFC' , COL (31) , '01' , REPITETXT ( '0' , 39 ) )
+IMP ( COL (72)  , '20' , VALOR_FECHA (_ff) , COL (80) , '0000000000' , COL (90) , '' )
+IMP ( COL (130) , '00000000000' , COL (141) , ' ' , COL (150) , ' ' ) ;; IMPRIME
+DECIMALES := 2
+
+# ---------- Registro Detalle
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   SI ( FUE_VIGENTE ( 'PERIODO':'FECHA INICIAL' , 'PERIODO':'FECHA FINAL' ) )
+      SI ( VALOR ( 'EMPPRIN':'CTA_TARJETA' ) <> 0 )
+         SI ( TOTAL ('TOTA') > 0 )
+            datos_trabajador
+         FIN_SI
+      FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+# ---------- Registro Final
+IMP ( COL (1) , '00000' , COL (6) , 'T'  , COL (31) , '01' , REPITETXT ( '0' , 24 ) , COL (57) , '000000000000000' )
+DECIMALES := 2   
+_l := LONGITUD ( $ (_total) )
+IMP ( COL (72 - _l)  , $ (_total) , COL (72) , REPITETXT ( '0' , 18 ) , COL (130) , '00000' )
+DECIMALES := 0
+_l := LONGITUD ( .(_cont) )
+IMP ( COL (135 - _l) , .(_cont) , COL (135) , '000000' , COL (141) , ' ' , COL (150) , ' ' )
+IMPRIME

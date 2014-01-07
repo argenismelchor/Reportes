@@ -1,0 +1,181 @@
+#CAPTURA DE ABONOS A PRESTAMO
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte captura los abonos a prestamo que se hayan descontado y no se registraron en su kardex de abonos.
+#La opción de LIMPIAR APORTACIONES elimina primeramente todos los abonos del CONC. PRESTAMO.
+#El periodo Inicio y Termino indican desde que periodo hasta cual va a realizar la captura de abonos.
+#El CONC. PRESTAMO indica la clave del concepto al cual capturar los abonos.
+#EL CONC. BASE indica que de que concepto se va atomar el monto para generar el abono, este normalmente es el mismo que el anterior.
+#AGREGAR PRESTAMO le indica que si encuentra la aportacion del concepto base y no esta el prestamo lo agrege con la fecha del periodo.
+#ACTIVO indica el estatus que se desea poner en el prestamo cuando se activa, este solo funciona cuando se selecciona que se quiere agregar prestamos.
+#AGREGAR ABONOS este indica si deseamos que grabe los abonos. Lo ideal es que si lo haga.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_CHEQ ( 'LIMPIAR APORTACIONES', '', _limpiar )
+NUEVO_PARAMETRO      ( 'PER. INICIO', '', _inicio )
+NUEVO_PARAMETRO      ( 'PER. FIN', '', _final )
+NUEVO_PARAMETRO      ( 'CONC. PRESTAMO', '', $con_pres )
+NUEVO_PARAMETRO      ( 'CONC. BASE', '', $con_base )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+NUEVO_PARAMETRO_SEL ( 'AGREGAR PREST.', 'SI/NO', _prest )
+NUEVO_PARAMETRO     ( 'ACTIVO', 'N', $act )
+NUEVO_PARAMETRO_SEL ( 'AGREGAR ABONOS', 'SI/NO', _abon )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   DECIMALES := 0
+   $titulo_reporte := 'PERIODO ' + .( _inicio )
+   DECIMALES := 2
+   encabezado_ini
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+#Variables Globales
+_encontrado := 0
+_descuento  := 0
+
+#Subrutina diversas
+
+SUB_RUTINA checa_prestamo
+  IMP( 'EMPPRIN':'CLAVE', COL(10), 'EMPPRIN':'NOMBRE' ) ;; IMPRIME 
+  SI ( _encontrado = 0 )
+    SI ( _prest = 0 )
+      AGREGA_REGISTRO ( 'EMPPRES' )
+      'EMPPRES':'CLAVE' := 'EMPPRIN':'CLAVE'
+      'EMPPRES':'CLAVE_CONCEPTO' := $con_pres
+      'EMPPRES':'FECHA' := 'PERIODO':'FECHA INICIAL'
+      'EMPPRES':'MONTO' := 0
+      'EMPPRES':'DESCUENTO' := 0
+      'EMPPRES':'SALDO' := 0
+      'EMPPRES':'ESTADO' := $act
+      'EMPPRES':'COMENTARIO' := 'CAPTURADO AUTOMATICAMENTE'
+      GRABA_BASE( 'EMPPRES' )
+      IMP( COL(10), 'PRESTAMO : ', COL(25), FECHA( 'PERIODO':'FECHA INICIAL' ) ) ;; IMPRIME
+      _encontrado := 1
+    FIN_SI
+  FIN_SI
+  SI ( _encontrado = 1 )
+    _descuento := TOTAL( $con_base )
+    REPITE
+      SI (( 'EMPPRES':'CLAVE_CONCEPTO' = $con_pres ) AND ( 'EMPPRES':'ESTADO' = 'S' ) AND ( 'EMPPRES':'SALDO' > 0 ) )
+        SI ( TRAE_REGISTRO( 'EMPABO', 'EMPPRES':'ID', 'PERIODO':'FECHA INICIAL' ) = FALSO )
+          SI ( TRAE_REGISTRO( 'EMPABO', 'EMPPRES':'ID', 'PERIODO':'FECHA FINAL' ) = FALSO )
+            SI ( _abon = 0 )
+              AGREGA_REGISTRO( 'EMPABO' )
+              'EMPABO':'PRESTAMO' := 'EMPPRES':'ID'
+              'EMPABO':'FECHA' := 'PERIODO':'FECHA FINAL'
+              SI ( 'EMPPRES':'SALDO' - 'EMPPRES':'DESCUENTO' < 0 )
+                'EMPABO':'MONTO' := 'EMPPRES':'SALDO'
+              SI_NO
+                'EMPABO':'MONTO' := 'EMPPRES':'DESCUENTO'                
+              FIN_SI
+              'EMPABO':'COMENTARIO' := 'AUTOMATICO'
+              GRABA_BASE( 'EMPABO' )
+              'EMPPRES':'SALDO' := 'EMPPRES':'SALDO' - 'EMPPRES':'DESCUENTO'
+              GRABA_BASE( 'EMPPRES' )
+            FIN_SI
+            IMP( COL(10), 'ABONO AGREGADO : ', COL(30), FECHA( 'PERIODO':'FECHA FINAL' ), COL(45), $( 'EMPPRES':'DESCUENTO' ) ) ;; IMPRIME
+          FIN_SI
+        FIN_SI    
+        _descuento := _descuento - 'EMPPRES':'DESCUENTO'
+      FIN_SI
+      SIGUIENTE_REGISTRO( 'EMPPRES' )
+    HASTA( ( _descuento <= 0 ) OR ( FIN_BASE( 'EMPPRES' ) = VERDADERO ) )
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+  _encontrado := 0
+  DECIMALES := 2
+  PRIMER_REGISTRO( 'EMPPRES' )
+  MIENTRAS (( FIN_BASE( 'EMPPRES' ) = FALSO ) AND ( _encontrado = 0 ))
+    SI ( 'EMPPRES':'CLAVE_CONCEPTO' = $con_pres )
+      _encontrado := 1
+    SI_NO
+      SIGUIENTE_REGISTRO( 'EMPPRES' )
+    FIN_SI    
+  FIN_MIENTRAS
+  checa_prestamo
+FIN_SUB_RUTINA
+
+SUB_RUTINA limpia_aportaciones
+  PRIMER_REGISTRO ( 'EMPPRES' )
+  MIENTRAS ( FIN_BASE( 'EMPPRES' ) = FALSO )
+    SI ( 'EMPPRES':'CLAVE_CONCEPTO' = $con_pres )
+      IMP ( 'LIMPIANDO APORTACIONES : ', 'EMPPRIN':'CLAVE' ) ;; IMPRIME
+      PRIMER_REGISTRO( 'EMPABO' )
+      MIENTRAS ( FIN_BASE( 'EMPABO' ) = FALSO )
+        BORRA_REGISTRO( 'EMPABO' )
+      FIN_MIENTRAS
+    FIN_SI
+    SIGUIENTE_REGISTRO( 'EMPPRES' )
+  FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPPRES', 'CLAVE' )
+USA_ARCHIVO( 'EMPPRES', 'EMPABO', 'ID' )
+
+SI ( _limpiar = 1 )
+  MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+  PRIMER_REGISTRO( 'EMPPRIN' )
+  MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+     limpia_aportaciones
+     SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+  FIN_MIENTRAS
+FIN_SI
+
+$saux := ''
+MIENTRAS( _inicio <= _final )
+  $saux := QUITA_CARACTER ( '"', TRAE_VALOR_TABLA ( &in, 11, 6 ))
+  SI ( CAMBIA_PERIODO ( $saux, _inicio, FALSO ) = FALSO )
+     DECIMALES := 0
+     SI ( PREGUNTA( 'EL PERIODO ' + .( _inicio ) + ' NO SE PUDO ABRIR. CONTINUAR?' ) = FALSO )
+       TERMINA_REPORTE
+     FIN_SI
+  SI_NO
+     DECIMALES := 0
+     SI ( TRAE_REGISTRO ( 'PERIODO', $saux, _inicio ) = FALSO )
+       IMP ( 'PERIODO INEXISTENTE EN EL CATALOGO...' ) ;; IMPRIME
+     FIN_SI
+     IMP ( '**** PERIODO : ', .( _inicio ) ) ;; IMPRIME ;; IMPRIME
+     inicializa
+     PRIMER_REGISTRO( 'EMPPRIN' )
+     DECIMALES := 0
+     MUESTRA_AVANCE( 'EMPPRIN', 'PERIODO ' + .(_inicio) )
+     DECIMALES := 2
+     MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+        SI ( TOTAL( $con_base ) <> 0 )
+          datos_trabajador
+        FIN_SI
+        SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+     FIN_MIENTRAS
+  FIN_SI
+  _inicio := _inicio + 1
+  AVANZA_HOJA
+FIN_MIENTRAS
+termina_reporte

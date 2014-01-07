@@ -1,0 +1,109 @@
+#SALDOS VACACIONALES
+#EXCEL
+#NO EDITAR
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra los saldos vacacionales de los trabajadores vigentes de la empresa.
+#Este reporte imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal. De las vacaciones imprime Fecha Ingreso, Antiguedad, Dias y Prima Vac.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO/EXCEL' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA DE CORTE'  , '' , _ff ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'Saldos Vacacionales al ' + FECHA (_ff)
+   encabezado_ini
+   SI ( CD_DC = 0 )
+      IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' , COL (50) , DER ( 'SUCURSAL' , 10 ) , COL (60) , DER ( 'DEPTO' , 10 ) , COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   SI_NO
+      IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' , COL (50) , DER ( 'SUCURSAL' , 10 ) , COL (60) , DER ( 'C.C.' , 10 ) , COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   FIN_SI
+   IMP ( COL (8) , 'F.Ingreso' , COL (22) , 'ANTIGUEDAD' , COL (35) , 'DIAS' , COL (46) , 'PRIMA' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+
+#Variables Globales
+_dias  := 0
+_prima := 0
+_ant   := 0
+_ren_excel := 1
+
+#Subrutinas diversas
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 38 ) )
+   IMP ( COL (50) , DER ( 'EMPPRIN':'SUC_CLAVE' , 10 ) , COL (60) , DER ( 'EMPPRIN':'DEP_CLAVE' , 10 ) , COL (70) , DER ( 'EMPPRIN':'PUE_CLAVE' , 10 ) )
+   IMPRIME
+   SI ( $salida = 'EXCEL' )
+     _ren_excel := _ren_excel + 1
+     EXCEL ( 'PON_VALOR', 1, _ren_excel, 'EMPPRIN':'CLAVE' )
+     EXCEL ( 'PON_VALOR', 2, _ren_excel, 'EMPPRIN':'NOMBRE' )
+   FIN_SI
+   _dias  := SDO_VACACIONAL_DIAS  ( _ff )
+   _prima := SDO_VACACIONAL_PRIMA ( _ff )
+   IMP ( COL (8) , FECHA ('EMPPRIN':'INGRESO') )
+   SI ( $salida = 'EXCEL' )
+     EXCEL ( 'PON_VALOR', 3, _ren_excel, FECHA( 'EMPPRIN':'INGRESO' ) )
+   FIN_SI
+   DECIMALES := 2
+   _ant := ( ( _ff - 'EMPPRIN':'INGRESO' ) + 1 ) / 365
+   IMP ( COL (24) , DER ( .( _ant ) , 6 ) , COL (35) , DER ( .( _dias ) , 6 ) )
+   SI ( $salida = 'EXCEL' )
+     EXCEL ( 'PON_VALOR', 4, _ren_excel, .( _ant ) )
+     EXCEL ( 'PON_VALOR', 5, _ren_excel, .( _dias ) )
+   FIN_SI
+   DECIMALES := 2
+   IMP ( COL (45) , DER ( .( _prima ) , 6 ) )
+   SI ( $salida = 'EXCEL' )
+     EXCEL ( 'PON_VALOR', 6, _ren_excel, .( _prima ) )
+   FIN_SI
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+SI ( $salida = 'EXCEL' )
+  EXCEL ( 'PON_VALOR', 1, 1, 'CLAVE' )
+  EXCEL ( 'PON_VALOR', 2, 1, 'NOMBRE' )
+  EXCEL ( 'PON_VALOR', 3, 1, 'INGRESO' )
+  EXCEL ( 'PON_VALOR', 4, 1, 'ANTIGUEDAD' )
+  EXCEL ( 'PON_VALOR', 5, 1, 'DIAS' )
+  EXCEL ( 'PON_VALOR', 6, 1, 'PRIMA' )
+FIN_SI
+
+$campos_extras:='E. CALENDARIO'
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPSDO'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPVACA' , 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   SI ( ES_VIGENTE ( _ff ) )
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte

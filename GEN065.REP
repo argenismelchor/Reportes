@@ -1,0 +1,95 @@
+#CAMBIOS MASIVOS DE DSP
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.5
+#DESCRIPCION
+#Da la opcion de grabar los cambios masivos de DSP
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL  ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_SEL  ( 'TIPO', 'DEPTO/PUESTO/SUCURSAL', $dsp )
+NUEVO_PARAMETRO_CHEQ ( 'GRABAR', '', _grabar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+NUEVO_PARAMETRO_FEC ( 'FECHA', '', _fecha )
+NUEVO_PARAMETRO_TAB ( $dsp + ' NUEVO', $dsp+'/CLAVE/'+$dsp+'S', $nuevo )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( TRAE_REGISTRO( $dsp, $nuevo ) = FALSO )
+  MENSAJE( 'REGISTRO DE ' + $dsp + ' INEXISTENTE ' + $nuevo )
+  TERMINA_REPORTE  
+FIN_SI
+
+
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'CAMBIO MASIVO DE DSP'
+   encabezado_ini
+   IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+  pie_estandar
+FIN_PIE
+
+# PARAMETROS
+DECIMALES := 2
+COLUMNAS := 80
+RENGLONES := 65
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+$empdsp := ''
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   SI ( _grabar = 1 )
+     SI ( TRAE_REGISTRO( $empdsp, 'EMPPRIN':'CLAVE', _fecha ) = FALSO )
+       AGREGA_REGISTRO( $empdsp )
+       $empdsp:'CLAVE' := 'EMPPRIN':'CLAVE'
+       $empdsp:'FECHA ENTRADA' := _fecha
+     FIN_SI
+     $empdsp:'CATALOGO' := $nuevo
+     GRABA_BASE ( $empdsp )
+   FIN_SI
+   IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), 'EMPPRIN':'NOMBRE' )
+   IMP ( COL(50), FECHA( _fecha ) )
+   IMP ( COL(65), $dsp:'CLAVE' + ' ' + $dsp:'DESCRIPCION' )
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+
+SI ( $dsp = 'DEPTO' )
+  $empdsp := 'EMPDEP'
+FIN_SI
+SI ( $dsp = 'PUESTO' )
+  $empdsp := 'EMPPUES'
+FIN_SI
+SI ( $dsp = 'SUCURSAL' )
+  $empdsp := 'EMPSUC'
+FIN_SI
+USA_ARCHIVO( 'EMPPRIN', $empdsp, 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE( _fecha ) )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+TERMINA_REPORTE

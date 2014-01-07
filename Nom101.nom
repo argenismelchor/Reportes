@@ -1,0 +1,107 @@
+#CATALOGO DE CONCEPTOS
+#NO EDITAR
+#USUARIO =*
+#DESCRIPCION
+#Este reporte muestra el catalogo de conceptos mostrando para cada concepto el tipo del mismo.
+#FIN_DESCRIPCION
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA/DISCO',$salida)
+NUEVO_PARAMETRO_TAB ('TIPO DE NOMINA','TIPONOM/CLAVE/TIPOS DE NOMINA/NO-EDIT',$tipo)
+LEE_PARAMETROS
+FORMATO_FECHA := 3
+SALIDA := $salida
+
+SI ( $salida = 'DISCO' )
+   SALIDA_REPORTE ( DIRECTORIO_TRABAJO + '\CATCON.TXT' )
+FIN_SI
+
+INCLUYE ENCPIE.DAT
+
+_condensado := 1
+COLUMNAS := 120
+
+ENCABEZADO
+   $titulo_reporte := 'TABLA DE CONCEPTOS ' + 'TIPONOM':'CLAVE' + ' ' + 'TIPONOM':'DESCRIPCION'
+   encabezado_ini
+   IMP ( COL (1) , 'CLAVE' , COL (7) , 'DESCRIPCION' , COL (40) , 'TIPO', COL(50), 'FREC.', COL(60), 'VOLUMEN', COL(70), 'IMPRIMIR', COL(80), 'G. IMSS', COL(90), 'CARGO', COL(105), 'ABONO' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+SI ( TRAE_REGISTRO ( 'TIPONOM', $tipo ) = 0 )
+   TERMINA_REPORTE
+FIN_SI
+
+ABRE_BASE_NOMINA ( 'TIPONOM':'CLAVE', 'TIPONOM':'ACTUAL' )
+
+_total := 0
+DECIMALES := 0
+$tipo := ''
+$frec := ''
+$vol  := ''
+$imp  := ''
+$imss := ''
+
+PRIMER_REGISTRO( 'CONCEPTO' )
+MIENTRAS( FIN_BASE( 'CONCEPTO' ) = FALSO )
+  SI ( 'CONCEPTO':'PDC' = 0 )
+    $tipo := 'PERC.'
+  FIN_SI
+  SI ( 'CONCEPTO':'PDC' = 1 )
+    $tipo := 'DEDU.'
+  FIN_SI
+  SI ( 'CONCEPTO':'PDC' = 2 )
+    $tipo := 'CONC.'
+  FIN_SI
+
+  SI ( 'CONCEPTO':'FRECUENCIA' = 0 )
+    $frec := 'ESTA NOM.'
+  FIN_SI
+  SI ( 'CONCEPTO':'FRECUENCIA' = 1 )
+    $frec := 'PERM.'
+  FIN_SI
+  SI ( 'CONCEPTO':'FRECUENCIA' = 2 )
+    $frec := 'NO. PER.'
+  FIN_SI
+  SI ( 'CONCEPTO':'FRECUENCIA' = 3 )
+    $frec := 'ACUM.'
+  FIN_SI
+  SI ( 'CONCEPTO':'FRECUENCIA' = 4 )
+    $frec := 'PREST.'
+  FIN_SI
+  SI ( 'CONCEPTO':'FRECUENCIA' = 5 )
+    $frec := 'APORT.'
+  FIN_SI
+
+  SI ( 'CONCEPTO':'VOLUMEN' = 0 )
+    $vol := 'GEN.'
+  SI_NO
+    $vol := 'IND.'
+  FIN_SI
+
+  SI ( 'CONCEPTO':'IMPRIMIR' = 1 )
+    $imp := 'SI'
+  SI_NO
+    $imp := 'NO'
+  FIN_SI
+
+  SI ( 'CONCEPTO':'GRABA_IMSS' = 1 )
+    $imss := 'SI'
+  SI_NO
+    $imss := 'NO'
+  FIN_SI
+
+  IMP ( COL(1), 'CONCEPTO':'CLAVE', COL(7), 'CONCEPTO':'DESCRIPCION', COL(40), $tipo )
+  IMP ( COL(50), $frec )
+  IMP ( COL(62), $vol  )
+  IMP ( COL(73), $imp  )
+  IMP ( COL(83), $imss )
+  IMP ( COL(90), 'CONCEPTO':'CARGO', COL(105), 'CONCEPTO':'ABONO' ) ;; IMPRIME
+  SIGUIENTE_REGISTRO( 'CONCEPTO' )
+FIN_MIENTRAS
+
+IMPRIME ;; IMPRIME
+IMP ( COL (10) , 'Total de Conceptos : ' , TOTAL_REGISTROS ( 'CONCEPTO' ) ) ;; IMPRIME
+

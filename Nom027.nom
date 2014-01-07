@@ -1,0 +1,583 @@
+#ACUMULADOS POR CUATRIMESTRE
+#VERSION 1.0
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_SEL ( 'TIPO', 'CUATRIMESTRE DESGLOSADO/SOLO TOTALES', _solo_tot )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_uno  := 0
+_dos  := 0
+_tres := 0
+_cuatrimestre := 0
+SI ( _solo_tot = 1 )
+  NUEVO_PARAMETRO_CHEQ ( '1ER CUATRIMESTRE', '', _uno )
+  NUEVO_PARAMETRO_CHEQ ( '2DO CUATRIMESTRE', '', _dos )
+  NUEVO_PARAMETRO_CHEQ ( '3ER CUATRIMESTRE', '', _tres )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+SI_NO
+  NUEVO_PARAMETRO_SEL ( 'CUATRIMESTRE', '1ER CUATRIMESTRE/2DO CUATRIMESTRE/3ER CUATRIMESTRE', _cuatrimestre )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS
+FIN_SI
+
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+SALIDA := $salida
+$antes := ''
+COLUMNAS := 105
+MODO_IMPRESION( 'DIRECTO' )
+
+$mes1 := ''
+$mes2 := ''
+$mes3 := ''
+$mes4 := ''
+$mes5 := ''
+$mes6 := ''
+$mes7 := ''
+$mes8 := ''
+$mes9 := ''
+$mes10 := ''
+$mes11 := ''
+$mes12 := ''
+
+
+SI ( _solo_tot = 0 )
+  SI ( _cuatrimestre = 0 )
+    $mes1 := 'ENERO'
+    $mes2 := 'FEBRERO'
+    $mes3 := 'MARZO'
+    $mes4 := 'ABRIL'
+  FIN_SI
+  
+  SI ( _cuatrimestre = 1 )
+    $mes1 := 'MAYO'
+    $mes2 := 'JUNIO'
+    $mes3 := 'JULIO'
+    $mes4 := 'AGOSTO'
+  FIN_SI
+  
+  SI ( _cuatrimestre = 2 )
+    $mes1 := 'SEPTIEMBRE'
+    $mes2 := 'OCTUBRE'
+    $mes3 := 'NOVIEMBRE'
+    $mes4 := 'DICIEMBRE'
+  FIN_SI
+SI_NO
+  SI ( _uno = 1 )
+    $mes1 := 'ENERO'
+    $mes2 := 'FEBRERO'
+    $mes3 := 'MARZO'
+    $mes4 := 'ABRIL'
+  FIN_SI
+  
+  SI ( _dos = 1 )
+    $mes5 := 'MAYO'
+    $mes6 := 'JUNIO'
+    $mes7 := 'JULIO'
+    $mes8 := 'AGOSTO'
+  FIN_SI
+  
+  SI ( _tres = 1 )
+    $mes9 := 'SEPTIEMBRE'
+    $mes10 := 'OCTUBRE'
+    $mes11 := 'NOVIEMBRE'
+    $mes12 := 'DICIEMBRE'
+  FIN_SI
+FIN_SI
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+
+ENCABEZADO   
+   $titulo_reporte := 'REPORTE DE ACUMULADOS'
+   encabezado_ini
+   SI ( _solo_tot = 0 )
+     IMP ( 'CONCEPTO', COL(10), 'DESCRIPCION', COL(30), DER( $mes1, 15 ), COL(45), DER( $mes2, 15 ), COL(60), DER( $mes3, 15 ), COL(75), DER( $mes4, 15 ), COL(90), DER( 'TOTAL', 15 ) )
+   SI_NO
+     IMP ( 'CONCEPTO', COL(10), 'DESCRIPCION' )
+     SI ( _uno = 1 )
+        IMP ( COL(30), DER( '1ER CUATRIMESTRE', 20 ) )
+     FIN_SI
+     SI ( _dos = 1 )
+        IMP ( COL(50), DER( '2DO CUATRIMESTRE', 20 ) )
+     FIN_SI
+     SI ( _tres = 1 )
+        IMP ( COL(70), DER( '3ER CUATRIMESTRE', 20 ) )
+     FIN_SI
+     IMP ( COL(90), DER( 'TOTAL', 15 ) )
+   FIN_SI
+   IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+#DEFINICION DE CONCEPTOS
+VAR_T( &conceptos )
+#SUELDOS Y SALARIOS
+AGREGA_VALOR_COL( &conceptos, 0, '000' )
+AGREGA_VALOR_COL( &conceptos, 1, '01,02,04,05,05A' )
+AGREGA_VALOR_COL( &conceptos, 2, 'SUELDOS Y SALARIOS' )
+AGREGA_VALOR_COL( &conceptos, 3, 'PERC' )
+
+#TIEMPO EXTRA
+AGREGA_VALOR_COL( &conceptos, 0, '001' )
+AGREGA_VALOR_COL( &conceptos, 1, '10,11' )
+AGREGA_VALOR_COL( &conceptos, 2, 'TIEMPO EXTRA' )
+AGREGA_VALOR_COL( &conceptos, 3, 'PERC' )
+
+#INDEMNIZACION
+AGREGA_VALOR_COL( &conceptos, 0, '003' )
+AGREGA_VALOR_COL( &conceptos, 1, '22,25' )
+AGREGA_VALOR_COL( &conceptos, 2, 'INDEMNIZACION' )
+AGREGA_VALOR_COL( &conceptos, 3, 'PERC' )
+
+#PREMIO POR ASISTENCIA
+AGREGA_VALOR_COL( &conceptos, 0, '010' )
+AGREGA_VALOR_COL( &conceptos, 1, '20' )
+AGREGA_VALOR_COL( &conceptos, 2, 'PREMIO POR ASISTENCIA' )
+AGREGA_VALOR_COL( &conceptos, 3, 'PERC' )
+
+#GRATIFICACION
+AGREGA_VALOR_COL( &conceptos, 0, '002' )
+AGREGA_VALOR_COL( &conceptos, 1, '17' )
+AGREGA_VALOR_COL( &conceptos, 2, 'GRATIFICACION' )
+AGREGA_VALOR_COL( &conceptos, 3, 'PERC' )
+
+
+#PREMIO POR PUNTUALIDAD
+AGREGA_VALOR_COL( &conceptos, 0, '011' )
+AGREGA_VALOR_COL( &conceptos, 1, '19' )
+AGREGA_VALOR_COL( &conceptos, 2, 'PREMIO POR PUNTUALIDAD' )
+AGREGA_VALOR_COL( &conceptos, 3, 'PERC' )
+
+#BONO DE PRODUCTIVIDAD
+AGREGA_VALOR_COL( &conceptos, 0, '012' )
+AGREGA_VALOR_COL( &conceptos, 1, '08' )
+AGREGA_VALOR_COL( &conceptos, 2, 'BONO DE PRODUCTIVIDAD' )
+AGREGA_VALOR_COL( &conceptos, 3, 'PERC' )
+
+#FONDO DE AHORRO
+AGREGA_VALOR_COL( &conceptos, 0, '013' )
+AGREGA_VALOR_COL( &conceptos, 1, '28' )
+AGREGA_VALOR_COL( &conceptos, 2, 'FONDO DE AHORRO' )
+AGREGA_VALOR_COL( &conceptos, 3, 'PERC' )
+
+#AYUDA PARA DESPENSA
+AGREGA_VALOR_COL( &conceptos, 0, '014' )
+AGREGA_VALOR_COL( &conceptos, 1, '33,26' )
+AGREGA_VALOR_COL( &conceptos, 2, 'AYUDA PARA DESPENSA' )
+AGREGA_VALOR_COL( &conceptos, 3, 'PERC' )
+
+#VALES DE GASOLINA
+AGREGA_VALOR_COL( &conceptos, 0, '015' )
+AGREGA_VALOR_COL( &conceptos, 1, '29' )
+AGREGA_VALOR_COL( &conceptos, 2, 'VALES DE GASOLINA' )
+AGREGA_VALOR_COL( &conceptos, 3, 'PERC' )
+
+#RETENCION PARA AYUDA DE DESPENSA
+AGREGA_VALOR_COL( &conceptos, 0, '016' )
+AGREGA_VALOR_COL( &conceptos, 1, '73' )
+AGREGA_VALOR_COL( &conceptos, 2, 'RETENCION PARA AYUDA DE DESPENSA' )
+AGREGA_VALOR_COL( &conceptos, 3, 'PERC' )
+
+#AGUINALDO
+AGREGA_VALOR_COL( &conceptos, 0, '030' )
+AGREGA_VALOR_COL( &conceptos, 1, '30' )
+AGREGA_VALOR_COL( &conceptos, 2, 'AGUINALDO' )
+AGREGA_VALOR_COL( &conceptos, 3, 'DEDU' )
+
+#VACACIONES
+AGREGA_VALOR_COL( &conceptos, 0, '031' )
+AGREGA_VALOR_COL( &conceptos, 1, '12' )
+AGREGA_VALOR_COL( &conceptos, 2, 'VACACIONES' )
+AGREGA_VALOR_COL( &conceptos, 3, 'DEDU' )
+
+#PRIMA VACACIONAL
+AGREGA_VALOR_COL( &conceptos, 0, '032' )
+AGREGA_VALOR_COL( &conceptos, 1, '13' )
+AGREGA_VALOR_COL( &conceptos, 2, 'PRIMA VACACIONAL' )
+AGREGA_VALOR_COL( &conceptos, 3, 'DEDU' )
+
+#PRIMA DOMINICAL
+AGREGA_VALOR_COL( &conceptos, 0, '034' )
+AGREGA_VALOR_COL( &conceptos, 1, '16' )
+AGREGA_VALOR_COL( &conceptos, 2, 'PRIMA DOMINICAL' )
+AGREGA_VALOR_COL( &conceptos, 3, 'DEDU' )
+
+#PRIMA DE ANTIGUEDAD
+AGREGA_VALOR_COL( &conceptos, 0, '035' )
+AGREGA_VALOR_COL( &conceptos, 1, '23' )
+AGREGA_VALOR_COL( &conceptos, 2, 'PRIMA DE ANTIGUEDAD' )
+AGREGA_VALOR_COL( &conceptos, 3, 'DEDU' )
+
+#PREVISION SOCIAL
+AGREGA_VALOR_COL( &conceptos, 0, '036' )
+AGREGA_VALOR_COL( &conceptos, 1, '27' )
+AGREGA_VALOR_COL( &conceptos, 2, 'PREVISION SOCIAL' )
+AGREGA_VALOR_COL( &conceptos, 3, 'DEDU' )
+
+#DESCUENTO DE COMEDOR
+AGREGA_VALOR_COL( &conceptos, 0, '037' )
+AGREGA_VALOR_COL( &conceptos, 1, '56' )
+AGREGA_VALOR_COL( &conceptos, 2, 'DESCUENTO DE COMEDOR' )
+AGREGA_VALOR_COL( &conceptos, 3, 'DEDU' )
+
+#IMSS
+AGREGA_VALOR_COL( &conceptos, 0, '050' )
+AGREGA_VALOR_COL( &conceptos, 1, '52' )
+AGREGA_VALOR_COL( &conceptos, 2, 'IMSS' )
+AGREGA_VALOR_COL( &conceptos, 3, 'DEDU' )
+
+#INFONAVIT
+AGREGA_VALOR_COL( &conceptos, 0, '051' )
+AGREGA_VALOR_COL( &conceptos, 1, '65' )
+AGREGA_VALOR_COL( &conceptos, 2, 'INFONAVIT' )
+AGREGA_VALOR_COL( &conceptos, 3, 'DEDU' )
+
+#SAR
+AGREGA_VALOR_COL( &conceptos, 0, '052' )
+AGREGA_VALOR_COL( &conceptos, 1, 'xx' )
+AGREGA_VALOR_COL( &conceptos, 2, 'SAR' )
+AGREGA_VALOR_COL( &conceptos, 3, 'DEDU' )
+
+#2% NOMINA
+AGREGA_VALOR_COL( &conceptos, 0, '053' )
+AGREGA_VALOR_COL( &conceptos, 1, 'C01' )
+AGREGA_VALOR_COL( &conceptos, 2, '2% NOMINA' )
+AGREGA_VALOR_COL( &conceptos, 3, 'DEDU' )
+
+#CESANTIA Y VEJEZ
+AGREGA_VALOR_COL( &conceptos, 0, '054' )
+AGREGA_VALOR_COL( &conceptos, 1, '52C' )
+AGREGA_VALOR_COL( &conceptos, 2, 'CESANTIA Y VEJEZ' )
+AGREGA_VALOR_COL( &conceptos, 3, 'DEDU' )
+
+
+#VARIABLES
+VAR_T( &50310 )
+VAR_T( &51050 )
+VAR_T( &51150 )
+VAR_T( &sin )
+VAR_T( &52299 )
+VAR_T( &52300 )
+VAR_T( &52301 )
+VAR_T( &total )
+VAR_T( &imprimir )
+_ind_con   := 0
+_ind_mes   := 0
+$mes       := ''
+$concepto  := ''
+$conceptos := ''
+$cuenta    := ''
+_encontrado := 0
+$tipo       := ''
+_renglon    := 0  
+_indice     := 0
+_mes1       := 0
+_mes2       := 0
+_mes3       := 0
+_mes4       := 0
+_mes5       := 0
+_mes6       := 0
+_mes7       := 0
+_mes8       := 0
+_mes9       := 0
+_mes10      := 0
+_mes11      := 0
+_mes12      := 0
+_cuatri1    := 0
+_cuatri2    := 0
+_cuatri3    := 0
+_sub_tot1   := 0
+_sub_tot2   := 0
+_sub_tot3   := 0
+_sub_tot4   := 0
+_sub_tot5   := 0
+
+DECIMALES   := 2
+
+VAR_T( &meses )
+SI ( _solo_tot = 0 )
+  AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes1, 1, 3 ) )
+  AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes2, 1, 3 ) )
+  AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes3, 1, 3 ) )
+  AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes4, 1, 3 ) )
+SI_NO
+  SI ( _uno = 1 )
+    AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes1, 1, 3 ) )
+    AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes2, 1, 3 ) )
+    AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes3, 1, 3 ) )
+    AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes4, 1, 3 ) )
+  FIN_SI
+  SI ( _dos = 1 )
+    AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes5, 1, 3 ) )
+    AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes6, 1, 3 ) )
+    AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes7, 1, 3 ) )
+    AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes8, 1, 3 ) )
+  FIN_SI
+  SI ( _tres = 1 )
+    AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes9, 1, 3 ) )
+    AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes10, 1, 3 ) )
+    AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes11, 1, 3 ) )
+    AGREGA_VALOR_COL( &meses, 0, SUBSTR( $mes12, 1, 3 ) ) 
+  FIN_SI
+FIN_SI
+
+
+SUB_RUTINA checa_cuentas
+  SI (( $concepto = '016' ) OR ( $concepto = '037' ) )
+    SI ( _mes1 > 0 )  _mes1 := _mes1 * -1 FIN_SI
+    SI ( _mes2 > 0 )  _mes2 := _mes2 * -1 FIN_SI
+    SI ( _mes3 > 0 )  _mes3 := _mes3 * -1 FIN_SI
+    SI ( _mes4 > 0 )  _mes4 := _mes4 * -1 FIN_SI
+    SI ( _mes5 > 0 )  _mes5 := _mes5 * -1 FIN_SI
+    SI ( _mes6 > 0 )  _mes6 := _mes6 * -1 FIN_SI
+    SI ( _mes7 > 0 )  _mes7 := _mes7 * -1 FIN_SI
+    SI ( _mes8 > 0 )  _mes8 := _mes8 * -1 FIN_SI
+    SI ( _mes9 > 0 )  _mes9 := _mes9 * -1 FIN_SI
+    SI ( _mes10 > 0 )  _mes10 := _mes10 * -1 FIN_SI
+    SI ( _mes11 > 0 )  _mes11 := _mes11 * -1 FIN_SI
+    SI ( _mes12 > 0 )  _mes12 := _mes12 * -1 FIN_SI
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_tabla
+  _sub_tot1 := 0
+  _sub_tot2 := 0
+  _sub_tot3 := 0
+  _sub_tot4 := 0
+  _sub_tot5 := 0
+  DECIMALES := 2
+  _renglon := 0
+  $concepto := TRAE_VALOR_TABLA( &imprimir, 0, _renglon )
+  MIENTRAS ( $concepto <> '' )
+    $cuenta    := TRAE_VALOR_TABLA( &imprimir, 0, _renglon )
+    _indice := TRAE_INDICE_COL( &conceptos, 0, $concepto )
+    SI ( _indice >= 0 )
+      SI ( _solo_tot = 0 )
+        _mes1 := VALOR_TABLA( &imprimir, SUBSTR( $mes1, 1, 3 ), $cuenta )
+        _mes2 := VALOR_TABLA( &imprimir, SUBSTR( $mes2, 1, 3 ), $cuenta )
+        _mes3 := VALOR_TABLA( &imprimir, SUBSTR( $mes3, 1, 3 ), $cuenta )
+        _mes4 := VALOR_TABLA( &imprimir, SUBSTR( $mes4, 1, 3 ), $cuenta )
+        checa_cuentas
+        IMP ( COL(1), $concepto, COL(10), TRAE_VALOR_TABLA( &conceptos, 2, _indice ) )
+        IMP ( COL(30), DER( $( _mes1 ), 15 ) )
+        IMP ( COL(45), DER( $( _mes2 ), 15 ) )
+        IMP ( COL(60), DER( $( _mes3 ), 15 ) )
+        IMP ( COL(75), DER( $( _mes4 ), 15 ) )
+        IMP ( COL(90), DER( $( _mes1 + _mes2 + _mes3 + _mes4 ), 15 ) )
+        _sub_tot1 := _sub_tot1 + _mes1
+        _sub_tot2 := _sub_tot2 + _mes2
+        _sub_tot3 := _sub_tot3 + _mes3
+        _sub_tot4 := _sub_tot4 + _mes4
+        _sub_tot5 := _sub_tot5 + _mes1 + _mes2 + _mes3 + _mes4
+      SI_NO
+        SI ( _uno = 1 )
+          _mes1 := VALOR_TABLA( &imprimir, SUBSTR( $mes1, 1, 3 ), $cuenta )
+          _mes2 := VALOR_TABLA( &imprimir, SUBSTR( $mes2, 1, 3 ), $cuenta )
+          _mes3 := VALOR_TABLA( &imprimir, SUBSTR( $mes3, 1, 3 ), $cuenta )
+          _mes4 := VALOR_TABLA( &imprimir, SUBSTR( $mes4, 1, 3 ), $cuenta )
+          checa_cuentas
+          _cuatri1 := _mes1 + _mes2 + _mes3 + _mes4
+          _sub_tot1 := _sub_tot1 + _cuatri1
+        FIN_SI
+        SI ( _dos = 1 )
+          _mes5 := VALOR_TABLA( &imprimir, SUBSTR( $mes5, 1, 3 ), $cuenta )
+          _mes6 := VALOR_TABLA( &imprimir, SUBSTR( $mes6, 1, 3 ), $cuenta )
+          _mes7 := VALOR_TABLA( &imprimir, SUBSTR( $mes7, 1, 3 ), $cuenta )
+          _mes8 := VALOR_TABLA( &imprimir, SUBSTR( $mes8, 1, 3 ), $cuenta )
+          checa_cuentas
+          _cuatri2 := _mes5 + _mes6 + _mes7 + _mes8
+          _sub_tot2 := _sub_tot2 + _cuatri2
+        FIN_SI
+        SI ( _tres = 1 )
+          _mes9 := VALOR_TABLA( &imprimir, SUBSTR( $mes9, 1, 3 ), $cuenta )
+          _mes10 := VALOR_TABLA( &imprimir, SUBSTR( $mes10, 1, 3 ), $cuenta )
+          _mes11 := VALOR_TABLA( &imprimir, SUBSTR( $mes11, 1, 3 ), $cuenta )
+          _mes12 := VALOR_TABLA( &imprimir, SUBSTR( $mes12, 1, 3 ), $cuenta )
+          checa_cuentas
+          _cuatri3 := _mes9 + _mes10 + _mes11 + _mes12
+          _sub_tot3 := _sub_tot3 + _cuatri3
+        FIN_SI
+        IMP ( COL(1), $concepto, COL(10), TRAE_VALOR_TABLA( &conceptos, 2, _indice ) )
+        SI ( _uno = 1 )
+          IMP ( COL(30), DER( $( _cuatri1 ), 20 ) )
+        FIN_SI
+        SI ( _dos = 1 )
+          IMP ( COL(50), DER( $( _cuatri2 ), 20 ) )
+        FIN_SI
+        SI ( _tres = 1 )
+          IMP ( COL(70), DER( $( _cuatri3 ), 20 ) )
+        FIN_SI
+        IMP ( COL(90), DER( $( _cuatri1 + _cuatri2 + _cuatri3 ), 15 ) )
+      FIN_SI
+      IMPRIME
+    FIN_SI
+    _renglon := _renglon + 1
+    $concepto := TRAE_VALOR_TABLA( &imprimir, 0, _renglon )
+  FIN_MIENTRAS
+  SI ( _solo_tot = 0 )
+    IMP ( COL(10), 'TOTALES ' )
+    IMP ( COL(30), DER( $( _sub_tot1 ), 15 ) )
+    IMP ( COL(45), DER( $( _sub_tot2 ), 15 ) )
+    IMP ( COL(60), DER( $( _sub_tot3 ), 15 ) )
+    IMP ( COL(75), DER( $( _sub_tot4 ), 15 ) )
+    IMP ( COL(90), DER( $( _sub_tot5 ), 15 ) )
+    IMPRIME
+  SI_NO
+    IMP ( COL(10), 'TOTALES' )
+    SI ( _uno = 1 )
+      IMP ( COL(30), DER( $( _sub_tot1 ), 20 ) )
+    FIN_SI
+    SI ( _dos = 1 )
+      IMP ( COL(50), DER( $( _sub_tot2 ), 20 ) )
+    FIN_SI
+    SI ( _tres = 1 )
+      IMP ( COL(70), DER( $( _sub_tot3 ), 20 ) )
+    FIN_SI
+    IMP ( COL(90), DER( $( _sub_tot1 + _sub_tot2 + _sub_tot3 ), 15 ) )
+    IMPRIME
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+    _ind_mes := 0
+    DECIMALES := 2
+    MIENTRAS( TRAE_VALOR_TABLA( &meses, 0, _ind_mes ) <> '' )
+      _ind_con := 0
+      MIENTRAS( TRAE_VALOR_TABLA( &conceptos, 0, _ind_con ) <> '' )
+        _encontrado := 0
+        $mes       := TRAE_VALOR_TABLA( &meses, 0, _ind_mes )
+        $cuenta    := TRAE_VALOR_TABLA( &conceptos, 0, _ind_con )
+        $conceptos := TRAE_VALOR_TABLA( &conceptos, 1, _ind_con )
+        $tipo      := TRAE_VALOR_TABLA( &conceptos, 3, _ind_con )
+        MIENTRAS( $conceptos <> '' )
+          SI ( POS(',', $conceptos) > 0 )
+            $concepto := SUBSTR( $conceptos, 1, POS(',', $conceptos) - 1 )
+            $conceptos := ELIMINA( $conceptos, 1, POS(',', $conceptos) )
+          SI_NO
+            $concepto  := $conceptos
+            $conceptos := ''
+          FIN_SI
+          SI ( $tipo = 'PERC' )
+            SI ( 'EMPPRIN':'CUENTA_2' = '50310' )
+              INCREMENTA_TABLA( &50310, $mes, $cuenta, ACUM_MENSUAL( $mes, $concepto ) )
+              _encontrado := 1
+            FIN_SI
+            SI ( 'EMPPRIN':'CUENTA_2' = '51050' )
+              INCREMENTA_TABLA( &51050, $mes, $cuenta, ACUM_MENSUAL( $mes, $concepto ) )
+              _encontrado := 1
+            FIN_SI
+            SI ( 'EMPPRIN':'CUENTA_2' = '51150' )
+              INCREMENTA_TABLA( &51150, $mes, $cuenta, ACUM_MENSUAL( $mes, $concepto ) )
+              _encontrado := 1
+            FIN_SI
+            SI ( _encontrado = 0 )
+              INCREMENTA_TABLA( &sin, $mes, $cuenta, ACUM_MENSUAL( $mes, $concepto ) )
+            FIN_SI
+            INCREMENTA_TABLA( &total, $mes, $cuenta, ACUM_MENSUAL( $mes, $concepto ) )
+          SI_NO
+            SI ( 'EMPPRIN':'TIPO_NOM' = 'SEM' )
+             SI ( TRAE_REGISTRO( '_GRUPO', 'EMPPRIN':'GRUPO' ) )
+              SI ( '_GRUPO':'DIRECTO' = 1 )
+                INCREMENTA_TABLA( &52300, $mes, $cuenta, ACUM_MENSUAL( $mes, $concepto ) )
+              SI_NO
+                INCREMENTA_TABLA( &52301, $mes, $cuenta, ACUM_MENSUAL( $mes, $concepto ) )
+              FIN_SI
+              INCREMENTA_TABLA( &total, $mes, $cuenta, ACUM_MENSUAL( $mes, $concepto ) )
+             FIN_SI
+            SI_NO
+              INCREMENTA_TABLA( &52299, $mes, $cuenta, ACUM_MENSUAL( $mes, $concepto ) )
+              INCREMENTA_TABLA( &total, $mes, $cuenta, ACUM_MENSUAL( $mes, $concepto ) )
+            FIN_SI
+          FIN_SI
+        FIN_MIENTRAS
+        _ind_con := _ind_con + 1
+      FIN_MIENTRAS      
+      _ind_mes := _ind_mes + 1
+    FIN_MIENTRAS    
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina  := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+
+_incluir_dep := 1
+$campos_extras := 'C. GRUPO, G. CUENTA_1, G. CUENTA_2'
+$bases_extras := 'CENTROC C, "_GRUPO" G'
+$condiciones_extras := 'C. CLAVE = ED. CATALOGO AND G. CLAVE = C. GRUPO'
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+IMPRIME
+IMP ( '*** 50310' )
+IMPRIME
+ASIGNA_TABLA( &50310, &imprimir )
+imprime_tabla
+
+IMPRIME
+IMP ( '*** 51050' )
+IMPRIME
+ASIGNA_TABLA( &51050, &imprimir )
+imprime_tabla
+
+IMPRIME
+IMP ( '*** 51150' )
+IMPRIME
+ASIGNA_TABLA( &51150, &imprimir )
+imprime_tabla
+
+IMPRIME
+IMP ( '*** SIN CUENTA' )
+IMPRIME
+ASIGNA_TABLA( &sin, &imprimir )
+imprime_tabla
+
+IMPRIME
+IMP ( '*** 52299' )
+IMPRIME
+ASIGNA_TABLA( &52299, &imprimir )
+imprime_tabla
+
+IMPRIME
+IMP ( '*** 52300' )
+IMPRIME
+ASIGNA_TABLA( &52300, &imprimir )
+imprime_tabla
+
+IMPRIME
+IMP ( '*** 52301' )
+IMPRIME
+ASIGNA_TABLA( &52301, &imprimir )
+imprime_tabla
+
+IMPRIME
+IMP ( '*** TOTALES GENERALES' )
+IMPRIME
+ASIGNA_TABLA( &total, &imprimir )
+imprime_tabla

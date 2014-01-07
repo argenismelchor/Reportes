@@ -1,0 +1,275 @@
+#CONSTANCIA DE PERCEPCIONES Y RETENCIONES
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Formato para impresion de Declaraciones de Percepciones y Retenciones para efectos del Impuesto sobre la Renta.
+#Será necesario indicar las claves de conceptos de Total de Percepciones, Percepciones no Gravadas, Exentas, Exentos por aguinaldo, prima vacacional y ptu.
+#Además de Proporción de subsidio utilizada, Claves de ISPT, credito al Salario, y subsidios acreditables y no acreditables.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA',$salida)
+NUEVO_PARAMETRO     ('AÑO', '99', _ano_actual )
+NUEVO_PARAMETRO     ('LOCALIDAD', 'GUADALAJARA', $localidad )
+NUEVO_PARAMETRO     ('ENTIDAD F.', 'JALISCO', $entidad )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+NUEVO_PARAMETRO  ( 'PROP. SUBSIDIO'    , '77'   , _prop_subs  )
+NUEVO_PARAMETRO  ( 'CVE. TOTAL PERC'   , 'PERC' , $cve_percep )
+NUEVO_PARAMETRO  ( 'CVE. PERC NO GRAV.', 'NOGR' , $cve_nograv )
+NUEVO_PARAMETRO  ( 'CVE. TOTAL EXENTOS', 'EXEN' , $cve_exen   )
+NUEVO_PARAMETRO  ( 'CVE. EXEN AGUINALD', 'EX30' , $cve_exagui )
+NUEVO_PARAMETRO  ( 'CVE. EXEN P.VACAC.', 'EX13' , $cve_expvac )
+NUEVO_PARAMETRO  ( 'CVE. EXEN PTU'     , 'EX31' , $cve_exptu  )
+NUEVO_PARAMETRO  ( 'CVE. ISPT'         , '51'   , $cve_ispt   )
+NUEVO_PARAMETRO  ( 'CVE. CREDITO AL S.', '51A'  , $cve_credito)
+NUEVO_PARAMETRO  ( 'CVE. SUBS. ACRE'   , 'SUBS' , $cve_subsa  )
+NUEVO_PARAMETRO  ( 'CVE. SUBS NO ACRE' , 'SUBNO', $cve_subsna )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+MODO_IMPRESION ( 'GRAFICO' )
+TAMAÑO_HOJA ( 3550, 2610 )
+SALIDA := $salida
+
+_margen   := 10
+_cont     := 0
+$saux     := ''
+$saux2    := ''
+_f_inicio := 0
+_f_final  := 0
+$str_espacios      := ''
+_str_espacios_x    := 0
+_str_espacios_y    := 0
+_str_espacios_cont := 0
+
+SUB_RUTINA str_espacios
+   _str_espacios_cont := 0
+   MIENTRAS ( _str_espacios_cont < LONGITUD ( $str_espacios ))
+      _str_espacios_cont := _str_espacios_cont + 1
+      IMP_XY ( _margen + _str_espacios_x, _str_espacios_y, SUBSTR ( $str_espacios, _str_espacios_cont, 1 )) IMPRIME_SIN_SALTO
+      _str_espacios_x := _str_espacios_x + 51
+   FIN_MIENTRAS
+FIN_SUB_RUTINA
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+SUB_RUTINA formato_trabajador
+
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+
+   #****************** DATOS DEL EMPLEADO
+
+   FORMATO_FECHA := 0
+   SI ( 'EMPPRIN':'INGRESO' > _f_inicio )
+      $str_espacios := FECHA ( 'EMPPRIN':'INGRESO' )
+   SI_NO
+      $str_espacios := FECHA ( _f_inicio )
+   FIN_SI
+   _str_espacios_x := 380
+   _str_espacios_y := 300
+   str_espacios
+
+   SI ( ES_VIGENTE ( _f_final ) = FALSO )
+      ULTIMO_REGISTRO ( 'EMPSDO' )
+      $str_espacios := FECHA ( 'EMPSDO':'FECHA' )
+   SI_NO
+      $str_espacios := FECHA ( _f_final )
+   FIN_SI
+   _str_espacios_x := 730
+   _str_espacios_y := 300
+   str_espacios
+
+   $str_espacios := 'EMPPRIN':'NOMBRE'
+   _str_espacios_x := 380
+   _str_espacios_y := 420
+   str_espacios
+
+   $str_espacios := 'EMPPRIN':'RFC'
+   _str_espacios_x := 1556
+   _str_espacios_y := 510
+   str_espacios
+
+
+   $str_espacios   := 'EMPRH':'CALLE'
+   _str_espacios_x := 380
+   _str_espacios_y := 590
+   str_espacios
+
+   $str_espacios   := 'EMPRH':'NUMERO'
+   _str_espacios_x := 1650
+   _str_espacios_y := 670
+   str_espacios
+
+   $str_espacios   := 'EMPRH':'INTERIOR'
+   _str_espacios_x := 1950
+   _str_espacios_y := 670
+   str_espacios
+
+   $str_espacios   := 'EMPRH':'COLONIA'
+   _str_espacios_x := 380
+   _str_espacios_y := 765
+   str_espacios
+
+   $str_espacios   := 'EMPRH':'CP'
+   _str_espacios_x := 1950
+   _str_espacios_y := 765
+   str_espacios
+
+   $str_espacios   := 'EMPRH':'MUNICIPIO'
+   _str_espacios_x := 380
+   _str_espacios_y := 850
+   str_espacios
+
+   $str_espacios   := $localidad
+   _str_espacios_x := 530
+   _str_espacios_y := 930
+   str_espacios
+
+   $str_espacios   := $entidad
+   _str_espacios_x := 1240
+   _str_espacios_y := 930
+   str_espacios
+
+   $str_espacios   := 'X'
+   _str_espacios_x := 745
+   _str_espacios_y := 1020
+   str_espacios
+
+   #****************** DATOS DE PERCEPCIONES Y RETENCIONES
+
+   DECIMALES := 0
+   $str_espacios   := DER ( $ ( ACUM_ANUAL ( $cve_percep ) - ACUM_ANUAL ( $cve_nograv )), 10 )
+   _str_espacios_x := 835
+   _str_espacios_y := 1190
+   str_espacios
+   
+   $str_espacios   := DER ( $ ( ACUM_ANUAL ( $cve_exagui )), 10 )
+   _str_espacios_x := 835
+   _str_espacios_y := 1270
+   str_espacios
+
+   $str_espacios   := DER ( $ ( ACUM_ANUAL ( $cve_expvac )), 10 )
+   _str_espacios_x := 835
+   _str_espacios_y := 1360
+   str_espacios
+
+   $str_espacios   := DER ( $ ( ACUM_ANUAL ( $cve_exptu )), 10 )
+   _str_espacios_x := 835
+   _str_espacios_y := 1445
+   str_espacios
+   
+   $str_espacios   := DER ( $ ( ACUM_ANUAL ( $cve_exen   ) - ACUM_ANUAL ( $cve_exagui ) -
+                                ACUM_ANUAL ( $cve_expvac ) - ACUM_ANUAL ( $cve_exptu )), 10 )
+   _str_espacios_x := 835
+   _str_espacios_y := 1525
+   str_espacios
+
+   $str_espacios   := DER ( $ ( ACUM_ANUAL ( $cve_exen )), 10 )
+   _str_espacios_x := 1710
+   _str_espacios_y := 1190
+   str_espacios
+   
+   $str_espacios   := DER ( $ ( _prop_subs ), 10 )
+   _str_espacios_x := 1710
+   _str_espacios_y := 1270
+   str_espacios
+
+   $str_espacios   := DER ( $ ( ACUM_ANUAL ( $cve_subsa )), 10 )
+   _str_espacios_x := 1710
+   _str_espacios_y := 1360
+   str_espacios
+
+   $str_espacios   := DER ( $ ( ACUM_ANUAL ( $cve_subsna )), 10 )
+   _str_espacios_x := 1710
+   _str_espacios_y := 1445
+   str_espacios
+  
+   $str_espacios   := DER ( $ ( ACUM_ANUAL ( $cve_ispt )), 10 )
+   _str_espacios_x := 1710
+   _str_espacios_y := 1525
+   str_espacios
+
+   $str_espacios   := DER ( $ ( ACUM_ANUAL ( $cve_credito )), 10 )
+   _str_espacios_x := 1710
+   _str_espacios_y := 1615
+   str_espacios
+
+
+   #****************** DATOS DE LA EMPRESA
+
+   $saux  := 'EMPRESA':'NOMBRE'
+   SI ( POS ( ' ', $saux ) > 0 )
+      $saux2 := SUBSTR ( $saux, 1, POS ( ' ', $saux )) + ' '
+   SI_NO
+      $saux2 := $saux
+   FIN_SI
+   _cont := 0
+   MIENTRAS ( $saux <> '' )
+      $str_espacios := ''
+      REPITE
+         $str_espacios := $str_espacios + $saux2
+         $saux := ELIMINA ( $saux, 1, LONGITUD ( $saux2 ))
+         SI ( POS ( ' ', $saux ) > 0 )
+            $saux2 := SUBSTR ( $saux, 1, POS ( ' ', $saux )) + ' '
+         SI_NO
+            $saux2 := $saux
+         FIN_SI
+      HASTA (( $saux = '' ) O ( LONGITUD ( $str_espacios + $saux2 ) > 24 ))
+      SI ( $str_espacios <> '' )
+         _str_espacios_x := 380
+         _str_espacios_y := 2750 + ( _cont * 85)
+         str_espacios
+         _cont := _cont + 1
+      FIN_SI
+   FIN_MIENTRAS
+
+   $str_espacios   := 'EMPRESA':'RFC'
+   _str_espacios_x := 990
+   _str_espacios_y := 3090
+   str_espacios
+
+   IMPRIME
+FIN_SUB_RUTINA
+
+PIE
+   IMPRIME
+FIN_PIE 
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+
+$campos_extras := 'E.RFC'
+
+base_trabajadores
+
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO'  , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPRH'   , 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPACUM' , 'CLAVE' )
+
+_f_inicio := CALCULA_FECHA ( _ano_actual, 1, 1 )
+_f_final  := CALCULA_FECHA ( _ano_actual, 12, 31 )
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+   datos_trabajador  
+   AVANZA_HOJA
+   IMPRIME
+   SIGUIENTE_REGISTRO('EMPPRIN')
+FIN_MIENTRAS
+
+termina_reporte

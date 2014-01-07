@@ -1,0 +1,120 @@
+#RELACION DE EMPLEADOS EN ENTRENAMIENTO
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.5
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_CHEQ( 'DETALLE', '', _detalle )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'RELACION DE EMPLEADOS EN ENTRENAMIENTO VIGENTES AL ' + FECHA( FECHA_HOY )
+   encabezado_ini
+   IMP ( COL (1) , 'INDICE' , COL (50) , DER( 'CON ENT.', 10), COL (60) , DER( 'SIN ENT.', 10), COL (70) , DER( 'TOTAL', 10) ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+  pie_estandar
+FIN_PIE
+
+# PARAMETROS
+DECIMALES     := 2
+COLUMNAS      := 80
+RENGLONES     := 65
+FORMATO_FECHA := 2
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+VAR_T ( &empleados )
+_subtotal := 0
+_tot      := 0
+$saux     := ''
+_sin      := 0
+_tsubtotal := 0
+_tsin      := 0
+$indice_valor := ''
+
+SUB_RUTINA formato_trabajador
+   SI ( _detalle = 1 )
+     IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+     IMPRIME
+   FIN_SI
+   _tot := 0
+   PRIMER_REGISTRO( 'EMPENT' )
+   MIENTRAS(( FIN_BASE( 'EMPENT' ) = FALSO ) AND ( _tot = 0 ))
+     SI ( 'EMPENT':'CD_DC' = $indice_valor )
+       _tot := _tot + 1
+     FIN_SI
+     SIGUIENTE_REGISTRO( 'EMPENT' )
+   FIN_MIENTRAS
+   _subtotal := _subtotal + 1
+   _tsubtotal := _tsubtotal + 1
+   SI ( _tot = 0 )
+     _sin      := _sin + 1
+     _tsin     := _tsin + 1
+     $saux := 'EMPPRIN':'CLAVE'
+     AGREGA_VALOR_COL( &empleados, 0, $saux )
+   FIN_SI
+FIN_SUB_RUTINA
+
+$indice       := ''
+$indice_texto := ''
+
+SUB_RUTINA encabezados
+  SI ( _detalle = 1 )
+    IMP ( '*** ', $indice, '   ', $indice_valor + ' ' + $indice_texto )  
+    IMPRIME
+  FIN_SI
+FIN_SUB_RUTINA
+
+SUB_RUTINA sub_totales
+  DECIMALES := 0
+  IMP ( '*** ', $indice, '   ', $indice_valor + ' ' + $indice_texto )
+  IMP ( COL(50), DER ( .( _subtotal - _sin ), 10) )
+  IMP ( COL(60), DER ( .( _sin ), 10) )
+  IMP ( COL(70), DER ( .( _subtotal ), 10 ) ) 
+  IMPRIME  
+  _subtotal := 0
+  _sin := 0
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPENT', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE( FECHA_HOY ) )
+     datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+$indice := 'TOTAL GENERAL'
+DECIMALES := 0
+IMP ( $indice, $indice_valor + ' ' + $indice_texto )
+IMP ( COL(50), DER ( .( _tsubtotal - _tsin ), 10) )
+IMP ( COL(60), DER ( .( _tsin ), 10) )
+IMP ( COL(70), DER ( .( _tsubtotal ), 10 ) ) 
+IMPRIME  
+
+TERMINA_REPORTE

@@ -1,0 +1,183 @@
+#RECIBOS EN HOJA BLANCA
+#TRABAJADORES VIGENTES
+#USUARIO =*
+#NO EDITAR
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra los trabajadores vigentes de la empresa, este reporte permite filtrar la informacion en base al registro patronal, la sucursal, el centro de costo,
+#el departamento, el puesto, el tipo de empleado. Este reporte permite elegir los indices a considerar y si lo desea puede
+#alterar el orden del los mismos.
+#Este reporte imprime la clave, el nombre y tiene la opción de imprimir los sueldos del trabajador.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO     ('MENSAJE', '', $mensaje )
+
+FORMATO_FECHA := 1 
+SALIDA := $salida
+LETRA ( 'LETRA NORMAL' ) ;; IMPRIME_SIN_SALTO
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &kardex)
+VAR_N ( _aux1  )
+VAR_N ( _perc  )
+VAR_N ( _dedu  )
+VAR_A ( $c_perc )
+VAR_A ( $d_perc )
+VAR_N ( _t_perc )
+VAR_A ( $c_deduc )
+VAR_A ( $d_deduc )
+VAR_N ( _t_deduc )
+VAR_N ( _num_registro )
+VAR_A ( $aux )
+VAR_A ( H_DOBLES  )
+VAR_A ( H_TRIPLES )
+_num       := 0
+_salir     := 0
+_renglones := 10
+_otro_rec  := 1
+_linea     := 0
+_hdobles   := 0
+
+#CONCEPTOS DE HORAS EXTRAS
+H_DOBLES   := '10'
+H_TRIPLES  := '11'
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+  #
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+SUB_RUTINA trae_renglon
+  $c_perc:=TRAE_VALOR_TABLA( &kardex, 0, _num_registro )
+  $d_perc:=TRAE_VALOR_TABLA( &kardex, 1, _num_registro )
+  $aux:=TRAE_VALOR_TABLA( &kardex, 5, _num_registro )
+  _t_perc:=VALOR( $aux )
+  $c_deduc:=TRAE_VALOR_TABLA( &kardex, 6, _num_registro )
+  $d_deduc:=TRAE_VALOR_TABLA( &kardex, 7, _num_registro )
+  $aux:=TRAE_VALOR_TABLA( &kardex, 11, _num_registro )
+  _t_deduc:=VALOR( $aux )
+FIN_SUB_RUTINA
+
+SUB_RUTINA _enc
+   _hdobles := 0
+   SI ( TRAE_REGISTRO ( 'NOMINA', H_DOBLES ) )
+     MIENTRAS( 'NOMINA':'CLAVE' = H_DOBLES )
+       _hdobles := _hdobles + 'NOMINA':'CAP1'
+       SIGUIENTE_REGISTRO( 'NOMINA' )
+     FIN_MIENTRAS
+   FIN_SI
+   SI ( TRAE_REGISTRO ( 'DEPTO', TRAE_DSP ( 'D', FECHA_HOY ) ) ) ;; FIN_SI
+   SI ( TRAE_REGISTRO ( 'PUESTO', TRAE_DSP ( 'P', FECHA_HOY ) ) ) ;; FIN_SI
+   DECIMALES:=0
+   IMP ( 'EMPPRIN':'CLAVE', ' - ', 'EMPPRIN':'NOMBRE', COL(63), FORMATO ( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' ) ) ;; IMPRIME
+   IMP ( 'DEPTO        : ', TRAE_DSP ( 'D', _ff ), ' - ', 'DEPTO':'DESCRIPCION', COL(63), FORMATO ( 'EMPPRIN':'AFILIACION', 'XX-XX-XX-XXXX-X' ) ) ;; IMPRIME
+   IMP ( 'PUESTO       : ', TRAE_DSP ( 'P', _ff ), ' - ', 'PUESTO':'DESCRIPCION' ) ;; IMPRIME
+   DECIMALES := 0
+   IMP ( 'PERIODO PAGO : ', 'PERIODO':'NUMERO', '   Del ', FECHA ( 'PERIODO':'FECHA INICIAL' ), ' al ', FECHA ( 'PERIODO':'FECHA FINAL' ) ) ;; IMPRIME  
+   IMP ( 'DIAS TRAB.   : ', TOTAL( 'DVIG' ), COL(30), 'INCAPACIDADES  : ', TRAE_INCAPACIDADES( 'PERIODO':'FECHA INICIAL', 'PERIODO':'FECHA FINAL', '*'), COL(60), 'H.EXT. DOBLES : ', _hdobles ) ;; IMPRIME
+   IMP ( 'FALTAS INJUS.: ', TRAE_FALTAS( 'PERIODO':'FECHA INICIAL', 'PERIODO':'FECHA FINAL', 'S'), COL(30), 'VACACIONES     : ', TOTAL('DIAS'), COL(60), 'H.EXT. TRIPLES: ', CAP1( H_TRIPLES ) ) ;; IMPRIME
+   IMP ( 'MENSAJE      : ', $mensaje ) ;; IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA _imp_tot   
+   IMP ( COL(1), REPITETXT( '-', 80) ) ;; IMPRIME
+   IMP ( COL(1), '|', COL(15), 'Percepciones', COL(53), 'Deducciones', COL(80), '|' ) ;; IMPRIME
+   IMP ( COL(1), REPITETXT( '-', 80) ) ;; IMPRIME
+   DECIMALES:=2
+   FORMATO_PESOS:=0
+   TABULA_KARDEX_NOMINA ( &kardex, 8 )
+   FORMATO_PESOS:=2
+   SI ( _otro_rec = 0 )
+     _num_registro := 0
+   FIN_SI
+   _linea := 0
+   _salir := 0
+   REPITE
+     trae_renglon
+     SI (_t_perc<>0)
+       IMP ( COL(1), '|', COL(3), $c_perc, COL(10), $d_perc, COL(30), DER($(_t_perc), 10) )
+       IMP ( COL(40), '|' )
+       SI (_t_deduc=0)
+         IMP ( COL(80), '|' )
+       FIN_SI
+     FIN_SI
+     SI (_t_deduc<>0)
+       SI (_t_perc=0)
+         IMP ( COL(1), '|' )
+       FIN_SI
+       IMP ( COL(40), '|', COL(43), $c_deduc, COL(50), $d_deduc, COL(70), DER($(_t_deduc),10), COL(80), '|' )
+     FIN_SI
+     SI ((_t_perc<>0) OR (_t_deduc<>0))
+       IMPRIME
+       _num_registro := _num_registro + 1
+       _linea := _linea + 1
+     SI_NO
+       _salir := 1
+     FIN_SI 
+   HASTA(( _linea >= _renglones ) OR ( _salir = 1 ))
+   _otro_rec := 0
+   SI ( _salir = 0 )
+     $c_perc  := TRAE_VALOR_TABLA( &kardex, 0, _num_registro + 1 )
+     $c_deduc := TRAE_VALOR_TABLA( &kardex, 6, _num_registro + 1 )
+     SI (( $c_perc <> '' ) OR ( $c_deduc <> '' ))
+       _otro_rec := 1
+     FIN_SI
+   FIN_SI
+   MIENTRAS( _linea < _renglones )
+     IMP ( COL(1), '|', COL(40), '|', COL(80), '|' )
+     IMPRIME
+     _linea := _linea + 1     
+   FIN_MIENTRAS
+   IMP ( COL(1), REPITETXT( '-', 80) ) ;; IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA _pie
+  IMP ( COL(1), '|', COL (5), 'TOTAL Percepciones', COL (30), DER ($( TOTAL( 'PERC' ) ), 10) )
+  IMP ( COL(40), '|', COL (45), 'TOTAL Deducciones', COL (70), DER ($( TOTAL( 'DEDU' ) ), 10), COL(80), '|' )
+  IMPRIME
+  IMP ( COL(1), '|', COL(40), '|', COL(45), 'TOTAL Pagado', COL(70), DER ($( TOTAL( 'TOTA' ) ), 10), COL(80), '|' )
+  IMPRIME
+  IMP ( COL(1), REPITETXT( '-', 80) ) ;; IMPRIME
+  IMP ( 'Recibí de : ', 'EMPRESA':'NOMBRE' ) ;; IMPRIME
+  IMP ( 'a mi entera conformidad mis percepciones por conceptos' ) ;; IMPRIME
+  IMP ( 'ordinarios y extraordinarios y septimo dia de  acuerdo      __________________' ) ;; IMPRIME
+  IMP ( 'con la presente liquidación.                                FIRMA DEL EMPLEADO' ) ;; IMPRIME
+FIN_SUB_RUTINA
+
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+$campos_extras := 'E. RFC, E. AFILIACION'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPNOM', 'CLAVE' )  
+
+_otro_rec := 0
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE ( 'PERIODO':'FECHA INICIAL', 'PERIODO':'FECHA FINAL' ) )
+        _enc
+        _imp_tot
+        _pie
+        _num:=_num + 1
+        SI ( _num = 2 )
+          _num:=0
+          AVANZA_HOJA
+        SI_NO
+          IMPRIME ;; IMPRIME ;; IMPRIME
+        FIN_SI
+   FIN_SI
+   SI ( _otro_rec = 0 )
+     SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+   FIN_SI
+FIN_MIENTRAS
+termina_reporte

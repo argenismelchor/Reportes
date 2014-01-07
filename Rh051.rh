@@ -1,0 +1,115 @@
+#REPORTE DE ESCOLARIDADES POR EMPLEADO
+#VERSION 1.0
+#USUARIO =*
+#EXCEL
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/EXCEL', $salida)
+NUEVO_PARAMETRO_TAB ( 'ESCOLARIDAD', 'ESCOLAR/CLAVE/ESCOLARIDADES', &escolar )
+NUEVO_PARAMETRO_CHEQ( 'VIGENTES', '', _vig )
+NUEVO_PARAMETRO_FEC ( 'FECHA', '', _fecha )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'REPORTE DE ESCOLARIDAD' )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), 'ESCOLARIDAD' ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+# VARIABLES
+_renglon := 2
+VAR_T( &totales )
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   IMP ( COL (50), 'EMPPRIN':'ESCOLARIDAD' )
+   SI ( TRAE_REGISTRO( 'ESCOLAR', 'EMPPRIN':'ESCOLARIDAD' ) )
+     IMP ( COL (55), 'ESCOLAR':'DESCRIPCION' )
+   FIN_SI
+   SI ( $salida = 'EXCEL' )
+     EXCEL( 'PON_VALOR', 1, _renglon, 'EMPPRIN':'CLAVE' )
+     EXCEL( 'PON_VALOR', 2, _renglon, 'EMPPRIN':'NOMBRE' )
+     EXCEL( 'PON_VALOR', 3, _renglon, 'EMPPRIN':'ESCOLARIDAD' )
+     EXCEL( 'PON_VALOR', 4, _renglon, 'ESCOLAR':'DESCRIPCION' )
+     _renglon := _renglon + 1
+   FIN_SI
+   IMPRIME
+   SI ( 'EMPPRIN':'ESCOLARIDAD' <> '' )
+     INCREMENTA_TABLA( &totales, 'TOTAL', 'EMPPRIN':'ESCOLARIDAD', 1 )
+   SI_NO
+     INCREMENTA_TABLA( &totales, 'TOTAL', '*', 1 )
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'R.*'
+$bases_extras := 'EMPRH R'
+$escolar := TRAE_SELECCION( &escolar )
+$condiciones_extras := 'R. CLAVE = E. CLAVE'
+SI ( $escolar <> '' )
+  $condiciones_extras := $condiciones_extras + ' AND R. ESCOLARIDAD IN ( ' + $escolar + ' )'
+FIN_SI
+$ordenes_extras := 'R. ESCOLARIDAD'
+base_trabajadores
+
+SI ( $salida = 'EXCEL' )
+  EXCEL( 'PON_VALOR', 1, 1, 'CLAVE' )
+  EXCEL( 'PON_VALOR', 2, 1, 'NOMBRE' )
+  EXCEL( 'PON_VALOR', 3, 1, 'ESCOLARIDAD' )
+FIN_SI
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+  SI (( _vig = 0 ) OR ( ES_VIGENTE( _fecha ) = VERDADERO ))
+    datos_trabajador
+  FIN_SI
+  SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+AVANZA_HOJA
+
+IMP( 'RESUMEN DE ESCOLARIDADES' ) IMPRIME
+_indice := 1
+$escol := TRAE_VALOR_TABLA( &totales, 0, _indice )
+MIENTRAS( $escol <> '' )
+  IMP ( COL(5), $escol )
+  SI ( TRAE_REGISTRO( 'ESCOLAR', $escol ) )
+    IMP ( COL(10), 'ESCOLAR':'DESCRIPCION' )
+  SI_NO
+    IMP ( COL(10), 'SIN ESCOLARIDAD' )
+  FIN_SI
+  IMP ( COL(60), TRAE_VALOR_TABLA( &totales, 1, _indice ) )
+  IMPRIME
+  _indice := _indice + 1
+  $escol := TRAE_VALOR_TABLA( &totales, 0, _indice )
+FIN_MIENTRAS
+
+TERMINA_REPORTE

@@ -1,0 +1,93 @@
+#PRESTAMOS ACTUALES
+#TRABAJADORES VIGENTES
+#USUARIO =*
+#NO EDITAR
+#VERSION 2.000
+#DESCRIPCION
+#Este reporte muestra los prestamos vigentes de los trabajadores de la empresa, pero solo muestra el resumen, esto es Monto, descuento y saldo de cada prestamo.
+#Utiliza los parametros estandares de los reportes.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA' , '' , _ff ) 
+NUEVO_PARAMETRO     ( 'CONCEPTO', '*', $conceptos )
+NUEVO_PARAMETRO_SEL ( 'TIPO PREST.','TODOS/SALDADOS/PENDIENTES',_tipo_pres)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+COLUMNAS := 100
+
+ENCABEZADO
+   $titulo_reporte := 'PRESTAMOS VIGENTES AL ' + FECHA (_ff)
+   encabezado_ini
+   IMP ( COL (1), 'CLAVE', COL(11), 'NOMBRE' )
+   IMP ( COL (40), 'FECHA', COL(55), 'CONCEPTO', COL(65), DER( 'MONTO', 12 ), COL(77), DER( 'DESCUENTO', 12 ), COL(89), DER( 'SALDO', 12 ) ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+#Variables Globales
+$antes := ''
+VAR_T ( &total )
+
+#Subrutina diversas
+
+SUB_RUTINA formato_trabajador
+   SI ( $antes <> 'EMPPRIN':'CLAVE' )
+     IMP ( COL (1)   , 'EMPPRIN':'CLAVE' , COL (11), SUBSTR('EMPPRIN':'NOMBRE', 1, 28) )
+     $antes := 'EMPPRIN':'CLAVE'
+   FIN_SI
+   IMP ( COL(40), FECHA( 'EMPPRIN':'FECHA' ), COL(55), 'EMPPRIN':'CLAVE_CONCEPTO', COL(65), DER( $('EMPPRIN':'MONTO'), 12 ) )
+   IMP ( COL(77), DER( $( 'EMPPRIN':'DESCUENTO' ), 12 ), COL(89), DER( $( 'EMPPRIN':'SALDO' ), 12 ) )
+   IMPRIME
+   INCREMENTA_TABLA ( &total, 'MONTO', 'EMPPRIN':'CLAVE_CONCEPTO', 'EMPPRIN':'MONTO' )
+   INCREMENTA_TABLA ( &total, 'DESCUENTO', 'EMPPRIN':'CLAVE_CONCEPTO', 'EMPPRIN':'DESCUENTO' )
+   INCREMENTA_TABLA ( &total, 'SALDO', 'EMPPRIN':'CLAVE_CONCEPTO', 'EMPPRIN':'SALDO' )
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+# Definicion de variables en base a los parametros
+SALIDA := $salida
+
+$campos_extras := 'P. CLAVE, P. CLAVE_CONCEPTO, P. FECHA, P. MONTO, P. DESCUENTO, P. SALDO, P. ESTADO'
+$bases_extras := 'EMPPRES P'
+$condiciones_extras := 'P. CLAVE = E. CLAVE AND P. ESTADO = "S"'
+$co                 := $conceptos
+
+SI ( $co <> '*' )
+   $condiciones_extras := $condiciones_extras + ' AND P. CLAVE_CONCEPTO IN ( "'+$co+'" )'
+FIN_SI
+
+SI ( _tipo_pres = 1 )
+   $condiciones_extras := $condiciones_extras + ' AND P. SALDO <= 0.001'
+FIN_SI
+
+SI ( _tipo_pres = 2 )
+   $condiciones_extras := $condiciones_extras + ' AND P. SALDO >= 0.01'
+FIN_SI
+base_trabajadores
+USA_ARCHIVO( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE ( _ff ) )
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+
+IMPRIME ;; IMPRIME
+IMP ( 'TOTAL DE DESCUENTOS ' ) ;; IMPRIME
+IMPRIME_TABLA( &total, 10, 20, 35, 50 ) ;; IMPRIME

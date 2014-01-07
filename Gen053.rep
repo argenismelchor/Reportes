@@ -1,0 +1,66 @@
+#CALCULO DE CURP
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte calcula y asigna los CURP a los empleados de la empresa. Dejara con X los campos de la CURP que no se pudieron calcular en base a la información registrada en el Sistema.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_FEC ( 'VIGENTES', '', _fecha )
+NUEVO_PARAMETRO_CHEQ( 'GRABAR', '', _grabar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 50 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'CALCULO DE CURP' )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( 'CLAVE', COL(10), 'NOMBRE', COL(50), 'CURP' ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+$curp := ''
+_tot := 0
+
+SUB_RUTINA formato_trabajador   
+   $curp := CALCULA_CURP
+   IMP ( COL (1), 'EMPPRIN':'CLAVE', COL (10), 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN', COL(50), $curp )
+   IMPRIME
+   SI ( _grabar = 1 )
+     'EMPPRIN':'CURP' := $curp
+     GRABA_BASE ( 'EMPPRIN' )
+   FIN_SI
+   _tot := _tot + 1
+FIN_SUB_RUTINA
+
+ABRE_BASE( 'EMPPRIN' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE( _fecha ) )
+     formato_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+IMP ( 'TOTAL DE EMPLEADOS : ', _tot  )
+IMPRIME

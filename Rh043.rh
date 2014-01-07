@@ -1,0 +1,128 @@
+#ANTIGUEDAD DE ENTRENAMIENTOS
+#ENTRENAMIENTO POR EMPLEADO
+#USUARIO =*
+#NO EDITAR
+#VERSION 1.0
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_FEC ( 'FECHA', '', _fecha )
+NUEVO_PARAMETRO     ( 'MESES', '1', _meses )
+NUEVO_PARAMETRO_TAB ( 'ENTRENAMIENTO', 'TABENT/CLAVE/TABLA DE ENTRENAMIENTOS', $entrenamiento )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'ANTIGUEDAD DEL ULTIMO ENTRENAMIENTO POR EMPLEADO CON MAS DE ' + . ( _meses ) + ' MESES' )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE' ) IMPRIME
+   IMP ( COL(10), 'FECHA', COL(25), 'ENTRENAMIENTO', COL(60), 'INSTRUCTOR' ) ;; IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+#VARIABLES GLOBALES
+$antes := ''
+
+SUB_RUTINA imprime_nombre
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+  SI ( $antes <> 'EMPPRIN':'CLAVE' )
+    imprime_nombre
+    $antes := 'EMPPRIN':'CLAVE'
+  FIN_SI
+  IMP ( COL(10), FECHA('EMPENT':'FECHA'), COL(25), SUBSTR( 'EMPENT':'ENTRENAMIENTO' + ' ' + 'TABENT':'DESCRIPCION', 1, 35 ) )
+  IMP ( COL(60), SUBSTR( 'EMPENT':'INSTRUCTOR' + ' ' + 'INSTRUCT':'NOMBRE', 1, 25 ) )
+  IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#$campos_extras := 'N. CLAVE, N. CD_DC, N. ENTRENAMIENTO, N. FECHA, N. INSTRUCTOR, T. DESCRIPCION, I. NOMBRE AS NOMBREI'
+#$bases_extras := 'EMPENT N, TABENT T, INSTRUCT I'
+#$condiciones_extras := 'N. CLAVE = E. CLAVE AND N. FECHA >= :FI AND N. FECHA <= :FF AND T. CLAVE = N. ENTRENAMIENTO AND I. CLAVE = N. INSTRUCTOR'
+base_trabajadores
+
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPENT', 'CLAVE' )
+USA_ARCHIVO ( 'EMPENT' , 'TABENT', 'CLAVE' )
+USA_ARCHIVO ( 'EMPENT' , 'INSTRUCT', 'INSTRUCTOR' )
+
+$cve_entrenamiento   := ''
+_fecha_vencimiento   := 0
+_fecha_entrenamiento := 0
+_fecha_requerida     := 0
+_meses_aux           := 0
+
+_fecha_requerida := CALCULA_FECHA ( AÑO ( _fecha ), MES ( _fecha ), 1 )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( ES_VIGENTE ( FECHA_HOY ))
+      PRIMER_REGISTRO ( 'EMPENT' )
+      MIENTRAS ( FIN_BASE ( 'EMPENT' ) = FALSO )
+         $cve_entrenamiento := 'EMPENT':'ENTRENAMIENTO'
+         SI ( $cve_entrenamiento = $entrenamiento )
+            REPITE
+               SIGUIENTE_REGISTRO ( 'EMPENT' )
+            HASTA (( 'EMPENT':'ENTRENAMIENTO' <> $cve_entrenamiento ) O ( FIN_BASE ( 'EMPENT' ) = VERDADERO ))
+            SI ( FIN_BASE ( 'EMPENT' ) = FALSO )
+               REGISTRO_ANTERIOR ( 'EMPENT' )
+            FIN_SI
+            _fecha_entrenamiento := 'EMPENT':'FECHA'
+            SI (( MES ( _fecha_entrenamiento ) + _meses ) > 12 )
+               _meses_aux := _meses
+               _fecha_vencimiento := _fecha_entrenamiento
+               REPITE
+                  SI ( _meses_aux > 12 )
+                     _fecha_vencimiento := CALCULA_FECHA ( AÑO ( _fecha_vencimiento ) + 1, MES ( _fecha_vencimiento ), 1 )
+                     _meses_aux := _meses_aux - 12
+                  SI_NO
+                     SI (( MES ( _fecha_vencimiento ) + _meses_aux ) > 12 )
+                        _fecha_vencimiento := CALCULA_FECHA ( AÑO ( _fecha_vencimiento ) + 1, MES ( _fecha_vencimiento ) + _meses_aux - 12, 1 )
+                     SI_NO
+                        _fecha_vencimiento := CALCULA_FECHA ( AÑO ( _fecha_vencimiento ), MES ( _fecha_vencimiento ) + _meses_aux, 1 )
+                     FIN_SI
+                     _meses_aux := 0
+                  FIN_SI
+               HASTA ( _meses_aux = 0 )
+            SI_NO
+               _fecha_vencimiento := CALCULA_FECHA ( AÑO ( _fecha_entrenamiento ), MES ( _fecha_entrenamiento ) + _meses, 1 )
+            FIN_SI
+            SI ( _fecha_vencimiento <= _fecha_requerida )
+               datos_trabajador
+            FIN_SI
+         FIN_SI
+         SIGUIENTE_REGISTRO ( 'EMPENT' )
+      FIN_MIENTRAS
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

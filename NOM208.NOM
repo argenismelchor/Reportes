@@ -1,0 +1,149 @@
+#PAGOS HSBC
+#PAGOS HSBC
+#USUARIO =*
+#PAGOS HSBC 2
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte estandar para tomar como base en los reportes.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'EXCEL', $salida)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+#NUEVO_PARAMETRO_ETI ( 'SELECCIONE' , 'PAGO TARJETAS' , $titulo ) 
+NUEVO_PARAMETRO_SEL ( 'SEL' , '1ER PAGO/PAGO ANTERIOR' , _sel ) 
+NUEVO_PARAMETRO_CHEQ ( 'MARCAR' , '' , _marcar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+_condensado := 0
+$titulo_reporte := 'REPORTE ESTANDAR DE TRABAJADORES'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+_pago      := 0
+_entro     := 0
+
+$per       := ''
+_per       := 0 
+$tipo_pag  := ''
+$cla       := ''
+
+_ren_excel := 1
+_totalemp  := 0 
+_totapago  := 0
+
+
+DECIMALES := 0
+
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+
+   $valor := '"' + 'EMPPRIN':'CLAVE'
+   imprime_columna
+   
+   
+   $valor := '"' + 'EMPPRIN':'CTA_TARJETA'
+   imprime_columna
+
+
+   DECIMALES:= 2
+   SI ( TOTAL ( 'TOTA' ) <> 0 )
+      _pago := TOTAL('TOTA')
+   FIN_SI
+
+   $valor := .(_pago)
+   imprime_columna
+
+
+   DECIMALES:= 0
+   _per := 'PERIODO':'NUMERO'
+   $per  := .(_per)
+   $tipo_pag := 'NOM ' + 'EMPPRIN':'TIPO_NOM' + ' ' + $per + ' ' +'EMPRESA':'CLAVE'
+
+
+   $valor := $tipo_pag
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+   imprime_renglon
+
+   _totalemp := ( _totalemp + 1 ) 
+
+   DECIMALES := 2 
+   _totapago := ( _totapago + _pago ) 
+
+   IMP ( COL( 5 ) , 'EMPPRIN':'CLAVE' , COL ( 15 ) , FECHA ( 'EMPPRIN':'INGRESO' ) , COL(35 ) , 'EMPPRIN':'CTA_TARJETA' , COL(60) , DER(.(_pago ) , 12 ) ) ;; IMPRIME
+
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E.CTA_TARJETA, E.TIPO_NOM' 
+base_trabajadores
+
+_pase := 0 
+_fechaing  := 0 
+$banco     := ''
+_fi := 0 ;; _ff := 0
+
+USA_ARCHIVO  ( 'EMPPRIN' ,  'EMPEXT'  , 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+
+   $banco := 'EMPEXT':'BANCO'
+
+   SI ( TRAE_REGISTRO ( 'TIPONOM' , 'EMPPRIN':'TIPO_NOM' ) ) 
+        SI ( TRAE_REGISTRO ( 'PERIODO' , 'TIPONOM':'CLAVE' , 'TIPONOM':'ACTUAL' ) ) 
+                 _fi        := 'PERIODO':'FECHA INICIAL'
+                 _ff        := 'PERIODO':'FECHA FINAL'
+        FIN_SI
+   FIN_SI
+
+   SI ( ( TOTAL ( 'TOTA')  <> 0  )  AND  ( $banco = '3'  ) AND  ( 'EMPPRIN':'CTA_TARJETA'  <>  '' ) )
+   
+     SI ( _sel = 0  ) 
+          _fechaing := 'EMPPRIN':'INGRESO'
+
+         # EMPLEADOS PRIMER PAGO CON TARJETA
+          SI  ( 'EMPEXT':'ALTA_TARJETA' = 0  ) 
+                 formato_trabajador
+                 SI ( _marcar = 1 )
+                       'EMPEXT':'ALTA_TARJETA' := 1
+                       GRABA_BASE ( 'EMPEXT')
+                 FIN_SI
+          FIN_SI
+
+     SI_NO
+          SI  ( 'EMPEXT':'ALTA_TARJETA' = 1  ) 
+                 formato_trabajador
+          FIN_SI
+     FIN_SI
+
+   FIN_SI
+
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+   IMPRIME
+   IMPRIME
+
+   IMP ( COL( 5 ) ,  'TOTAL DE EMPLEADOS =>' , COL ( 45 ) , DER(.(_totalemp) , 12 ) ) ;; IMPRIME
+   IMP ( COL( 5 ) ,  'TOTAL DE PAGO =>' , COL ( 45 ) , DER(.(_pago) , 12 ) ) ;; IMPRIME
+
+TERMINA_REPORTE

@@ -1,0 +1,96 @@
+#CAPTURA MASIVA DE CURSOS TOMADOS
+#VERSION 1.0
+#USUARIO =*
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+FORMATO_FECHA := 2
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'CAPTURA MASIVA DE CURSOS TOMADOS' )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( 'CLAVE', COL(10), 'NOMBRE', COL(50), 'INICIO', COL(60), 'TERMINO', COL(70), DER( 'CURSO', 10) ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+_fi         := 0
+_ff         := 0
+$instructor := ''
+$curso      := ''
+$horas      := ''
+$empleado   := ''
+$dc3        := 'SI'
+$documento  := ''
+$comentario := ''
+$evaluacion := ''
+ABRE_BASE( 'EMPPRIN' )
+USA_ARCHIVO( 'EMPPRIN', 'EMPCURSO', 'CLAVE' )
+
+SUB_RUTINA graba_registro
+  AGREGA_REGISTRO( 'EMPCURSO' )
+  'EMPCURSO':'CLAVE'            := 'EMPPRIN':'CLAVE'
+  'EMPCURSO':'CURSO PROGRAMADO' := 0
+  'EMPCURSO':'FECHA_INICIAL'    := _fi
+  'EMPCURSO':'FECHA_FINAL'      := _ff
+  'EMPCURSO':'HORAS'            := $horas
+  'EMPCURSO':'EVALUACION'       := $evaluacion
+  'EMPCURSO':'DOCUMENTO'        := $documento
+  'EMPCURSO':'COMENTARIO'       := $comentario
+  'EMPCURSO':'INSTRUCTOR'       := $instructor
+  'EMPCURSO':'DC3'              := $dc3
+  'EMPCURSO':'CURSO'            := $curso
+  GRABA_BASE( 'EMPCURSO' )
+FIN_SUB_RUTINA
+
+MIENTRAS( $empleado <> 'FIN' )
+  FORMATO_FECHA := 0
+  NUEVO_PARAMETRO( 'EMPLEADO', '', $empleado )
+  NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL', FECHA( _fi ), _fi )
+  NUEVO_PARAMETRO_FEC ( 'FECHA FINAL', FECHA( _ff ), _ff )
+  NUEVO_PARAMETRO     ( 'CURSO', $curso, $curso )
+  NUEVO_PARAMETRO     ( 'INSTRUCTOR', $instructor, $instructor )
+  NUEVO_PARAMETRO     ( 'HORAS', $horas, $horas )
+  NUEVO_PARAMETRO     ( 'EVALUACION', $evaluacion, $evaluacion )
+  NUEVO_PARAMETRO     ( 'DC3 ( SI/NO )', $dc3, $dc3 )
+  NUEVO_PARAMETRO     ( 'DOCUMENTO', $documento, $documento )
+  NUEVO_PARAMETRO     ( 'COMENTARIO', $comentario, $comentario )
+  LEE_PARAMETROS
+  BORRA_PARAMETROS 
+  SI ( TRAE_REGISTRO( 'EMPPRIN', $empleado ) )
+    SI ( TRAE_REGISTRO( 'CURSO', $curso ) )
+      SI ( TRAE_REGISTRO( 'INSTRUCT', $instructor ) )
+        FORMATO_FECHA := 2
+        IMP ( COL(1), 'EMPPRIN':'CLAVE' )
+        IMP ( COL(10), 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN' )
+        IMP ( COL(50), FECHA( _fi ) )
+        IMP ( COL(60), FECHA( _ff ) )
+        IMP ( COL(70), DER( $curso, 10) )
+        IMPRIME
+        graba_registro
+      SI_NO
+        MENSAJE( 'LA CLAVE DEL INSTRUCTOR ' + $instructor + ' NO EXISTE.' )
+      FIN_SI
+    SI_NO
+      MENSAJE( 'LA CLAVE DEL CURSO ' + $curso + ' NO EXISTE.' )
+    FIN_SI
+  SI_NO
+    MENSAJE( 'LA CLAVE DEL EMPLEADO ' + $empleado + ' NO EXISTE.' )
+  FIN_SI
+FIN_MIENTRAS

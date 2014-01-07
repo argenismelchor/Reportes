@@ -1,0 +1,179 @@
+#CAPACITACION POR EMPLEADO
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#EXCEL
+#DESCRIPCION
+#Este reporte muestra los trabajadores vigentes de la empresa.
+#Este reporte imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO/EXCEL' , $salida )
+NUEVO_PARAMETRO_TAB ( 'EMPLEADOS' , 'EMPPRIN/CLAVE/EMPLEADOS' , &empleado )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , '' , _fi ) 
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL' , '' , _ff )
+NUEVO_PARAMETRO_CHEQ( 'SOLO VIGENTES', '', _vig )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+_lv := 0
+
+ENCABEZADO
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   _lv := LONGITUD ( VERSION_GIRO )
+   IMP ( COL (1) , NOMBRE_REPORTE , COL (COLUMNAS - _lv) , VERSION_GIRO ) ;; IMPRIME
+   IMP ( COL (1) , CLAVE_REPORTE , CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ('CAPACITACION POR CURSO DEL ' + FECHA (_fi) + ' AL ' + FECHA (_ff) ) ) ;; IMPRIME
+   IMP ( REPITETXT ( '=' , 80 ) ) ;; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), 'CENTRO CENTRO' ) ;; IMPRIME
+   IMP ( COL(5), 'CURSO', COL(40), 'HORAS', COL(50), 'EVAL', COL(58), 'DOCUMENTO'  ) ;; IMPRIME
+   IMP ( REPITETXT ( '-' , 80 ) ) ;; IMPRIME ;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' ) ;; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   IMP ( COL (1) , 'Fecha : ' , FECHA (FECHA_HOY) , '    ' , 'Hora : ' , HORA (HORA_ACTUAL) , COL (65) , 'PAGINA : ' , PAGINA ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' ) ;; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+
+#Variables Globales
+_valido       := 0
+$depto        := ''
+$anterior     := ''
+_strab        := 0
+_ttrab        := 0
+_shoras       := 0
+_thoras       := 0
+_renglon      := 1
+
+#Subrutina diversas
+
+SUB_RUTINA checa_totales
+  DECIMALES := 0
+  IMP ( '* SUBTOTAL EMPLEADO ' ) ;; IMPRIME
+  IMP ( COL(5), 'SUBTOTAL CURSOS : ', .( _strab ) )
+  DECIMALES := 2
+  IMP ( COL(52), 'SUBTOTAL HORAS : ', COL(72), DER( .(_shoras), 8 ) )
+  IMPRIME
+  IMPRIME
+  SI ( $salida = 'EXCEL' )
+    EXCEL( 'PON_VALOR', 2, _renglon, 'SUBTOTAL EMPLEADO ' + $anterior )
+    _renglon := _renglon + 1
+    EXCEL( 'PON_VALOR', 2, _renglon, 'SUBTOTAL CURSOS ' + .( _strab ))
+    EXCEL( 'PON_VALOR', 4, _renglon, 'SUBTOTAL HORAS ' + .( _shoras ) )
+    _renglon := _renglon + 1
+  FIN_SI
+  _strab  := 0
+  _shoras := 0
+FIN_SUB_RUTINA
+
+SUB_RUTINA checa_empleado
+   SI ( $anterior <> 'EMPPRIN':'CLAVE' )
+     SI ( $anterior <> '' )
+       checa_totales
+     FIN_SI
+     SI ( CD_DC = 0 )
+       $depto := 'DESCONOCIDO'
+       SI ( TRAE_REGISTRO( 'DEPTO', 'EMPPRIN':'DEP_CLAVE' ) )
+         $depto := 'DEPTO':'DESCRIPCION'
+       FIN_SI
+     SI_NO
+       SI ( TRAE_REGISTRO( 'CENTROC', 'EMPPRIN':'DEP_CLAVE' ) )
+         $depto := 'CENTROC':'DESCRIPCION'
+       FIN_SI
+     FIN_SI
+     IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 35 ), COL(50), $depto )
+     IMPRIME
+     SI ( $salida = 'EXCEL' )
+        EXCEL( 'PON_VALOR', 1, _renglon, '"' + 'EMPPRIN':'CLAVE' )
+        EXCEL( 'PON_VALOR', 2, _renglon, 'EMPPRIN':'NOMBRE' )
+        EXCEL( 'PON_VALOR', 3, _renglon, $depto )
+        _renglon := _renglon + 1
+     FIN_SI
+     $anterior := 'EMPPRIN':'CLAVE'
+   FIN_SI  
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+  checa_empleado
+  DECIMALES := 2
+  IMP ( COL(5), 'EMPPRIN':'CLAVE_CURSO' + ' ' + 'EMPPRIN':'DESCRIPCION', COL(39), DER( .('EMPPRIN':'HORAS'), 6 ) )
+  DECIMALES := 0
+  IMP ( COL(50), DER( .('EMPPRIN':'EVALUACION'), 4 ), COL(58), 'EMPPRIN':'DOCUMENTO' )
+  IMPRIME
+  SI ( $salida = 'EXCEL' )
+    EXCEL( 'PON_VALOR', 2, _renglon, 'EMPPRIN':'CLAVE_CURSO'  + ' ' + 'EMPPRIN':'DESCRIPCION' )
+    EXCEL( 'PON_VALOR', 3, _renglon, 'EMPPRIN':'HORAS' )
+    EXCEL( 'PON_VALOR', 4, _renglon, 'EMPPRIN':'EVALUACION' )
+    EXCEL( 'PON_VALOR', 5, _renglon, 'EMPPRIN':'DOCUMENTO' )
+    _renglon := _renglon + 1
+  FIN_SI
+  _strab := _strab + 1
+  _ttrab := _ttrab + 1
+  _shoras := _shoras + 'EMPPRIN':'HORAS'
+  _thoras := _thoras + 'EMPPRIN':'HORAS'
+FIN_SUB_RUTINA
+
+SUB_RUTINA checa_condiciones
+  _valido := 1
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+SI ( $salida = 'EXCEL' )
+  EXCEL( 'PON_VALOR', 1, _renglon, 'CLAVE' )
+  EXCEL( 'PON_VALOR', 2, _renglon, 'NOMBRE' )
+  EXCEL( 'PON_VALOR', 3, _renglon, 'CENTRO COSTO' )
+  EXCEL( 'PON_VALOR', 4, _renglon, 'CURSO' )
+  EXCEL( 'PON_VALOR', 5, _renglon, 'HORAS' )
+  EXCEL( 'PON_VALOR', 6, _renglon, 'EVALUACION' )
+  EXCEL( 'PON_VALOR', 7, _renglon, 'DOCUMENTO' )
+  _renglon := _renglon + 1
+FIN_SI
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+$campos_extras := 'C. CLAVE, C. EVALUACION, C. FECHA_INICIAL, C. FECHA_FINAL, C. INSTRUCTOR, CUR. DESCRIPCION, C. HORAS, C. EVALUACION, C. DOCUMENTO, P. CLAVE_CURSO'
+$bases_extras := 'EMPCURSO C, CURSOPRO P, CURSO CUR'
+$condiciones_extras := 'C. CLAVE = E. CLAVE AND P. ID = C. "CURSO PROGRAMADO" AND CUR. CLAVE = P. CLAVE_CURSO AND C. FECHA_INICIAL >= :FINI AND C. FECHA_INICIAL <= :FFIN'
+$empleados := TRAE_SELECCION( &empleado )
+SI ( $empleados <> '' )
+  $condiciones_extras := $condiciones_extras + ' AND E. CLAVE IN (' + $empleados + ')'
+FIN_SI
+base_trabajadores
+PARAMETRO_SQL( 'EMPPRIN', 'FINI', _fi )
+PARAMETRO_SQL( 'EMPPRIN', 'FFIN', _ff )
+
+USA_ARCHIVO( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI (( _vig = 0 ) OR ( FUE_VIGENTE ( _fi , _ff ) > 0 ) )
+      checa_condiciones
+      SI ( _valido = 1 )
+        datos_trabajador
+      FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+checa_totales
+termina_reporte

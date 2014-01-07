@@ -1,0 +1,76 @@
+#IMPORTACION DE CAMPOS
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.5
+#DESCRIPCION
+#Este reporte permite importar 1 campo a la vez y requiere que la clave del empleado este en los primeras 10 columnas del archivo. Se recomienda que en la columna final ponga
+#un caracter de termino. Si el archivo viene de excel en la ultima columna poner un #
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO ( 'ARCHIVO ORIGEN', 'C:\ARCHIVO.TXT', $archivo )
+NUEVO_PARAMETRO ( 'TABLA', '', $tabla )
+NUEVO_PARAMETRO ( 'CAMPO', '', $campo )
+NUEVO_PARAMETRO ( 'INICIO', '', _inicio )
+NUEVO_PARAMETRO ( 'LONGITUD', '', _longitud )
+NUEVO_PARAMETRO_CHEQ ( 'AGREGAR REGISTRO', '', _agregar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+CREA_BASE_TXT    ( 'TABLA', $archivo, 'FIJO' )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'LINEA', 1, 255  )
+ABRE_BASE_TXT    ( 'TABLA', 'EDICION' )
+
+_lv := 0
+
+ENCABEZADO   
+   LETRA ( 'LETRA ENFATISADA' )
+   _lv := LONGITUD ( VERSION_GIRO )
+   IMP ( COL (1) , NOMBRE_REPORTE , COL (COLUMNAS - _lv) , VERSION_GIRO ) ;; IMPRIME
+   IMP ( COL (1) , CLAVE_REPORTE , CENTRA ('EMPRESA':'NOMBRE' ) ) ;; IMPRIME
+   IMP ( CENTRA ('IMPORTACION DE CAMPO') ) ;; IMPRIME
+   IMP ( REPITETXT ( '=' , 80 ) ) ;; IMPRIME
+   IMPRIME 
+   LETRA ( 'LETRA NORMAL' ) ;; IMPRIME
+FIN_ENCABEZADO
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL (1) , 'Fecha : ' , FECHA (FECHA_HOY) , '   ' , 'Hora : ' , HORA (HORA_ACTUAL) , COL (110) , 'PAGINA : ' , PAGINA ) ;; IMPRIME
+   LETRA ( 'LETRA NORMAL' ) ;; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+#VARIABLES
+$clave := ''
+$valor := ''
+$linea := ''
+
+ABRE_BASE ( 'EMPPRIN' )
+USA_ARCHIVO( 'EMPPRIN', $tabla, 'CLAVE' )
+
+PRIMER_REGISTRO( 'TABLA' )
+MIENTRAS( FIN_BASE( 'TABLA' ) = FALSO )
+  $linea := 'TABLA':'LINEA'
+  $clave := SUBSTR( $linea, 1, 10 )
+  $clave := QUITA_CARACTER( ' ', $clave )
+  SI ( TRAE_REGISTRO( 'EMPPRIN', $clave ) )
+    SI ( TRAE_REGISTRO( $tabla, $clave ) = FALSO )
+      SI ( _agregar = 1 )
+        AGREGA_REGISTRO( $tabla )
+        $tabla:'CLAVE' := $clave
+      FIN_SI
+    FIN_SI
+    $valor := SUBSTR( $linea, _inicio, _longitud )
+    $tabla:$campo := $valor
+    GRABA_BASE( $tabla )
+    IMP ( COL(1), $clave, COL(10), $valor ) 
+    IMPRIME
+  SI_NO
+    IMP ( '*** LA CLAVE DEL EMPLEADO ' + $clave + ' NO EXISTE EN LA BASE' ) IMPRIME
+  FIN_SI  
+  SIGUIENTE_REGISTRO( 'TABLA' )
+FIN_MIENTRAS
+
+
+TERMINA_REPORTE

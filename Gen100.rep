@@ -1,0 +1,95 @@
+#REGISTROS PATRONALES
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte despliega el catalogo de registros patronales.
+#Este reporte imprime la clave, nombre, registro, zona, calle, numero, colonia, codigo, municipio, estado, telefono, fax.
+#FIN_DESCRIPCION
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_SEL ( 'ORDEN' , 'CLAVE/NOMBRE' , $orden )
+NUEVO_PARAMETRO_SEL ( 'IMP. SUCURSALES' , 'SI/NO' , $ordenc )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+SALIDA        := $salida
+
+INCLUYE ENCPIE.DAT
+
+SI ( $salida = 'DISCO' )
+   SALIDA_REPORTE ( DIRECTORIO_TRABAJO + '\TABREG.TXT' )
+FIN_SI
+
+ENCABEZADO
+   $titulo_reporte := 'TABLA DE REGISTROS PATRONALES'
+   encabezado_ini
+   IMP ( COL (1)  , 'Clave' , COL (11) , 'NOMBRE' , COL (51) , 'Registro' , COL (65) , 'Zona') ;; IMPRIME
+   IMP ( COL (11) , 'Calle' , COL (41) , 'Numero' , COL (50) , 'Colonia'  , COL (72) , 'C.P.') ;; IMPRIME
+   IMP ( COL (11) , 'Municipio' , COL (31) , 'Estado' , COL (51) , 'Telefono' , COL (65), 'FAX' ) ;; IMPRIME
+   SI ( $ordenc = 'SI' ) 
+     IMP ( COL (11) , 'CLAVE' , COL (21) , 'SUCURSAL') ;; IMPRIME
+   FIN_SI
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE
+
+### DEFINICION DE TABLA PRINCIPAL
+VAR_T ( sql ) 
+SI ($ordenc = 'SI' ) 
+  PON_VALOR_TABLA ( sql, 0, 0, 'SELECT *' )
+  PON_VALOR_TABLA ( sql, 0, 1, 'FROM PATRONAL P, SUCURSAL S' ) 
+  PON_VALOR_TABLA ( sql, 0, 2, 'WHERE S."REGISTRO PATRONAL" = P.CLAVE' ) 
+  SI ( $orden = 'CLAVE' )
+     PON_VALOR_TABLA ( sql, 0, 3, 'ORDER BY P.CLAVE' )
+  SI_NO
+     PON_VALOR_TABLA ( sql, 0, 3, 'ORDER BY P.NOMBRE' )
+  FIN_SI
+  CREA_CONSULTA ( 'PATRONAL', sql )
+SI_NO
+  PON_VALOR_TABLA ( sql, 0, 0, 'SELECT *' )
+  PON_VALOR_TABLA ( sql, 0, 1, 'FROM PATRONAL P' )
+  SI ( $orden = 'CLAVE' )
+     PON_VALOR_TABLA ( sql, 0, 2, 'ORDER BY P.CLAVE' )
+  SI_NO
+     PON_VALOR_TABLA ( sql, 0, 2, 'ORDER BY P.NOMBRE' )
+  FIN_SI
+  CREA_CONSULTA ( 'PATRONAL', sql )
+FIN_SI
+
+### VARIABLES
+$anterior:= ''
+_tot:=0
+_renglon:=0
+_mayor:=0
+_columna:=0
+VAR_T( &grafica )
+AGREGA_VALOR_REN ( &grafica, 0, '/' )
+
+### CICLO PRINCIPAL
+REPITE
+   SI ( $anterior <> 'PATRONAL':'CLAVE' )
+      _tot := _tot + 1
+      $anterior := 'PATRONAL':'CLAVE'
+      IMP ( COL(1), 'PATRONAL':'CLAVE', COL(11), 'PATRONAL':'NOMBRE', COL(51), 'PATRONAL':'REGISTRO PATRONAL', COL(65), 'PATRONAL':'ZONA ECONOMICA' ) ;; IMPRIME
+      IMP ( COL(11), 'PATRONAL':'CALLE', COL(41), 'PATRONAL':'NUMERO', COL(50), 'PATRONAL':'COLONIA', COL(72), 'PATRONAL':'C P') ;; IMPRIME   
+      IMP ( COL(11), 'PATRONAL':'MUNICIPIO', COL(31), 'PATRONAL':'ESTADO', COL(51), 'PATRONAL':'TELEFONO', COL(65), 'PATRONAL':'FAX') ;; IMPRIME
+      SI ( $ordenc = 'SI' )
+        IMP( COL (9) , '*' , COL(11), 'PATRONAL':'CLAVE_1', COL(21), 'PATRONAL':'NOMBRE_1' ) ;; IMPRIME
+      FIN_SI
+      IMPRIME
+   SI_NO
+      IMP ( COL(9), '*', COL(11), 'PATRONAL':'CLAVE_1', COL(21), 'PATRONAL':'NOMBRE_1' ) ;; IMPRIME
+      IMPRIME
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'PATRONAL' )
+HASTA ( FIN_BASE ( 'PATRONAL' ))
+
+IMPRIME ;; IMPRIME
+DECIMALES := 0
+IMP ( COL(40), '--- Total : ', _tot, ' REGISTROS PATRONAL(ES)' ) ;; IMPRIME
+

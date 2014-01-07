@@ -1,0 +1,135 @@
+# LIBRERIA DE IMPRESION GRAFICA
+
+MODO_IMPRESION( 'GRAFICO' )
+
+# VARIABLES DE IMPRESION
+_x     := 0
+_y     := 0
+_x1    := 0
+_x2    := 0
+_y1    := 0
+_y2    := 0
+_y_act := 0    # IMPRESION EN Y
+_x_act := 0    # IMPRESION EN X
+_lhoja := 2794 # LARGO DE LA HOJA. DEFAULT CARTA
+_ahoja := 2159 # ANCHO DE LA HOJA. DEFAULT CARTA
+_interlineado  := 80  # ESPACIO ENTRE LINEA Y LINEA INICIAL
+_espacio_linea := _interlineado  # ESPACIO ENTRE LINEA Y LINEA
+$titulo_reporte := ''  # TITULO A IMPRIMIR
+
+# VARIABLES DE CONFIGURACION DE TIPOS DE LETRA
+$letra_ini     := 'COURIER NEW'
+$estilo_ini    := ''
+_tam_letra_ini := 10
+$letra         := $letra_ini
+$estilo        := $estilo_ini
+_tam_letra     := _tam_letra_ini
+_factor        := 2.2
+
+# VARIABLES DE IMPRESION
+$titulo    := ''    # ETIQUETA A IMPRIMIR
+$valor     := ''    # VALOR DEL CAMPO A IMPRIMIR
+_inicio    := 0     # VARIABLE AUXILIAR DE INICIO DEL CAMPO
+_ancho     := 0     # ANCHO DEL VALOR DEL CAMPO
+_pos_ancho := 0     # POSIBLE ANCHO DEL CAMPO SI ES QUE NO HAY VALOR.
+
+SUB_RUTINA imprime_rectangulo
+   IMPRIME_REC( _x1 + _x, _y1 + _y, _x2, _y2 )
+   IMPRIME_REC( _x1 + 4 + _x, _y1 + 4 + _y, _x2 - 8, _y2 - 8 )
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_marco
+   _x1 := 100 ;; _y1 := 100 ;; _x2 := _ahoja - 300 ;; _y2 := _lhoja - 300
+   imprime_rectangulo
+   CAMBIA_LETRA( 'Arial', 10, '' ) IMPRIME_SIN_SALTO
+   FORMATO_FECHA := 3
+   IMP_XY( 150, _lhoja - 200, FECHA( FECHA_HOY ) )
+   IMP_XY( _ahoja - 450, _lhoja - 200, HORA( HORA_ACTUAL ) )
+   VE_Y ( 100 )
+   CAMBIA_LETRA( $letra, _tam_letra, $estilo ) IMPRIME_SIN_SALTO
+FIN_SUB_RUTINA
+
+SUB_RUTINA avanza_linea 
+  _y_act := _y_act + _espacio_linea
+  _x_act := 0
+FIN_SUB_RUTINA
+
+SUB_RUTINA avanza_hoja
+   _y_act := 0
+   _x_act := 0
+   _espacio_linea := _interlineado
+   $letra     := $letra_ini
+   $estilo    := $estilo_ini
+   _tam_letra := _tam_letra_ini
+   AVANZA_HOJA
+   IMPRIME
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_cadena
+  CAMBIA_LETRA( $letra, _tam_letra, $estilo ) IMPRIME_SIN_SALTO
+  IMP_XY( 200 + _x + _x_act, _y_act, $valor )
+  $valor := ''
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_cadena_salto
+  CAMBIA_LETRA( $letra, _tam_letra, $estilo ) IMPRIME_SIN_SALTO
+  IMP_XY( 200 + _x + _x_act, _y_act, $valor )
+  avanza_linea
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_linea
+  CAMBIA_LETRA( $letra, _tam_letra, '\N' ) IMPRIME_SIN_SALTO
+  SI ( $valor = '' )
+    $valor := REPITETXT( ' ', _pos_ancho )
+  FIN_SI
+  IMP_XY( 200 + _x + _x_act, _y_act, $titulo )
+  CAMBIA_LETRA( $letra, _tam_letra, '' ) IMPRIME_SIN_SALTO
+  _inicio := ( LONGITUD( $titulo ) * ( _tam_letra * _factor ) ) + 15
+  _ancho  := ( LONGITUD( $valor ) * ( _tam_letra * _factor ) )
+  SI ( $valor <> '-' )
+    IMP_XY( 200 + _x + _inicio + _x_act, _y_act, $valor )
+    IMPRIME_LINEA( 200 + _x + _inicio + _x_act, _y_act + ( _tam_letra * _factor * 2 ), 200 + _x + _inicio + _x_act + _ancho, _y_act + ( _tam_letra * _factor * 2 ) )
+  FIN_SI
+  _pos_ancho := 0
+  $valor := ''
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_centro
+  IMP_RECT( $valor, 100, _y_act, _ahoja - 300, _y_act + ( _tam_letra * _factor * 2 ), 'CEN' )
+  avanza_linea
+  $valor := ''
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_campo
+  imprime_linea
+  $valor := ''
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_campo_salto
+  imprime_linea
+  avanza_linea
+  $valor := ''
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_empresa
+   IMPRIME_IMAGEN( 'LOGO_EMPRESA', 120, 120, 300, 150 )
+   CAMBIA_LETRA( $letra, 18, '\N' ) IMPRIME_SIN_SALTO
+   _y_act := 250
+   $valor := 'EMPRESA':'NOMBRE'
+   imprime_centro
+   CAMBIA_LETRA( $letra, 12, '' ) IMPRIME_SIN_SALTO
+   _y_act := 320
+   $valor := 'EMPRESA':'CALLE' + '   No. ' + 'EMPRESA':'NUMERO' + '  ' + 'EMPRESA':'COLONIA'
+   imprime_centro
+   DECIMALES := 0
+   _y_act := 370
+   $valor := 'CP. ' + .('EMPRESA':'CP' )
+   imprime_centro
+FIN_SUB_RUTINA
+
+SUB_RUTINA imprime_titulo
+   CAMBIA_LETRA( $letra, 16, '\N' ) IMPRIME
+   $valor := $titulo_reporte
+   imprime_centro
+   IMPRIME_LINEA( 200, _y_act, _ahoja - 300, _y_act )
+FIN_SUB_RUTINA

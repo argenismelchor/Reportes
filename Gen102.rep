@@ -1,0 +1,74 @@
+#CENTROS DE COSTO CD / DEPARTAMENTOS DC
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte despliega el catalogo de centros de costo cd / deptos dc.
+#Este reporte imprime la clave y la descripcion del centro de costo.
+#FIN_DESCRIPCION
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_SEL ( 'ORDEN' , 'CLAVE/DESCRIPCION' , $orden )
+LEE_PARAMETROS
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+SALIDA        := $salida
+INCLUYE ENCPIE.DAT
+
+SI ( $salida = 'DISCO' )
+   SALIDA_REPORTE ( DIRECTORIO_TRABAJO + '\TABCENT.TXT' )
+FIN_SI
+
+ENCABEZADO
+   SI ( CD_DC = 0 )
+     $titulo_reporte := 'Tabla de CENTROS DE COSTO'
+   SI_NO
+     $titulo_reporte := 'Tabla de DEPARTAMENTOS'
+   FIN_SI
+   encabezado_ini
+   IMP ( COL(1) , 'Clave' , COL (11) , 'DESCRIPCION' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL (1) , 'Fecha : ', FECHA (FECHA_HOY), '    ' , 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+### DEFINICION DE TABLA
+VAR_T ( &sql )
+AGREGA_VALOR_COL ( &sql, 0, 'SELECT *' )
+SI (CD_DC = 0)
+  AGREGA_VALOR_COL ( &sql, 0, 'FROM CENTROC' )
+SI_NO
+  AGREGA_VALOR_COL ( &sql, 0, 'FROM DEPTO' )
+FIN_SI
+AGREGA_VALOR_COL ( &sql, 0, 'ORDER BY' )
+SI ( $orden = 'CLAVE' )
+   AGREGA_VALOR_COL ( &sql, 0, 'CLAVE' )
+SI_NO
+   AGREGA_VALOR_COL ( &sql, 0, 'DESCRIPCION' )
+FIN_SI
+CREA_CONSULTA ( 'TABLA', &sql )
+_tot := 0
+
+### CICLO PRINCIPAL
+REPITE
+   IMP ( COL (1) , 'TABLA':'CLAVE' , COL(11) , 'TABLA':'DESCRIPCION' ) ;; IMPRIME
+   _tot := _tot + 1
+   SIGUIENTE_REGISTRO ( 'TABLA' )
+HASTA ( FIN_BASE ( 'TABLA' ))
+
+IMPRIME
+DECIMALES := 0
+SI ( CD_DC = 0 )
+  IMP ( COL(40), '--- Total : ', _tot, ' CENTRO(S) DE COSTOS' ) ;; IMPRIME
+SI_NO
+  IMP ( COL(40), '--- Total : ', _tot, ' DEPARTAMENTO(S)' ) ;; IMPRIME
+FIN_SI
+

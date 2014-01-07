@@ -1,0 +1,101 @@
+#VACACIONES DISFRUTADAS
+#NO EDITAR
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra las vacaciones tomasdas de los trabajadores de la empresa.
+#Este reporte imprime de los trabajadores la clave, nombre, departamento, puesto y sucursal. De las vacaciones imprime Fecha Inicio, Duracion, Fecha Final, Prima Vacacional, Dias/Dur.
+#Este reporte tiene los filtros estandares los cuales pueden filtrar cualquiera de los indices de Registro patronal, Sucursal
+#Centro de Costo, Departamento, Puesto, Tipo Empleado y Tipo de Nómina.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , '' , _fi ) 
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL' , '' , _ff)
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+INCLUYE ENCPIE.DAT
+
+ENCABEZADO
+   $titulo_reporte := 'Vacaciones Disfrutadas del ' + FECHA (_fi) + ' al ' + FECHA (_ff)
+   encabezado_ini
+   SI ( CD_DC = 0 )
+      IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' , COL (50) , DER ( 'SUCURSAL' , 10 ) , COL (60) , DER ( 'DEPTO' , 10 ) , COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   SI_NO
+      IMP ( COL (1) , 'CLAVE' , COL (10) , 'NOMBRE' , COL (50) , DER ( 'SUCURSAL' , 10 ) , COL (60) , DER ( 'C.C.' , 10 ) , COL (70) , DER ( 'PUESTO' , 10 ) ) ;; IMPRIME
+   FIN_SI
+   IMP ( COL (8) , 'Fecha Inicio' , COL (22) , 'DUR.' , COL (30) , 'Fecha Final' , COL (45) , 'PRIMA VAC' , COL (60) , 'DIAS/DUR' ) ;; IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 3
+RENGLONES     := 65
+COLUMNAS      := 80
+
+# Variables Globales
+_dias     := 0
+_fini     := 0
+_ffin     := 0
+$ant_trab := ''
+
+# Subrutinas diversas
+
+SUB_RUTINA formato_trabajador
+   SI ( $ant_trab <> 'EMPPRIN':'CLAVE' )
+      IMP ( COL (1)  , 'EMPPRIN':'CLAVE' , COL (10) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 38 ) )
+      IMP ( COL (50) , DER ( 'EMPPRIN':'SUC_CLAVE' , 10 ) , COL (60) , DER ( 'EMPPRIN':'DEP_CLAVE' , 10 ) , COL (70) , DER ( 'EMPPRIN':'PUE_CLAVE' , 10 ) )
+      IMPRIME
+      $ant_trab := 'EMPPRIN':'CLAVE'
+   FIN_SI
+   DECIMALES := 0
+   IMP ( COL (8)  , FECHA ('EMPPRIN':'FECHA') , COL (22) , DER ( .('EMPPRIN':'DURACION') , 3 ) , COL (30) , FECHA ('EMPPRIN':'FECHA FINAL') )
+   DECIMALES := 2
+   IMP ( COL (46) , DER ( .('EMPPRIN':'PRIMA VACACIONAL') , 8 ) )
+   DECIMALES := 0
+   SI ( 'EMPPRIN':'FECHA' <= _fi )
+      _fini := _fi
+   SI_NO
+      _fini := 'EMPPRIN':'FECHA'
+   FIN_SI
+   SI ( 'EMPPRIN':'FECHA FINAL' >= _ff )
+      _ffin := _ff
+   SI_NO
+      _ffin := 'EMPPRIN':'FECHA FINAL'
+   FIN_SI
+   _dias := ( _ffin - _fini ) + 1
+   SI ( _dias > 'EMPPRIN':'DURACION' )
+      _dias := 'EMPPRIN':'DURACION'
+   FIN_SI
+   IMP ( COL (60) , _dias , '/' , 'EMPPRIN':'DURACION' )
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+$campos_extras := 'E. CALENDARIO, E. AFILIACION, V. FECHA, V. DURACION, V. "PRIMA VACACIONAL", V. "FECHA FINAL"'
+$bases_extras := 'EMPVACA V'
+$condiciones_extras := '(V.CLAVE = E.CLAVE ) AND ( V. FECHA <= :FFIN ) AND ( V. "FECHA FINAL" >= :FINI)'
+
+base_trabajadores
+PARAMETRO_SQL ( 'EMPPRIN' , 'FINI' , _fi )
+PARAMETRO_SQL ( 'EMPPRIN' , 'FFIN' , _ff )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ('EMPPRIN') = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ('EMPPRIN')
+FIN_MIENTRAS
+termina_reporte

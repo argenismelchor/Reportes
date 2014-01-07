@@ -1,0 +1,302 @@
+#CHECADAS SEMANALES
+#REPORTE DE CHECADAS SEMANALES TAKATA
+#USUARIO =*
+#REPORTE DE CHECADAS SEMANALES
+#VERSION 1.0
+#DESCRIPCION
+#Descripción no disponible para este reporte.
+#Favor de Actualizarla.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL', '', _fi )
+NUEVO_PARAMETRO_CHEQ( 'SOLO HORAS EXTRAS', '', _hr )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+SI ( DIA_SEMANA( _fi ) <>  2 )
+  MENSAJE( 'LA FECHA INICIAL DEBE SER LUNES.'  )
+  TERMINA_REPORTE
+FIN_SI
+
+_ff := _fi + 7
+
+MODO_IMPRESION( 'DIRECTO' )
+FORMATO_FECHA := 2
+FORMATO_HORA := 6
+SALIDA := $salida
+COLUMNAS := 120
+$turno := ''
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA 3' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'REPORTE SEMANAL DE CHECADAS DEL ' + FECHA( _fi ) + ' AL ' + FECHA( _ff ) )) IMPRIME
+   IMP ( REPITETXT( '=', COLUMNAS )) IMPRIME 
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(50), 'RFC', COL(65), 'TURNO', COL(72), 'DEPTO', COL(80), DER('TOT HORAS',10), COL(90), DER('H. EXT2.',10), COL(100), DER('H.EXT3',10), COL(110), DER('RET.', 10)   ) IMPRIME
+   SI ( $turno = '3' )
+     IMP ( COL(5), 'DOMINGO', COL(17), 'LUNES', COL(29), 'MARTES', COL(41), 'MIECOLES', COL(53), 'JUEVES', COL(65), 'VIERNES', COL(77), 'SABADO' )
+   SI_NO
+     IMP ( COL(5), 'LUNES', COL(17), 'MARTES', COL(29), 'MIERCOLES', COL(41), 'JUEVES', COL(53), 'VIERNES', COL(65), 'SABADO', COL(77), 'DOMINGO' )
+   FIN_SI
+   IMPRIME
+   IMP ( REPITETXT ('-', COLUMNAS )) IMPRIME
+   LETRA ( 'LETRA 3' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA 3' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA 3' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+INCLUYE LIBREL.DAT
+
+#VARIABLE DE CHECADAS DE LA SEMANA
+_e_lun   := 0
+_s_lun   := 0
+_p_lun   := 0
+_h_lun   := 0
+_x_lun   := 0
+_e_mar   := 0
+_s_mar   := 0
+_p_mar   := 0
+_h_mar   := 0
+_x_mar   := 0
+_e_mie   := 0
+_s_mie   := 0
+_p_mie   := 0
+_h_mie   := 0
+_x_mie   := 0
+_e_jue   := 0
+_s_jue   := 0
+_p_jue   := 0
+_h_jue   := 0
+_x_jue   := 0
+_e_vie   := 0
+_s_vie   := 0
+_p_vie   := 0
+_h_vie   := 0
+_x_vie   := 0
+_e_sab   := 0
+_s_sab   := 0
+_p_sab   := 0
+_h_sab   := 0
+_x_sab   := 0
+_e_dom   := 0
+_s_dom   := 0
+_p_dom   := 0
+_h_dom   := 0
+_x_dom   := 0
+_faux    := 0
+
+_hrs_lab := 0
+_hrs_2   := 0
+_hrs_3   := 0
+$i1      := ''
+$i2      := ''
+$i3      := ''
+$i4      := ''
+$i5      := ''
+$i6      := ''
+$i7      := ''
+$incidencia := ''
+_retardos := 0
+_h        := 0
+_m        := 0
+_fini     := 0
+
+SUB_RUTINA carga_checadas
+    _faux := _fi
+    carga_dia_turno
+    SI ( _nocturno = 1 )
+      _fini := _fi - 1
+    SI_NO
+      _fini := _fi
+    FIN_SI
+    _retardos := 0
+    _hrs_2    := 0
+    _hrs_3    := 0
+    _hrs_lab  := 0
+
+    DECIMALES := 12
+    _faux := _fini
+    calcula_dia
+    _e_lun := _ac1
+    _s_lun := _ac4
+    _h_lun := _calc_normal
+    _p_lun := _calc_retardo
+    _x_lun := _calc_extra
+    $i1    := ''
+    SI ( _hay_checada = 0 )
+      carga_excepciones
+      $i1    := SUBSTR( $excepcion, 1, 1 )
+    FIN_SI
+    _retardos := _retardos + ( _calc_retardo / _fm )
+    _hrs_2    := _hrs_2 + ( _calc_extra / _fh )
+    _hrs_lab  := _hrs_lab + ( _calc_normal / _fh )
+
+    _faux := _fini + 1
+    calcula_dia
+    _e_mar := _ac1
+    _s_mar := _ac4
+    _h_mar := _calc_normal
+    _p_mar := _calc_retardo
+    _x_mar := _calc_extra
+    $i2    := ''
+    SI ( _hay_checada = 0 )
+      carga_excepciones
+      $i2    := SUBSTR( $excepcion, 1, 1 )
+    FIN_SI
+    _retardos := _retardos + ( _calc_retardo / _fm )
+    _hrs_2    := _hrs_2 + ( _calc_extra / _fh )
+    _hrs_lab  := _hrs_lab + ( _calc_normal / _fh )
+
+    _faux := _fini + 2
+    calcula_dia
+    _e_mie := _ac1
+    _s_mie := _ac4
+    _h_mie := _calc_normal
+    _p_mie := _calc_retardo
+    _x_mie := _calc_extra
+    $i3    := ''
+    SI ( _hay_checada = 0 )
+      carga_excepciones
+      $i3    := SUBSTR( $excepcion, 1, 1 )
+    FIN_SI
+    _retardos := _retardos + ( _calc_retardo / _fm )
+    _hrs_2    := _hrs_2 + ( _calc_extra / _fh )
+    _hrs_lab  := _hrs_lab + ( _calc_normal / _fh )
+
+    _faux := _fini + 3
+    calcula_dia
+    _e_jue := _ac1
+    _s_jue := _ac4
+    _h_jue := _calc_normal
+    _p_jue := _calc_retardo
+    _x_jue := _calc_extra
+    $i4    := ''
+    SI ( _hay_checada = 0 )
+      carga_excepciones
+      $i4    := SUBSTR( $excepcion, 1, 1 )
+    FIN_SI
+    _retardos := _retardos + ( _calc_retardo / _fm )
+    _hrs_2    := _hrs_2 + ( _calc_extra / _fh )
+    _hrs_lab  := _hrs_lab + ( _calc_normal / _fh )
+
+    _faux := _fini + 4
+    calcula_dia
+    _e_vie := _ac1
+    _s_vie := _ac4
+    _h_vie := _calc_normal
+    _p_vie := _calc_retardo
+    _x_vie := _calc_extra
+    $i5    := ''
+    SI ( _hay_checada = 0 )
+      carga_excepciones
+      $i5    := SUBSTR( $excepcion, 1, 1 )
+    FIN_SI
+    _retardos := _retardos + ( _calc_retardo / _fm )
+    _hrs_2    := _hrs_2 + ( _calc_extra / _fh )
+    _hrs_lab  := _hrs_lab + ( _calc_normal / _fh )
+
+    _faux := _fini + 5
+    calcula_dia
+    _e_sab := _ac1
+    _s_sab := _ac4
+    _h_sab := _calc_normal
+    _p_sab := _calc_retardo
+    _x_sab := _calc_extra
+    $i6    := ''
+    SI ( _hay_checada = 0 )
+      carga_excepciones
+      $i6    := SUBSTR( $excepcion, 1, 1 )
+    FIN_SI
+    _retardos := _retardos + ( _calc_retardo / _fm )
+    _hrs_2    := _hrs_2 + ( _calc_extra / _fh )
+    _hrs_lab  := _hrs_lab + ( _calc_normal / _fh )
+
+    _faux := _fini + 6
+    calcula_dia
+    _e_dom := _ac1
+    _s_dom := _ac4
+    _h_dom := _calc_normal
+    _p_dom := _calc_retardo
+    _x_dom := _calc_extra
+    $i7    := ''
+    SI ( _hay_checada = 0 )
+      carga_excepciones
+      $i7    := SUBSTR( $excepcion, 1, 1 )
+    FIN_SI
+    _retardos := _retardos + ( _calc_retardo / _fm )
+    _hrs_2    := _hrs_2 + ( _calc_extra / _fh )
+    _hrs_lab  := _hrs_lab + ( _calc_normal / _fh )
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   SI ( _hrs_2 > 9 )
+     _hrs_3 := _hrs_2 - 9
+     _hrs_2 := 9
+   FIN_SI
+   DECIMALES := 2
+   FORMATO_HORA := 6
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE', COL(50), FORMATO( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX'), COL(67), 'EMPPRIN':'TURNO', COL(72), 'EMPPRIN':'DEP_CLAVE' )
+   IMP ( COL(80), DER( .( _hrs_lab ), 10)  )
+   DECIMALES := 8
+   IMP ( COL(90), DER( HORA ( ( _hrs_2 * _fh ) + _ajuste ) , 10)  )
+   DECIMALES := 2
+   IMP ( COL(100), DER( .( _hrs_3 ), 10)  )
+   DECIMALES := 8
+   SI ( _retardos > 0 )
+     IMP ( COL(110), DER( HORA( _retardos * _fm ), 10)  )
+   FIN_SI
+   IMPRIME
+   DECIMALES := 2
+   IMP ( COL(2), 'E', COL(4), $i1, COL(5), HORA( _e_lun ), COL(16), $i2, COL(17), HORA( _e_mar ), COL(28), $i3, COL(29), HORA( _e_mie ), COL(40), $i4, COL(41), HORA( _e_jue ) )
+   IMP ( COL(52), $i5, COL(53), HORA( _e_vie ), COL(64), $i6, COL(65), HORA( _e_sab ), COL(76), $i7, COL(77), HORA( _e_dom ) )
+   IMP ( COL(85), 'CONFIRMO HABER LABORADO ESTE HORARIO' )
+   IMPRIME
+   IMP ( COL(2), 'S', COL(5), HORA( _s_lun ), COL(17), HORA( _s_mar ), COL(29), HORA( _s_mie ), COL(41), HORA( _s_jue ), COL(53), HORA( _s_vie ), COL(65), HORA( _s_sab ), COL(77), HORA( _s_dom ) )
+   IMPRIME
+   IMP ( COL(2), 'T', COL(5), HORA(_h_lun), COL(11), HORA(_x_lun), COL(17), HORA( _h_mar ), COL(23), HORA(_x_mar), COL(29), HORA( _h_mie ), COL(35), HORA(_x_mie) )
+   IMP ( COL(41), HORA( _h_jue ), COL(47), HORA(_x_jue), COL(53), HORA( _h_vie ), COL(59), HORA(_x_vie), COL(65), HORA( _h_sab ), COL(71), HORA(_x_sab), COL(77), HORA( _h_dom ), COL(83), HORA(_x_dom)  )
+   IMP ( COL(88), '_______________________________' )
+   IMPRIME
+#   FORMATO_HORA := 2
+   IMP ( COL(2), 'R', COL(5), HORA( _p_lun ), COL(17), HORA( _p_mar ), COL(29), HORA( _p_mie ), COL(41), HORA( _p_jue ), COL(53), HORA( _p_vie ), COL(65), HORA( _p_sab ), COL(77), HORA( _p_dom ) )
+   IMPRIME
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_incluir_dep := 1
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E.RFC, E.TURNO, E. CALENDARIO'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPRELOJ', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPINC', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPVACA', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   SI ( FUE_VIGENTE( _fi, _ff ) )
+    carga_checadas
+    SI (( _hr = 0 ) OR ( ( _hr = 1 ) AND ( _hrs_2 > 0 ) ) )
+       datos_trabajador
+    FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+TERMINA_REPORTE
+
+

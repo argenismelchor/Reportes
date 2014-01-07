@@ -1,0 +1,452 @@
+#DETALLADO POR CONCEPTOS Y X NOMINA
+#DETALLADO X CONCEPTO Y X NOMINA
+#VERSION 1.000
+#EXCEL
+#DESCRIPCION
+#Reporte que despliega el monto de un Concepto por un rango de periodos de nomina.
+#Este reporte debera ser generado solamente por un solo tipo de nomina.
+#FIN_DESCRIPCION
+_fi := 0
+_ff := 0
+NUEVO_PARAMETRO_SAL ('SALIDA','PANTALLA/IMPRESORA/EXCEL',$salida)
+NUEVO_PARAMETRO ( 'CONCEPTO(S)'  , '*', $conceptos)
+NUEVO_PARAMETRO ( 'PERIODO INICIAL', '', _pi)
+NUEVO_PARAMETRO ( 'PERIODO FINAL'  , '', _pf)
+NUEVO_PARAMETRO_CHEQ ( 'SOLO TOTALES'  , '', _solo_tot)
+NUEVO_PARAMETRO_SEL  ( 'CAMPO'  , 'TOTAL/CAPTURA 1/CAPTURA 2/CAPTURA 3', _campo )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+_ancho   := 12
+_col_ini := 40
+FORMATO_PESOS := 2
+FORMATO_FECHA := 2
+SI ( $salida = 'EXCEL' )
+  SALIDA := 'PANTALLA'
+SI_NO
+  SALIDA := $salida
+FIN_SI
+
+_ncol := 110
+RENGLONES:=65
+SI ( _solo_tot = 0 )
+  COLUMNAS := 80
+SI_NO
+  COLUMNAS := _ncol
+FIN_SI
+_nren     := 3
+$tot_conc := ''
+$conc     := ''
+_num      := 0
+_totales  := 0
+_col      := 0
+_col_act  := 2
+VAR_T ( &acums   )
+$tot      := ''
+PON_VALOR_TABLA( &acums, 1, 0, 'CONCEPTO' )
+$saux     := ''
+
+VAR_T ( &tots    )
+VAR_T ( &stots   )
+
+ENCABEZADO
+   IMPRIME
+   DECIMALES:=0
+   LETRA ( 'LETRA CONDENSADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), 'giro Ver 1.0' );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE' ));; IMPRIME
+   IMP ( CENTRA ('DETALLE DE CONCEPTO POR NOMINA'));; IMPRIME
+   LETRA ( 'LETRA CONDENSADA' )
+   SI ( _totales = 0 )
+     SI ( _solo_tot = 0 )
+       IMP ( REPITETXT('=',80));; IMPRIME
+       IMP ( COL(1), 'CLAVE', COL(13), 'NOMBRE COMPLETO' ) ;; IMPRIME
+       IMP ( COL(10), 'CLAVE', COL ( 17 ), 'CONCEPTO' )
+       _col_act := 2
+       MIENTRAS ( TRAE_VALOR_TABLA ( &acums, _col_act, 0 ) <> '' )
+         $saux := TRAE_VALOR_TABLA ( &acums, _col_act, 0 )
+         IMP ( COL( _col_ini + (( _col_act - 2 ) * _ancho ) ), DER( SUBSTR( $saux, 1, POS( '-', $saux ) - 1 ), _ancho ) )
+         _col_act := _col_act + 1
+       FIN_MIENTRAS
+       IMP ( COL( _col_ini + (( _col_act - 2 ) * _ancho ) ), DER( 'TOTAL', _ancho ) )
+       IMPRIME
+       IMP ( REPITETXT('-', _col_ini + _ancho + (( _col_act - 2 ) * _ancho ) ) );; IMPRIME
+     SI_NO
+       IMP ( REPITETXT('=',_ncol)) ;; IMPRIME
+     FIN_SI
+   SI_NO
+     IMP ( COL(1), 'CLAVE', COL(10), 'CONCEPTO' )
+     _col_act := 1
+     MIENTRAS( TRAE_VALOR_TABLA( &stots, _col_act, 0 ) <> '' )
+       $saux := TRAE_VALOR_TABLA ( &stots, _col_act, 0 )
+       IMP ( COL( _col_ini + (( _col_act - 2 ) * _ancho ) ), DER( SUBSTR( $saux, 1, POS( '-', $saux ) - 1 ), _ancho ) )
+       _col_act := _col_act + 1
+     FIN_MIENTRAS
+     IMPRIME
+     IMP ( REPITETXT('-', COLUMNAS ) );; IMPRIME
+   FIN_SI
+   IMPRIME
+   DECIMALES := 2
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA CONDENSADA' )
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA (HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA CONDENSADA' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &totales )
+VAR_T ( &indices )
+VAR_T ( &conceptos )
+_num_ind  := 0
+$tipo     := ''
+_cont     := 0
+_imp      := 0
+$indice   := ''
+_col_act  := 0
+$ind_act  := ''
+$nom_ind  := ''
+_ind      := 0
+$clave    := ''
+$concepto := ''
+$fecha_per:= ''
+_reng     := 0
+_col      := 0
+$tot      := ''
+$per      := ''
+$indice_valor := ''
+_ind_conc := 0
+_ind_act  := 0
+_sub_total := 0
+_saltar_hoja := 0
+
+SUB_RUTINA carga_conceptos
+  $tot_conc := $conceptos
+  LIMPIA_TABLA( &conceptos )
+  REPITE
+    SI ( $tot_conc = '*' )
+      PRIMER_REGISTRO( 'CONCEPTO' )
+      MIENTRAS( FIN_BASE( 'CONCEPTO' ) = FALSO )
+        $conc := 'CONCEPTO':'CLAVE'
+        AGREGA_VALOR_COL( &conceptos, 0, $conc )
+        SIGUIENTE_REGISTRO( 'CONCEPTO' )
+      FIN_MIENTRAS
+      $tot_conc := ''
+    SI_NO
+      SI ( POS(',', $tot_conc ) > 0 )
+        $conc := SUBSTR( $tot_conc, 1, POS(',', $tot_conc ) - 1 )
+        $tot_conc := ELIMINA( $tot_conc, 1, POS(',', $tot_conc ) )
+      SI_NO
+        $conc := $tot_conc
+        $tot_conc := ''
+      FIN_SI
+      AGREGA_VALOR_COL( &conceptos, 0, $conc )
+    FIN_SI
+  HASTA( $tot_conc = '' )         
+  $tot_conc := $conceptos
+FIN_SUB_RUTINA
+
+SUB_RUTINA formato_trabajador
+   _nren := _nren + 1
+   DECIMALES := 2   
+   SI ( _solo_tot = 0 )
+     SI ( _saltar_hoja = 1 )
+       AVANZA_HOJA
+       _saltar_hoja := 0
+     FIN_SI
+     LETRA ( 'LETRA CONDENSADA' )
+     IMP ( COL(1), SUBSTR('EMPPRIN':'CLAVE', 1, 10 ), COL(10), 'EMPPRIN':'NOMBRE' )
+     IMPRIME
+
+     SI ( $salida = 'EXCEL' )
+       EXCEL ( 'PON_VALOR', 1, _nren, SUBSTR('EMPPRIN':'CLAVE', 1, 10 ))
+       EXCEL ( 'PON_VALOR', 2, _nren, 'EMPPRIN':'NOMBRE' )
+       _nren := _nren + 1
+     FIN_SI
+   FIN_SI
+
+   _ind_act := TRAE_INDICE_COL ( &acums, 0, $clave )
+   MIENTRAS ( TRAE_VALOR_TABLA ( &acums, 0, _ind_act ) = $clave )
+      SI ( _solo_tot = 0 )
+        IMP ( COL ( 10 ), TRAE_VALOR_TABLA ( &acums, 1, _ind_act ))
+      FIN_SI
+      $concepto := TRAE_VALOR_TABLA ( &acums, 1, _ind_act )
+      SI ( TRAE_REGISTRO( 'CONCEPTO', $concepto ) )
+        $concepto := 'CONCEPTO':'DESCRIPCION'
+      SI_NO
+        $concepto := 'DESCONOCIDO'
+      FIN_SI
+      SI ( _solo_tot = 0 )
+        IMP ( COL ( 17 ), $concepto )
+     
+        SI ( $salida = 'EXCEL' )
+          EXCEL ( 'PON_VALOR', 2, _nren, TRAE_VALOR_TABLA ( &acums, 1, _ind_act ) )
+          EXCEL ( 'PON_VALOR', 3, _nren, $concepto )
+        FIN_SI
+      FIN_SI
+      $concepto := TRAE_VALOR_TABLA ( &acums, 1, _ind_act )
+      _col_act := 2
+      _sub_total := 0
+      MIENTRAS ( TRAE_VALOR_TABLA ( &acums, _col_act, 0 ) <> '' )
+        SI ( _solo_tot = 0 )
+          IMP ( COL( _col_ini + (( _col_act - 2 ) * _ancho ) ), DER( $( VALOR( TRAE_VALOR_TABLA ( &acums, _col_act, _ind_act ) ) ), _ancho ) )
+        FIN_SI
+        INCREMENTA_TABLA( &stots, TRAE_VALOR_TABLA ( &acums, _col_act, 0 ), $concepto, VALOR( TRAE_VALOR_TABLA ( &acums, _col_act, _ind_act ) ) )
+        INCREMENTA_TABLA( &tots, TRAE_VALOR_TABLA ( &acums, _col_act, 0 ), $concepto, VALOR( TRAE_VALOR_TABLA ( &acums, _col_act, _ind_act ) ) )
+
+        SI (( $salida = 'EXCEL' ) AND ( _solo_tot = 0 ))
+           EXCEL ( 'PON_VALOR', _col_act + 2, _nren, VALOR( TRAE_VALOR_TABLA ( &acums, _col_act, _ind_act ) ) )
+        FIN_SI
+
+        _sub_total := _sub_total + VALOR( TRAE_VALOR_TABLA ( &acums, _col_act, _ind_act ) )
+        _col_act := _col_act + 1
+      FIN_MIENTRAS
+
+      SI ( _solo_tot = 0 )
+        IMP ( COL( _col_ini + (( _col_act - 2 ) * 12 ) ), DER( $( _sub_total ), _ancho ) )
+        IMPRIME
+      FIN_SI
+
+       _nren := _nren + 1
+      _ind_act := _ind_act + 1
+   FIN_MIENTRAS 
+   #IMPRIME
+   
+FIN_SUB_RUTINA
+
+_col := 0
+$indice_valor := ''
+$indice_texto := ''
+
+SUB_RUTINA sub_totales
+ ORDENA_COLUMNA( &stots, 0 )
+ SI ( TRAE_VALOR_TABLA( &stots, 1, 0 ) <> '' )
+  _totales := 1
+  _totales := PAGINA
+  SI (( PAGINA > 1 ) OR ( _saltar_hoja = 1 ))
+    AVANZA_HOJA
+  FIN_SI
+  LETRA ( 'LETRA CONDENSADA' )
+  IMPRIME 
+  IMP ( 'TOTALES ' + $indice + ' --> ' + $indice_valor + '  ' + $indice_texto )
+  IMPRIME
+  IMPRIME
+  _reng     := 1
+  _col      := 0
+  MIENTRAS( TRAE_VALOR_TABLA( &stots, 0, _reng ) <> '' )
+    SI ( TRAE_REGISTRO( 'CONCEPTO', TRAE_VALOR_TABLA( &stots, 0, _reng ) ) )
+      $concepto := 'CONCEPTO':'DESCRIPCION'
+    SI_NO
+      $concepto := 'DESCONOCIDO'
+    FIN_SI
+    IMP ( COL(1), TRAE_VALOR_TABLA( &stots, 0, _reng ) )
+    IMP ( COL(10), $concepto )
+    DECIMALES := 2
+    _col := 1
+    MIENTRAS( TRAE_VALOR_TABLA( &stots, _col, 0 ) <> '' )
+       $saux := TRAE_VALOR_TABLA ( &stots, _col, 0 )
+       IMP ( COL( _col_ini + (( _col - 2 ) * _ancho ) ), DER( $( VALOR( TRAE_VALOR_TABLA( &stots, _col, _reng ) ) ), _ancho ) )
+       _col := _col + 1
+    FIN_MIENTRAS  
+    IMPRIME
+    _reng := _reng + 1
+  FIN_MIENTRAS
+  LIMPIA_TABLA ( &stots )
+  _totales := 0
+  _saltar_hoja := 1
+ FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+SI ( _solo_tot = 1 )
+  _omitir_encabezados   := 1
+  _omitir_sub_totales   := 1
+  _omitir_total_general := 1
+FIN_SI
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+SI ( $salida = 'EXCEL')
+  EXCEL ( 'PON_VALOR', 1, 1, 'CLAVE' )
+  EXCEL ( 'PON_VALOR', 2, 1, 'NOMBRE COMPLETO' )
+  EXCEL ( 'PON_VALOR', 3, 1, 'FECHA' )
+  EXCEL ( 'PON_VALOR', 4, 1, 'CONCEPTO' )
+  EXCEL ( 'PON_VALOR', 5, 1, 'MONTO' )
+FIN_SI
+
+#Definicion de variables en base a los parametros
+SALIDA    := $salida
+
+#Definicion de la tabla de indices utilizados
+REPITE
+  $nom_ind := TRAE_VALOR_TABLA( &in, 2, _num_ind )
+  $ind_act := TRAE_VALOR_TABLA( &in, 0, _num_ind )
+  SI (( $nom_ind <> '' ) AND ( $ind_act = '1' ))
+    AGREGA_VALOR_COL( &indices, 0, $nom_ind )
+  FIN_SI
+  _num_ind := _num_ind + 1
+HASTA(  $nom_ind = '' )
+AGREGA_VALOR_COL( &indices, 0, 'TOTAL' )
+
+ABRE_BASE ( 'TIPONOM' )
+SI ( TRAE_VALOR_TABLA ( &in, 11, 6 ) = '' )
+   $tipo := '"' + 'TIPONOM':'CLAVE' + '"'
+   PON_VALOR_TABLA ( &in, 11, 6, $tipo )
+FIN_SI
+
+SI ( TRAE_REGISTRO ( 'TIPONOM', QUITA_CARACTER ( '"', TRAE_VALOR_TABLA ( &in, 11, 6 ))) = FALSO )
+   MENSAJE ( 'EL TIPO DE NOMINA ES INVALIDO' )
+   TERMINA_REPORTE
+FIN_SI
+
+ABRE_BASE ( 'PERIODO' )
+SI ( TRAE_REGISTRO ( 'PERIODO', QUITA_CARACTER ( '"', TRAE_VALOR_TABLA ( &in, 11, 6 )), 'TIPONOM':'ACTUAL' ) = FALSO )
+   MENSAJE ( 'EL PERIODO ACTUAL DEL TIPO DE NOMINA ES INVALIDO' )
+   TERMINA_REPORTE
+FIN_SI
+
+SI ( _pi = 0 )
+   _pi := 'TIPONOM':'ACTUAL'
+FIN_SI
+
+SI ( _pf = 0 )
+   _pf := 'TIPONOM':'ACTUAL'
+FIN_SI
+
+SI ( _pi > _pf )
+   MENSAJE ( 'EL PERIODO INICIAL DEBE SER MENOR QUE EL FINAL' )
+   TERMINA_REPORTE
+FIN_SI
+
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN','EMPNOM', 'CLAVE' )
+
+_per_act  := _pi
+DECIMALES := 2
+MIENTRAS ( _per_act <= _pf )
+   SI ( CAMBIA_PERIODO ( QUITA_CARACTER ( '"', TRAE_VALOR_TABLA ( &in, 11, 6 )), _per_act, FALSO ) = FALSO )
+      MENSAJE ( 'EL PERIODO ' + . ( _per_act ) + ' NO SE PUDO ABRIR' )
+   SI_NO
+      SI ( TRAE_REGISTRO ( 'PERIODO', QUITA_CARACTER ( '"', TRAE_VALOR_TABLA ( &in, 11, 6 )), _per_act ) = FALSO )
+         MENSAJE ( 'EL PERIODO ' + . ( _per_act ) + ' NO SE ENCUENTRA EN EL CATALOGO' )
+         TERMINA_REPORTE
+      FIN_SI
+      DECIMALES := 0
+      $fecha_per := DER( .('PERIODO':'NUMERO'), 4) + ' - ' +  FECHA ( 'PERIODO':'FECHA FINAL' )
+      DECIMALES := 2
+      PRIMER_REGISTRO ( 'EMPPRIN' )
+      carga_conceptos
+      MUESTRA_AVANCE ( 'EMPPRIN', 'Procesando...' )
+      MIENTRAS ( FIN_BASE('EMPPRIN') = FALSO )
+         PRIMER_REGISTRO ( 'NOMINA' )
+         _ind_conc := 0
+         REPITE
+         $conc := TRAE_VALOR_TABLA( &conceptos, 0, _ind_conc )
+         SI ( _campo = 0 )
+            SI ( TOTAL ( $conc ) <> 0 )
+               DECIMALES := 2
+               SI ( _solo_tot = 1 )
+                 INCREMENTA_TABLA ( &acums, $fecha_per,  'EMPPRIN':'CLAVE' + '#' + $conc, TOTAL ( $conc ) )
+               SI_NO
+                 INCREMENTA_TABLA ( &acums, $fecha_per,  'EMPPRIN':'CLAVE' + '#' + $conc, TOTAL ( $conc ) )
+               FIN_SI
+            FIN_SI
+         SI_NO
+            SI ( _campo = 1 )
+               SI ( CAP1 ( $conc ) <> 0 )
+                  REPITE
+                     DECIMALES := 2 
+                     SI ( _solo_tot = 1 )
+                       INCREMENTA_TABLA( &stots, 'TOTAL', $conc, CAP1 ( $conc ) )
+                       INCREMENTA_TABLA( &tots, 'TOTAL', $conc, CAP1 ( $conc ) )
+                     SI_NO
+                       INCREMENTA_TABLA ( &acums, $fecha_per, 'EMPPRIN':'CLAVE' + '#' + $conc, CAP1 ( $conc ))
+                     FIN_SI
+                     SIGUIENTE_REGISTRO ( 'NOMINA' )
+                  HASTA ( 'NOMINA':'CLAVE' <> $conc )
+               FIN_SI
+            SI_NO
+               SI ( _campo = 2 )
+                  SI ( CAP2 ( $conc ) <> 0 )
+                     REPITE
+                        DECIMALES := 2
+                        SI ( _solo_tot = 1 )
+                          INCREMENTA_TABLA( &stots, 'TOTAL', $conc, CAP2 ( $conc ) )
+                          INCREMENTA_TABLA( &tots, 'TOTAL', $conc, CAP2 ( $conc ) )
+                        SI_NO
+                          INCREMENTA_TABLA ( &acums, $fecha_per, 'EMPPRIN':'CLAVE'  + '#' + $conc , CAP2 ( $conc ))
+                        FIN_SI
+                        SIGUIENTE_REGISTRO ( 'NOMINA' )
+                     HASTA ( 'NOMINA':'CLAVE' <> $conc )
+                  FIN_SI
+               SI_NO
+                  SI ( _campo = 3 )
+                     SI ( CAP3 ( $conc ) <> 0 )
+                        REPITE
+                           DECIMALES := 2
+                           SI ( _solo_tot = 1 )
+                             INCREMENTA_TABLA( &stots, 'TOTAL', $conc, CAP3 ( $conc ) )
+                             INCREMENTA_TABLA( &tots, 'TOTAL', $conc, CAP3 ( $conc ) )
+                           SI_NO
+                             INCREMENTA_TABLA ( &acums, $fecha_per, 'EMPPRIN':'CLAVE'  + '#' + $conc , CAP3 ( $conc ))
+                           FIN_SI
+                           SIGUIENTE_REGISTRO ( 'NOMINA' )
+                        HASTA ( 'NOMINA':'CLAVE' <> $conc )
+                     FIN_SI
+                  FIN_SI
+               FIN_SI
+            FIN_SI
+         FIN_SI
+         _ind_conc := _ind_conc + 1
+         HASTA( TRAE_VALOR_TABLA( &conceptos, 0, _ind_conc ) = '' )
+         SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+      FIN_MIENTRAS
+   FIN_SI
+   _per_act := _per_act + 1
+FIN_MIENTRAS
+
+SI ( CAMBIA_PERIODO ( QUITA_CARACTER ( '"', TRAE_VALOR_TABLA ( &in, 11, 6 )), 'TIPONOM':'ACTUAL', FALSO ) = FALSO )
+   MENSAJE ( 'EL PERIODO ACTUAL NO SE PUDO ABRIR' )
+   TERMINA_REPORTE
+FIN_SI
+
+#SI ( TRAE_REGISTRO ( 'CONCEPTO', $conc ))
+#   $concepto := 'CONCEPTO':'DESCRIPCION'
+#FIN_SI
+
+# COPIA EL CONCEPTO A LA SIGUIENTE COLUMNA
+_ind := 1
+$valor := ''
+MIENTRAS( TRAE_VALOR_TABLA( &acums, 0, _ind ) <> '' )
+  $valor := TRAE_VALOR_TABLA( &acums, 0, _ind )
+  $conc := ELIMINA( $valor, 1, POS('#', $valor ) )
+  PON_VALOR_TABLA( &acums, 0, _ind, SUBSTR( $valor, 1, POS('#', $valor ) - 1 )  )
+  PON_VALOR_TABLA( &acums, 1, _ind, $conc )
+  _ind := _ind + 1
+FIN_MIENTRAS
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   $clave := 'EMPPRIN':'CLAVE'
+   _ind := TRAE_INDICE_COL ( &acums, 0, $clave )
+   SI ( _ind > 0 )
+      datos_trabajador
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte
+
+$indice := 'GENERALES'
+ASIGNA_TABLA( &tots, &stots )
+sub_totales
+
+TERMINA_REPORTE

@@ -1,0 +1,97 @@
+#ACUMULACION INDIVIDUAL DE KARDEX
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Proceso para acumular o desacumular el kárdex activo de Nómina a un empleado
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA'  , $salida   )
+NUEVO_PARAMETRO_SEL ( 'PROCESO', 'ACUMULAR/DESACUMULAR', _acumular )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'PROCESO DE ACUMULACION Y DESACUMULACION DE NOMINAS' )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( COL ( 1 ), 'CLAVE', COL ( 10 ), 'NOMBRE' ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+$mes := ''
+
+SUB_RUTINA formato_trabajador
+   DECIMALES := 2
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   PRIMER_REGISTRO ( 'NOMINA' )
+   $mes := 'PERIODO':'MES DE ACUMULACION'
+   MIENTRAS ( FIN_BASE ( 'NOMINA' ) = FALSO )
+     SI ( 'NOMINA':'TOTAL' <> 0 )
+      SI ( TRAE_REGISTRO ( 'EMPACUM', 'EMPPRIN':'CLAVE', 'NOMINA':'CLAVE' ) = FALSO )
+        AGREGA_REGISTRO( 'EMPACUM' )
+        'EMPACUM':'CLAVE' := 'EMPPRIN':'CLAVE'
+        'EMPACUM':'CONCEPTO' := 'NOMINA':'CLAVE'
+      FIN_SI
+      IMP ( COL ( 10 ), 'NOMINA':'CLAVE' )
+
+      SI ( TRAE_REGISTRO ( 'CONCEPTO', 'NOMINA':'CLAVE' ))
+         IMP ( COL ( 20 ), 'CONCEPTO':'DESCRIPCION' )
+      FIN_SI
+      IMP ( COL ( 50 ), DER ( $( 'NOMINA':'TOTAL' ), 10 ))
+      IMPRIME
+      DECIMALES := 2
+      SI ( _acumular = 0 )
+         'EMPACUM':$mes := 'EMPACUM':$mes + 'NOMINA':'TOTAL'
+      SI_NO
+         'EMPACUM':$mes := 'EMPACUM':$mes - 'NOMINA':'TOTAL'
+      FIN_SI
+      GRABA_BASE ( 'EMPACUM' )
+     FIN_SI
+     SIGUIENTE_REGISTRO ( 'NOMINA' )
+   FIN_MIENTRAS
+   IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina       := 1
+_omitir_encabezados   := 1
+_omitir_sub_totales   := 1
+_omitir_total_general := 1
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#SI (( $cve_inicial <> $cve_final ) O ( $cve_inicial = '' ))
+#   MENSAJE ( 'DEBE SELECCIONA UN SOLO EMPLEADO' )
+#   TERMINA_REPORTE
+#FIN_SI
+
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

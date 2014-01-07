@@ -1,0 +1,221 @@
+#IMPORTACION DATOS R.H.
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Importacion datos de una archivo de texto ALTAS2.TXT del directorio de trabajo con el siguiente formato:
+#CAMPO       COL LON JUST. FORMATO
+#CLAVE         1  10  IZQ
+#PADRE        11  30  IZQ
+#MADRE        41  30  IZQ
+#CALLE        71  30  IZQ
+#NUMERO      101   7  IZQ
+#INTERIOR    108   7  IZQ
+#COLONIA     115  30  IZQ
+#SECTOR      145  30  IZQ
+#CODIGO      175  10  IZQ
+#CIUDAD      185  25  IZQ
+#ESTADO      210   4  IZQ
+#TELEFONO    214  11  IZQ
+#SEXO        225   2  IZQ
+#LUGAR NAC.  227  25  IZQ
+#FECHA NAC.  252   9  IZQ DDMMAAAA
+#EDO. CIVIL  261   2  IZQ
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO ('ARCHIVO DE ALTA', DIRECTORIO_TRABAJO + '\ALTAS2.TXT', $archivo )
+LEE_PARAMETROS
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE') ) ;; IMPRIME
+   IMP ( CENTRA ('IMPORTACION DE DATOS SECUNDARIOS')) ;; IMPRIME
+   IMP ( REPITETXT('=',90)) ;; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE', COL(40), 'ACCION' );; IMPRIME
+   IMP ( REPITETXT('-',90) );; IMPRIME;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+CREA_BASE_TXT ( 'TABLA', $archivo, 'FIJO' )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'CLAVE' , 1   , 10  )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'PADRE' , 11  , 30  )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'MADRE' , 41  , 30  )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'CALLE' , 71  , 30 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'NUMERO', 101 , 7 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'INTE'  , 108 , 7 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'COLO'  , 115 , 30 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'SEC'   , 145 , 30 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'CP'    , 175 , 10 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'CD'    , 185 , 25 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'EDO'   , 210 , 4 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'TEL'   , 214 , 11 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'SEXO'  , 225 , 2 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'LNAC'  , 227 , 25 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'FNAC'  , 252 , 9 )
+DEFINE_CAMPO_TXT ( 'TABLA' , 'ECIV'  , 261 , 2 )
+
+
+ABRE_BASE_TXT ( 'TABLA', 'EDICION' )
+
+ABRE_BASE   ( 'EMPPRIN' )
+USA_ARCHIVO ( 'EMPPRIN')
+ABRE_BASE   ( 'EMPRH' )
+ABRE_BASE   ( 'EMPFAM' )
+
+# DECLARACION DE VARIABLES  GLOBALES
+$saux   := ''
+_dia    := 0
+_mes    := 0
+_año    := 0
+_fecha  := 0
+$tipo   := ''
+_mas    := 0
+_act    := 0
+
+PRIMER_REGISTRO ( 'TABLA' )
+MIENTRAS ( FIN_BASE ( 'TABLA' ) = FALSO )
+
+######################################################################    ASIGNACION DATOS DE R.H.
+
+ SI ( TRAE_REGISTRO( 'EMPPRIN', 'TABLA':'CLAVE' ) )
+
+   SI ( TRAE_REGISTRO( 'EMPRH', 'TABLA':'CLAVE' ) = FALSO )
+     AGREGA_REGISTRO ('EMPRH')
+     'EMPRH':'CLAVE' := 'TABLA':'CLAVE'
+     $tipo := 'AGREGANDO '
+     _mas := _mas + 1
+   SI_NO
+     $tipo := 'ACTUALIZANDO '
+     _act := _act + 1
+   FIN_SI
+
+   IMP ( COL(1), 'TABLA':'CLAVE', COL (10), SUBSTR( 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM' + ' ' + 'EMPPRIN':'NOMBREN', 1, 28) )
+   IMP ( COL(40), $tipo ) ;; IMPRIME
+#######################################################    ASIGNACION CALLE
+
+   'EMPRH':'CALLE' := 'TABLA':'CALLE'
+
+#######################################################    ASIGNACION NUMERO
+
+   'EMPRH':'NUMERO' := 'TABLA':'NUMERO'
+
+#######################################################    ASIGNACION INTERIOR
+   
+   'EMPRH':'INTERIOR' := 'TABLA':'INTE'
+
+#######################################################    ASIGNACION COLONIA
+
+   'EMPRH':'COLONIA' := 'TABLA':'COLO'
+
+#######################################################    ASIGNACION SECTOR
+   
+   'EMPRH':'SECTOR' := 'TABLA':'SEC'
+
+#######################################################    ASIGNACION CP
+
+   'EMPRH':'CP' := 'TABLA':'CP'
+
+#######################################################    ASIGNACION CIUDAD
+
+   'EMPRH':'MUNICIPIO' := 'TABLA':'CD'
+
+#######################################################    ASIGNACION ESTADO
+
+   'EMPRH':'ESTADO' := 'TABLA':'EDO'
+
+#######################################################    ASIGNACION TELEFONO 1
+
+   'EMPRH':'TELEFONO_1' := 'TABLA':'TEL'
+
+#######################################################    ASIGNACION FECHA NACIMIENTO
+
+  _dia := VALOR ( SUBSTR( 'TABLA':'FNAC', 1, 2 ) )
+  _mes := VALOR ( SUBSTR( 'TABLA':'FNAC', 3, 2 ) )
+  _año := VALOR ( SUBSTR( 'TABLA':'FNAC', 5, 4 ) )
+  _fecha := CALCULA_FECHA ( _año, _mes, _dia )  
+  'EMPRH':'FECHA_NACIMIENTO' := _fecha
+
+#######################################################    ASIGNACION LUGAR NACIMIENTO
+
+   'EMPRH':'LUGAR_NACIMIENTO' := 'TABLA':'LNAC'
+
+#######################################################    ASIGNACION ESTADO CIVIL
+
+   'EMPRH':'ESTADO_CIVIL' := 'TABLA':'ECIV'
+
+#######################################################    ASIGNACION SEXO
+
+   'EMPRH':'SEXO' := 'TABLA':'SEXO'
+
+#######################################################
+
+   GRABA_BASE ('EMPRH')
+
+######################################################################    ASIGNACION DATOS DE FAMILIA PADRE
+
+   SI ( 'TABLA':'PADRE' <> '' )
+     AGREGA_REGISTRO ('EMPFAM')
+     'EMPFAM':'CLAVE' := 'TABLA':'CLAVE'
+  
+  #######################################################    ASIGNACION NOMBRE PADRE
+  
+     'EMPFAM':'NOMBRE' := 'TABLA':'PADRE'
+  
+  #######################################################    ASIGNACION PARENTESCO DEL PADRE
+  
+     'EMPFAM':'PARENTESCO' := 'PADRE'
+  
+  #######################################################    ASIGNACION SEXO DEL PADRE
+  
+     'EMPFAM':'SEXO' := 'M'
+  
+     GRABA_BASE ( 'EMPFAM' )
+     IMP ( COL(40), 'AGREGANDO', COL(50), 'EMPFAM', COL(60), 'PADRE' ) ;; IMPRIME
+   FIN_SI
+
+######################################################################    ASIGNACION DATOS DE FAMILIA MADRE
+
+   SI ( 'TABLA':'MADRE' <> '' )
+     AGREGA_REGISTRO ('EMPFAM')
+     'EMPFAM':'CLAVE' := 'TABLA':'CLAVE'
+  
+  #######################################################    ASIGNACION 
+  
+     'EMPFAM':'NOMBRE' := 'TABLA':'MADRE'
+  
+  #######################################################    ASIGNACION
+  
+     'EMPFAM':'PARENTESCO' := 'MADRE'
+  
+  #######################################################    ASIGNACION
+  
+     'EMPFAM':'SEXO' := 'F'
+  
+     GRABA_BASE ( 'EMPFAM' )
+     IMP ( COL(40), 'AGREGANDO', COL(50), 'EMPFAM', COL(60), 'MADRE' ) ;; IMPRIME
+  FIN_SI
+
+ SI_NO
+   IMP ( COL(1), 'TABLA':'CLAVE', COL(40), 'ERROR', COL(50), 'EMPLEADO NO ENCONTRADO...' ) ;; IMPRIME
+ FIN_SI
+ SIGUIENTE_REGISTRO( 'TABLA' )
+FIN_MIENTRAS
+
+IMPRIME ;; IMPRIME
+DECIMALES := 0
+IMP ( 'REGISTROS AGREGADOS    : ', _mas ) ;; IMPRIME
+IMP ( 'REGISTROS ACTUALIZADOS : ', _act ) ;; IMPRIME
+
+TERMINA_REPORTE

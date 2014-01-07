@@ -1,0 +1,142 @@
+$kardex_faltas := ''
+_ini_kardex  := 0
+_fin_kardex  := 0
+_faux_kardex := 0
+_ini_aux     := 0
+_fin_aux     := 0
+$incidencia  := ''
+$dia_semana  := ''
+VAR_T( &kardex_faltas )
+VAR_T( &descansos )
+_en_base_turno := 0
+
+SUB_RUTINA carga_kardex
+  LIMPIA_TABLA( &kardex_faltas )  
+
+  #CARGA LAS FALTAS
+  _ini_aux := _ini_kardex
+  MIENTRAS( _ini_aux <= _fin_kardex )
+    SI ( DIAS_INHABILES( _ini_aux, _ini_aux, 'EMPPRIN':'CALENDARIO', 0, 0 ) > 0 )
+      PON_VALOR_TABLA( &kardex_faltas, 0, _ini_aux - _ini_kardex, 'D' )
+    FIN_SI
+    _ini_aux := _ini_aux + 1
+  FIN_MIENTRAS
+
+  #CARGA LAS FALTAS
+  PRIMER_REGISTRO( 'EMPAUS' )
+  MIENTRAS( FIN_BASE( 'EMPAUS' ) = FALSO )
+    SI (( 'EMPAUS':'FECHAI' <= _fin_kardex ) AND ( 'EMPAUS':'FECHAF' >= _ini_kardex ))
+      _ini_aux := 'EMPAUS':'FECHAI'
+      SI ( _ini_aux < _ini_kardex )
+        _ini_aux := _ini_kardex
+      FIN_SI
+      _fin_aux := 'EMPAUS':'FECHAF'
+      SI ( _fin_aux > _fin_kardex )
+        _fin_aux := _fin_kardex
+      FIN_SI
+      _faux_kardex := _ini_aux
+      MIENTRAS( _faux_kardex <= _fin_aux )
+        PON_VALOR_TABLA( &kardex_faltas, 0, _faux_kardex - _ini_kardex, 'EMPAUS':'TIPO' )
+        _faux_kardex := _faux_kardex + 1
+      FIN_MIENTRAS
+    FIN_SI
+    SIGUIENTE_REGISTRO( 'EMPAUS' )
+  FIN_MIENTRAS
+
+  #CARGA LAS INCAPACIDADES
+  PRIMER_REGISTRO( 'EMPINC' )
+  MIENTRAS( FIN_BASE( 'EMPINC' ) = FALSO )
+    SI (( 'EMPINC':'FECHA' <= _fin_kardex ) AND ( 'EMPINC':'FECHA' + 'EMPINC':'DURACION' - 1 >= _ini_kardex ))
+      _ini_aux := 'EMPINC':'FECHA'
+      SI ( _ini_aux < _ini_kardex )
+        _ini_aux := _ini_kardex
+      FIN_SI
+      _fin_aux := 'EMPINC':'FECHA' + 'EMPINC':'DURACION' - 1
+      SI ( _fin_aux > _fin_kardex )
+        _fin_aux := _fin_kardex
+      FIN_SI
+      _faux_kardex := _ini_aux
+      MIENTRAS( _faux_kardex <= _fin_aux )
+        PON_VALOR_TABLA( &kardex_faltas, 0, _faux_kardex - _ini_kardex, 'I' )
+        _faux_kardex := _faux_kardex + 1
+      FIN_MIENTRAS
+    FIN_SI
+    SIGUIENTE_REGISTRO( 'EMPINC' )
+  FIN_MIENTRAS
+
+  #CARGA LAS VACACIONES
+  PRIMER_REGISTRO( 'EMPVACA' )
+  MIENTRAS( FIN_BASE( 'EMPVACA' ) = FALSO )
+    SI (( 'EMPVACA':'FECHA' <= _fin_kardex ) AND ( 'EMPVACA':'FECHA FINAL' >= _ini_kardex ))
+      _ini_aux := 'EMPVACA':'FECHA'
+      SI ( _ini_aux < _ini_kardex )
+        _ini_aux := _ini_kardex
+      FIN_SI
+      _fin_aux := 'EMPVACA':'FECHA FINAL'
+      SI ( _fin_aux > _fin_kardex )
+        _fin_aux := _fin_kardex
+      FIN_SI
+      _faux_kardex := _ini_aux
+      MIENTRAS( _faux_kardex <= _fin_aux )
+        PON_VALOR_TABLA( &kardex_faltas, 0, _faux_kardex - _ini_kardex, 'V' )
+        _faux_kardex := _faux_kardex + 1
+      FIN_MIENTRAS
+    FIN_SI
+    SIGUIENTE_REGISTRO( 'EMPVACA' )
+  FIN_MIENTRAS
+
+  #CARGA RETARDOS
+  PRIMER_REGISTRO( 'EMPRET' )
+  MIENTRAS( FIN_BASE( 'EMPRET' ) = FALSO )
+    SI (( 'EMPRET':'FECHA' <= _fin_kardex ) AND ( 'EMPRET':'FECHA' >= _ini_kardex ))
+      _ini_aux := 'EMPRET':'FECHA'
+      SI ( _ini_aux < _ini_kardex )
+        _ini_aux := _ini_kardex
+      FIN_SI
+      _fin_aux := 'EMPRET':'FECHA'
+      SI ( _fin_aux > _fin_kardex )
+        _fin_aux := _fin_kardex
+      FIN_SI
+      _faux_kardex := _ini_aux
+      MIENTRAS( _faux_kardex <= _fin_aux )
+        PON_VALOR_TABLA( &kardex_faltas, 0, _faux_kardex - _ini_kardex, 'R' )
+        _faux_kardex := _faux_kardex + 1
+      FIN_MIENTRAS
+    FIN_SI
+    SIGUIENTE_REGISTRO( 'EMPRET' )
+  FIN_MIENTRAS
+
+  #CARGA_DESCANSOS EN BASE AL TURNO DONDE EL DESCANSO ESTA REPRESENTADO POR LA HORA DE SALIDA EN 0.
+  SI ( _en_base_turno = 1 )
+    SI ( TRAE_REGISTRO( 'TURNO1', 'EMPPRIN':'TURNO' ) )
+      _ini_aux := _ini_kardex
+      MIENTRAS( _ini_aux <= _fin_kardex )
+        SI ( DIA_SEMANA( _ini_aux ) = 1 ) $dia_semana := 'DOM' FIN_SI
+        SI ( DIA_SEMANA( _ini_aux ) = 2 ) $dia_semana := 'LUN' FIN_SI
+        SI ( DIA_SEMANA( _ini_aux ) = 3 ) $dia_semana := 'MAR' FIN_SI
+        SI ( DIA_SEMANA( _ini_aux ) = 4 ) $dia_semana := 'MIE' FIN_SI
+        SI ( DIA_SEMANA( _ini_aux ) = 5 ) $dia_semana := 'JUE' FIN_SI
+        SI ( DIA_SEMANA( _ini_aux ) = 6 ) $dia_semana := 'VIE' FIN_SI
+        SI ( DIA_SEMANA( _ini_aux ) = 7 ) $dia_semana := 'SAB' FIN_SI
+        $dia_semana := 'SALIDA_' + $dia_semana
+        DECIMALES := 2
+        SI ( FRAC( 'TURNO1':$dia_semana ) = 0 )
+          PON_VALOR_TABLA( &kardex_faltas, 0, _ini_aux - _ini_kardex, 'D' )
+        FIN_SI
+        _ini_aux := _ini_aux + 1
+      FIN_MIENTRAS
+    FIN_SI
+  FIN_SI
+  
+  #ASIGNA LA VARIABLE DE KARDEX
+  $kardex_faltas := ''
+  _ini_aux := _ini_kardex
+  MIENTRAS( _ini_aux <= _fin_kardex )
+     $incidencia := SUBSTR( TRAE_VALOR_TABLA( &kardex_faltas, 0, _ini_aux - _ini_kardex), 1, 1 )
+     SI ( $incidencia = '' )
+       $incidencia := '.'
+     FIN_SI
+     $kardex_faltas := $kardex_faltas + $incidencia
+    _ini_aux := _ini_aux + 1
+  FIN_MIENTRAS
+FIN_SUB_RUTINA

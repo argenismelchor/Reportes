@@ -1,0 +1,371 @@
+#REPORTE DE INCIDENCIAS GENERADAS
+#REPORTE DE ACCESOS Y EXCEPCIONES
+#USUARIO =*
+#ASISTENCIAS, FALTAS Y RETARDOS
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra los trabajadores de la empresa, indicando la hora de entrada, retardo o falta y que pertenescan al Registro Patronal,sucursal y turno especificado.
+#Este reporte puede ser general, departamental/centro de costo o por puesto y puede ser indexado por clave o nombre.
+#imprime la clave, el nombre, la sucursal, el departamento y el puesto del trabajador. Y los horarios de entradas y salidas.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','',_fi)
+NUEVO_PARAMETRO_FEC ('FECHA FINAL'  ,'',_ff)
+LEE_PARAMETROS
+
+_fal    := 0
+_inc    := 0
+_ok     := 0
+_vac    := 0
+_des    := 0
+_exc    := 0
+
+BORRA_PARAMETROS
+NUEVO_PARAMETRO_CHEQ( 'OK', '', _imp_ok )
+NUEVO_PARAMETRO_CHEQ( 'FALTAS', '', _imp_fal )
+NUEVO_PARAMETRO_CHEQ( 'INCAPACIDADES', '', _imp_inc )
+NUEVO_PARAMETRO_CHEQ( 'VACACIONES', '', _imp_vac )
+NUEVO_PARAMETRO_CHEQ( 'DESCANSOS', '', _imp_des )
+NUEVO_PARAMETRO_CHEQ( 'EXCEPCIONES', '', _imp_exc )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+NUEVO_PARAMETRO_CHEQ( 'GRAFICA GRAL INCID', '', _grafica )
+NUEVO_PARAMETRO_CHEQ( 'GRAFICAR % FALTAS', '', _promedios )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE')) ;; IMPRIME
+   IMP ( CENTRA ('ACCESOS DEL '+ FECHA ( _fi ) + ' ' + ' AL ' + FECHA ( _ff ) ));; IMPRIME
+   IMP ( REPITETXT('=',80));; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE' ) ;; IMPRIME
+   IMP( COL ( 3 ), 'FECHA', COL(15), 'E.ESP', COL(23), 'E.REAL', COL ( 31 ), 'Dif.', COL(44), 'S.ESP.', COL(52), 'S.REAL', COL (60), 'Dif.', COL(73), 'HRS LAB' ) ;; IMPRIME
+   IMP ( REPITETXT('-',80) );; IMPRIME;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+FORMATO_FECHA := 3
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &grafica )
+VAR_T ( &faltas  )
+VAR_T ( &promedios )
+VAR_N ( _col )
+VAR_N ( _ren )
+$aux      := ''
+_aux      := 0
+_ii       := 0
+$notas    := ''
+_primero  := 0
+$saux     := ''
+_faux     := 0
+_faltas   := 0
+_incapacidades := 0
+_sin_entrada := 0
+_sin_salida  := 0
+_ok_tot      := 0
+_exc_tot     := 0
+_descansos  := 0
+_vacaciones := 0
+_fal    := 0
+_inc    := 0
+_ok     := 0
+_vac    := 0
+_des    := 0
+_exc    := 0
+_dif1   := 0
+_dif2   := 0
+_drlab  := 0
+$realp        := ''
+$reals        := ''
+_fechaaux     := 0
+$excepcion    := ''
+_%faltas1     := 0 ;; _%faltas2:= 0 ;; _%faltas3:= 0 ;; _%faltas4:= 0 ;; _%faltas5:= 0 ;; _%faltas6:= 0 ;; _%faltas7:= 0 
+_%faltas8 := 0 ;; _%faltas9:= 0 ;; _%faltas0:= 0 ;; _%faltas11:= 0
+$tipo_falta   := ''
+
+
+DECIMALES := 8
+
+SUB_RUTINA formato_trabajador
+    IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 30) )
+    IMPRIME
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+
+$campos_extras:='E.TURNO, E.CALENDARIO'
+base_trabajadores
+
+USA_ARCHIVO ( 'EMPPRIN', 'EMPRELOJ', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPINC', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPVACA', 'CLAVE' )
+
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+    _primero := 0
+    _faux := _fi
+    _drlab:= FUE_VIGENTE ( _fi, _ff ) - (DIAS_INHABILES ( _fi, _ff, 'EMPPRIN':'CALENDARIO', 0, 0 ))
+    MIENTRAS ( _faux <= _ff )
+       SI ( FUE_VIGENTE ( _faux, _faux ) > 0 ) 
+          _fal    := 0
+          _inc    := 0
+          _ok     := 0
+          _vac    := 0
+          _des    := 0
+          _exc    := 0
+          _dif1   := 0
+          _dif2   := 0
+          $tipo_falta := ''
+          $saux := 'EMPPRIN':'CLAVE' 
+          SI (( TRAE_REGISTRO ( 'EMPRELOJ', $saux, _faux ) = 0 ) O (( 'EMPRELOJ':'ENTRADA_REAL_P' = 0 ) Y ( 'EMPRELOJ':'SALIDA_REAL_P' = 0 )))
+             SI ( TRAE_INCAPACIDADES ( _faux, _faux, '*' ) > 0 )
+                SI ( _imp_inc = 1 )
+                   _inc := 1
+                   INCREMENTA_TABLA( &grafica, 'TOTAL', 'INCAPACIDAD', 1 )
+                FIN_SI
+             SI_NO
+                SI ( DIAS_INHABILES ( _faux, _faux, 'EMPPRIN':'CALENDARIO', 0, 0 ) = 1 )
+                  SI ( _imp_des = 1 )
+                     _des := 1
+                     INCREMENTA_TABLA( &grafica, 'TOTAL', 'DESCANSOS', 1 )
+                  FIN_SI
+                SI_NO
+                  SI (( TRAE_REGISTRO ( 'EMPRELOJ', $saux, _faux )) Y ( 'EMPRELOJ':'ENTRADA_P' = 0 ))
+                     SI ( _imp_des = 1 )
+                        INCREMENTA_TABLA( &grafica, 'TOTAL', 'DESCANSOS', 1 )
+                        _des := 1
+                     FIN_SI
+                  SI_NO
+                     SI ( TRAE_VACACIONES ( _faux, _faux, VERDADERO ) = 1 )
+                        SI ( _imp_vac = 1 )
+                           INCREMENTA_TABLA( &grafica, 'TOTAL', 'VACACIONES', 1 )
+                           _vac := 1
+                        FIN_SI
+                     SI_NO
+                        SI ( _imp_fal = 1 )
+                          _fal := 1
+                          INCREMENTA_TABLA( &grafica, 'TOTAL', 'FALTA', 1 )
+                          INCREMENTA_TABLA( &faltas, 'TOTAL', 'FALTA2', 1 )
+                             SI ( TRAE_FALTAS( _faux, _faux, '*' ) > 0 )
+                                 _fechaaux := _faux
+                                 MIENTRAS ( TRAE_REGISTRO( 'EMPAUS', 'EMPPRIN':'CLAVE', _fechaaux ) = FALSO )
+                                   _fechaaux := _fechaaux - 1
+                                 FIN_MIENTRAS
+                                 SI ( TRAE_REGISTRO( 'FALTA', 'EMPAUS':'TIPO' ) )
+                                    $excepcion     := 'FALTA':'DESCRIPCION'
+                                    $tipo_falta    := 'FALTA':'DESCRIPCION'
+                                    INCREMENTA_TABLA( &faltas, 'TOTAL', $excepcion , 1 )
+                                 SI_NO
+                                    $excepcion     := 'INCIDENCIA'
+                                    INCREMENTA_TABLA( &faltas, 'TOTAL', $excepcion , 1 )
+                                 FIN_SI
+                             FIN_SI
+                        FIN_SI
+                     FIN_SI
+                  FIN_SI
+                FIN_SI
+             FIN_SI
+          SI_NO
+             DECIMALES := 8
+             SI ( ( FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ) - 'EMPRELOJ':'ENTRADA_P' ) > 0 )
+               SI ( 'EMPRELOJ':'ENTRADA_P' < FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ))
+                   _dif1 := FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ) - 'EMPRELOJ':'ENTRADA_P'
+               FIN_SI
+             FIN_SI
+             SI (( 'EMPRELOJ':'SALIDA_P' - FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' )) > 0 )
+                _dif2 := 'EMPRELOJ':'SALIDA_P' - FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' )
+             FIN_SI
+             SI (( 'EMPRELOJ':'SALIDA_REAL_P' > 0 ) Y ( 'EMPRELOJ':'ENTRADA_REAL_P' > 0 ))
+               SI ( _imp_ok = 1 )
+                 _ok := 1
+                 INCREMENTA_TABLA( &grafica, 'TOTAL', 'OK', 1 )
+               FIN_SI
+             SI_NO
+               SI ( _imp_exc = 1 )
+                 _exc := 1
+                 INCREMENTA_TABLA( &grafica, 'TOTAL', 'EXCEPCIONES', 1 )
+               FIN_SI
+             FIN_SI
+          FIN_SI
+
+          #IMPRIMESION
+          SI ( _fal + _inc + _ok + _vac + _des + _exc > 0 )
+            SI ( _primero = 0 )
+               datos_trabajador
+            FIN_SI
+            SI ( _inc = 1 )
+              IMP ( COL ( 3 ), FECHA ( _faux ), COL ( 50 ), 'I N C A P A C I T A D O' )
+              _incapacidades := _incapacidades + 1
+            FIN_SI
+            SI ( _des = 1 )
+              IMP ( COL ( 3 ), FECHA ( _faux ), COL ( 50 ), 'D E S C A N S O' )
+              _descansos := _descansos + 1
+            FIN_SI
+            SI ( _vac = 1 )
+              IMP ( COL ( 3 ), FECHA ( _faux ), COL ( 50 ), 'V A C A C I O N E S' )
+              _vacaciones := _vacaciones + 1
+            FIN_SI
+            SI ( _fal = 1 )
+              SI ( $tipo_falta = '' )
+                 $tipo_falta := 'F A L T A'
+              FIN_SI
+              IMP ( COL ( 3 ), FECHA ( _faux ), COL ( 50 ), $tipo_falta )
+              _faltas := _faltas + 1
+            FIN_SI
+            SI ( _ok = 1 )
+              FORMATO_HORA := 6
+              DECIMALES := 8
+              _ok_tot := _ok_tot + 1
+              IMP( COL (3), FECHA ( _faux ), COL(15), HORA('EMPRELOJ':'ENTRADA_P'), COL(23), HORA('EMPRELOJ':'ENTRADA_REAL_P'))
+              SI ( _dif1 <> 0 )
+                 IMP ( COL (31), HORA( FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ) - 'EMPRELOJ':'ENTRADA_P' ), ' Min.' )
+              FIN_SI
+              IMP( COL (44), HORA('EMPRELOJ':'SALIDA_P'), COL(52), HORA('EMPRELOJ':'SALIDA_REAL_P'))
+              SI ( _dif2 <> 0 )
+                IMP ( COL ( 60 ), HORA( 'EMPRELOJ':'SALIDA_P' - FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' )), ' Min.' )
+              FIN_SI
+              #IMPRESION DE TIEMPO TRABAJADO
+              SI ( FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' ) > FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ))
+                IMP ( COL ( 73 ), HORA ( FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' ) - FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' )))
+              SI_NO
+                IMP ( COL ( 73 ), HORA ( ( FECHA_HOY + 1 + FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' )) - ( FECHA_HOY + FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ))))
+              FIN_SI
+            FIN_SI
+            SI ( _exc = 1 )
+              FORMATO_HORA := 6
+              DECIMALES := 8
+              _exc_tot := _exc_tot + 1
+              SI ( HORA ( 'EMPRELOJ':'ENTRADA_REAL_P' ) <> '' )
+                 $realp := HORA('EMPRELOJ':'ENTRADA_REAL_P')
+              SI_NO
+                 $realp := 'NO CHECO'
+                 _sin_entrada := _sin_entrada + 1
+              FIN_SI
+              SI ( HORA ( 'EMPRELOJ':'SALIDA_REAL_P' ) <> '' )
+                 $reals := HORA('EMPRELOJ':'SALIDA_REAL_P')
+              SI_NO
+                 $reals := 'NO CHECO'
+                 _sin_salida := _sin_salida + 1
+              FIN_SI
+              IMP( COL (3), FECHA ( _faux ), COL(15), HORA('EMPRELOJ':'ENTRADA_P'), COL(23), $realp )
+              SI (( _dif1 <> 0 ) AND ( $realp <> 'NO CHECO' ))
+                 IMP ( COL (31), HORA( FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ) - 'EMPRELOJ':'ENTRADA_P' ), ' Min.' )              
+              FIN_SI
+              IMP( COL (44), HORA('EMPRELOJ':'SALIDA_P'), COL(52), $reals )
+              SI (( _dif2 <> 0 ) AND ( $reals <> 'NO CHECO' ))
+                IMP ( COL ( 60 ), HORA( 'EMPRELOJ':'SALIDA_P' - FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' )), ' Min.' )
+              FIN_SI
+            FIN_SI           
+            IMPRIME
+          FIN_SI
+       FIN_SI
+       _primero := 1
+       _faux := _faux + 1
+    FIN_MIENTRAS
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+
+IMPRIME IMPRIME IMPRIME
+DECIMALES := 0
+SI ( _imp_ok = 1 )
+  IMP ( 'TOTAL ACCESOS OK       : ', DER( .( _ok_tot ), 5 ) ) IMPRIME
+FIN_SI
+SI ( _imp_fal = 1 )
+  IMP ( 'TOTAL DE FALTAS        : ', DER( .( _faltas ), 5 ) ) IMPRIME
+FIN_SI
+SI ( _imp_inc = 1 )
+  IMP ( 'TOTAL DE INCAPACIDADES : ', DER( .( _incapacidades ), 5 ) ) IMPRIME
+FIN_SI
+SI ( _imp_vac = 1 )
+  IMP ( 'TOTAL DE VACACIONES    : ', DER( .( _vacaciones ), 5 ) ) IMPRIME
+FIN_SI
+SI ( _imp_des = 1 )
+  IMP ( 'TOTAL DE DESCANSOS     : ', DER( .( _descansos ), 5 ) ) IMPRIME
+FIN_SI
+SI ( _imp_exc = 1 )
+  IMP ( 'TOTAL DE EXEPCIONES    : ', DER( .( _exc_tot ), 5 ) ) IMPRIME
+  IMP ( 'SIN CHECAR ENTRADA     : ', DER( .( _sin_entrada ), 5 ) ) IMPRIME
+  IMP ( 'SIN CHECAR SALIDA      : ', DER( .( _sin_salida ), 5 ) ) IMPRIME
+FIN_SI
+
+DECIMALES := 2
+SI ( VALOR_TABLA (&faltas ,'TOTAL','INCAPACIDAD INTERNA') > 0 )
+    _%faltas1 := (VALOR_TABLA (&faltas ,'TOTAL','INCAPACIDAD INTERNA') /_faltas )* 100
+    ASIGNA_VALOR_TABLA (&promedios , 'TOTAL' ,'INCAPACIDAD INTERNA' , _%faltas1 )
+FIN_SI
+SI ( VALOR_TABLA (&faltas ,'TOTAL','CASTIGO') > 0 )
+   _%faltas2 := ( VALOR_TABLA (&faltas ,'TOTAL','CASTIGO') / _faltas ) * 100
+   ASIGNA_VALOR_TABLA (&promedios , 'TOTAL' , 'CASTIGO' , _%faltas2 )
+FIN_SI
+SI ( VALOR_TABLA (&faltas ,'TOTAL','FALTA') > 0 )
+   _%faltas3 := (VALOR_TABLA (&faltas ,'TOTAL','FALTA') / _faltas ) * 100
+   ASIGNA_VALOR_TABLA (&promedios , 'TOTAL' , 'FALTA' , _%faltas3 )
+FIN_SI
+SI ( VALOR_TABLA (&faltas ,'TOTAL','PERMISO CON GOCE') > 0 )
+   _%faltas4 := ( VALOR_TABLA (&faltas ,'TOTAL','PERMISO CON GOCE') / _faltas ) * 100
+   ASIGNA_VALOR_TABLA (&promedios , 'TOTAL' , 'PERMISO CON GOCE' , _%faltas4 )
+FIN_SI
+SI ( VALOR_TABLA (&faltas ,'TOTAL','INCAPACIDAD ENFERMEDAD GENERAL') > 0 )
+   _%faltas5 := ( VALOR_TABLA (&faltas ,'TOTAL','INCAPACIDAD ENFERMEDAD GENERAL') / _faltas ) * 100
+   ASIGNA_VALOR_TABLA (&promedios , 'TOTAL' , 'INCAPACIDAD ENFERMEDAD GENERAL' , _%faltas5 )
+FIN_SI
+SI ( VALOR_TABLA (&faltas ,'TOTAL','FALTA JUSTIFICADA') > 0 )
+   _%faltas6 := ( VALOR_TABLA (&faltas ,'TOTAL','FALTA JUSTIFICADA') / _faltas ) * 100
+   ASIGNA_VALOR_TABLA (&promedios , 'TOTAL' , 'FALTA JUSTIFICADA' , _%faltas6 )
+FIN_SI
+SI ( VALOR_TABLA (&faltas ,'TOTAL','RIESGO DE TRABAJO') > 0 )
+   _%faltas7 := ( VALOR_TABLA (&faltas ,'TOTAL','RIESGO DE TRABAJO') / _faltas ) * 100
+   ASIGNA_VALOR_TABLA (&promedios , 'TOTAL' , 'RIEGO DE TRABAJO' , _%faltas7 )
+FIN_SI
+SI ( VALOR_TABLA (&faltas ,'TOTAL','PERMISO SIN GOCE') > 0 )
+   _%faltas8 := ( VALOR_TABLA (&faltas ,'TOTAL','PERMISO SIN GOCE') / _faltas ) * 100
+   ASIGNA_VALOR_TABLA (&promedios , 'TOTAL' , 'PERMISO SIN GOCE' , _%faltas8 )
+FIN_SI
+SI ( VALOR_TABLA (&faltas ,'TOTAL','INCAPACIDAD ACCIDENTE TRAYECTO') )
+   _%faltas9 := ( VALOR_TABLA (&faltas ,'TOTAL','INCAPACIDAD ACCIDENTE TRAYECTO') / _faltas ) * 100
+   ASIGNA_VALOR_TABLA (&promedios , 'TOTA' , 'INCAPACIDAD ACCIDENTE TRAYECTO' , _%faltas9 )
+FIN_SI
+SI ( VALOR_TABLA (&faltas ,'TOTAL','VACACONES') > 0 )
+   _%faltas0 := ( VALOR_TABLA (&faltas ,'TOTAL','VACACONES') / _faltas ) * 100
+   ASIGNA_VALOR_TABLA (&promedios , 'TOTAL' , 'VACACIONES' , _%faltas0 )
+FIN_SI
+SI ( VALOR_TABLA (&faltas ,'TOTAL','FALTA2') > 0 )
+   _%faltas11 := (( VALOR_TABLA (&faltas ,'TOTAL','FALTA2') / _faltas ) * 100 ) - ( _%faltas1 + _%faltas2 +_%faltas3 +_%faltas4 +_%faltas5 +_%faltas6 +_%faltas7 +_%faltas8 +_%faltas9 +_%faltas0 )
+   ASIGNA_VALOR_TABLA (&promedios , 'TOTAL' , 'INCIDENCIA' , _%faltas11 )
+FIN_SI
+
+SI ( _promedios = 1 )
+   CREA_GRAFICA( &promedios )
+FIN_SI
+SI ( _grafica = 1 )
+ CREA_GRAFICA( &grafica )
+FIN_SI

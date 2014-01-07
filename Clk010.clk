@@ -1,0 +1,181 @@
+#ASISTENCIAS, FALTAS Y RETARDOS
+#VERSION 2.500
+#USUARIO =*
+#NO EDITAR
+#DESCRIPCION
+#Este reporte muestra los trabajadores de la empresa, indicando la hora de entrada, retardo o falta y que pertenescan al Registro Patronal,sucursal y turno especificado.
+#Este reporte puede ser general, departamental/centro de costo o por puesto y puede ser indexado por clave o nombre.
+#imprime la clave, el nombre, la sucursal, el departamento y el puesto del trabajador. Y los horarios de entradas y salidas.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA/DISCO', $salida )
+NUEVO_PARAMETRO_FEC ('FECHA INICIAL','',_fi)
+NUEVO_PARAMETRO_FEC ('FECHA FINAL'  ,'',_ff)
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+ENCABEZADO
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL (60), VERSION_GIRO );; IMPRIME
+   IMP ( CENTRA ('EMPRESA':'NOMBRE')) ;; IMPRIME
+   IMP ( CENTRA ('ACCESOS DEL '+ FECHA ( _fi ) + ' ' + ' AL ' + FECHA ( _ff ) ));; IMPRIME
+   IMP ( REPITETXT('=',80));; IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE' ) ;; IMPRIME
+   IMP( COL ( 3 ), 'FECHA', COL(15), 'E.ESP', COL(23), 'E.REAL', COL ( 31 ), 'Dif.', COL(44), 'S.ESP.', COL(52), 'S.REAL', COL (60), 'Dif.', COL(73), 'HRS LAB' ) ;; IMPRIME
+   IMP ( REPITETXT('-',80) );; IMPRIME;; IMPRIME 
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMPRIME
+   IMP ( COL(2), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA(HORA_ACTUAL), COL(65), 'PAGINA -', PAGINA, '-' );; IMPRIME
+   LETRA ( 'LETRA NORMAL' );; IMPRIME
+   DECIMALES := 2
+FIN_PIE
+
+FORMATO_FECHA := 3
+
+### VARIABLES GLOBALES DEL REPORTE
+VAR_T ( &grafica )
+VAR_N ( _col )
+VAR_N ( _ren )
+$aux      := ''
+_aux      := 0
+_ii       := 0
+$notas    := ''
+_primero  := 0
+$saux     := ''
+_faux     := 0
+_faltas   := 0
+_incapacidades := 0
+_sin_entrada := 0
+_sin_salida  := 0
+_ok         := 0
+_descansos  := 0
+_vacaciones := 0
+
+
+DECIMALES := 8
+
+SUB_RUTINA formato_trabajador
+    IMP ( COL(1), 'EMPPRIN':'CLAVE', COL(10), SUBSTR('EMPPRIN':'NOMBRE', 1, 30) )
+    IMP ( COL(50), DER('EMPPRIN':'SUC_CLAVE', 10), COL(60), DER('EMPPRIN':'DEP_CLAVE', 10), COL(70), DER('EMPPRIN':'PUE_CLAVE', 10) )
+    IMPRIME
+    DECIMALES:=0   
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+
+#Definicion de variables en base a los parametros
+SALIDA := $salida
+
+_incluir_suc := 1
+_incluir_dep := 1
+_incluir_pue := 1
+
+$campos_extras:='E.TURNO, E.CALENDARIO'
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPRELOJ', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPINC', 'CLAVE' )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPVACA', 'CLAVE' )
+
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+PRIMER_REGISTRO( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+    _primero := 0
+    _faux := _fi
+    MIENTRAS ( _faux <= _ff )
+       SI ( FUE_VIGENTE ( _faux, _faux ) > 0 ) 
+          SI ( _primero = 0 )
+             datos_trabajador
+          FIN_SI
+          $saux := 'EMPPRIN':'CLAVE' 
+          SI (( TRAE_REGISTRO ( 'EMPRELOJ', $saux, _faux ) = 0 ) O (( 'EMPRELOJ':'ENTRADA_REAL_P' = 0 ) Y ( 'EMPRELOJ':'SALIDA_REAL_P' = 0 )))
+             SI ( TRAE_INCAPACIDADES ( _faux, _faux, '*' ) > 0 )
+                IMP ( COL ( 3 ), FECHA ( _faux ), COL ( 50 ), 'I N C A P A C I T A D O' ) ;; IMPRIME
+                _incapacidades := _incapacidades + 1
+             SI_NO
+                SI ( DIAS_INHABILES ( _faux, _faux, 'EMPPRIN':'CALENDARIO', 0, 0 ) = 1 )
+                  IMP ( COL ( 3 ), FECHA ( _faux ), COL ( 50 ), 'D E S C A N S O' ) ;; IMPRIME
+                  _descansos := _descansos + 1
+                SI_NO
+                  SI (( TRAE_REGISTRO ( 'EMPRELOJ', $saux, _faux )) Y ( 'EMPRELOJ':'ENTRADA_P' = 0 ))
+                     IMP ( COL ( 3 ), FECHA ( _faux ), COL ( 50 ), 'D E S C A N S O' ) ;; IMPRIME
+                     _descansos := _descansos + 1
+                  SI_NO
+                     SI ( TRAE_VACACIONES ( _faux, _faux, VERDADERO ) = 1 )
+                        IMP ( COL ( 3 ), FECHA ( _faux ), COL ( 50 ), 'V A C A C I O N E S' ) ;; IMPRIME
+                        _vacaciones := _vacaciones + 1
+                     SI_NO
+                        IMP ( COL ( 3 ), FECHA ( _faux ), COL ( 50 ), 'F A L T A' ) ;; IMPRIME
+                        _faltas := _faltas + 1
+                     FIN_SI
+                  FIN_SI
+                FIN_SI
+             FIN_SI
+          SI_NO
+             FORMATO_HORA := 6
+             DECIMALES := 8
+             IMP( COL ( 3 ), FECHA ( _faux ), COL(15), HORA('EMPRELOJ':'ENTRADA_P'), COL(23), HORA('EMPRELOJ':'ENTRADA_REAL_P'))
+             SI ( ( FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ) - 'EMPRELOJ':'ENTRADA_P' ) > 0 )
+               FORMATO_HORA := 6
+               SI ( 'EMPRELOJ':'ENTRADA_P' < FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ))
+                   IMP ( COL (31), HORA( FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ) - 'EMPRELOJ':'ENTRADA_P' ), ' Min.' )
+               FIN_SI
+               FORMATO_HORA := 0
+             SI_NO
+               SI ( HORA ( 'EMPRELOJ':'ENTRADA_REAL_P' ) = '' )
+                  IMP ( COL ( 23 ), 'NO CHECO' )
+                  _sin_entrada := _sin_entrada + 1
+               FIN_SI
+            FIN_SI
+            FORMATO_HORA := 6
+            DECIMALES := 8
+            IMP( COL(44), HORA('EMPRELOJ':'SALIDA_P'), COL(52), HORA('EMPRELOJ':'SALIDA_REAL_P'))
+            SI (( 'EMPRELOJ':'SALIDA_P' - FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' )) > 0 )
+               FORMATO_HORA := 6
+               SI ( HORA ( 'EMPRELOJ':'SALIDA_REAL_P' ) = '' )
+                  IMP ( COL ( 52 ), 'NO CHECO' )
+                  _sin_salida := _sin_salida + 1
+               SI_NO
+                  SI ( FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' ) < 'EMPRELOJ':'SALIDA_P' )
+                      IMP ( COL ( 60 ), HORA( 'EMPRELOJ':'SALIDA_P' - FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' )), ' Min.' )
+                   FIN_SI
+               FIN_SI
+               FORMATO_HORA := 0
+            FIN_SI
+            SI (( 'EMPRELOJ':'SALIDA_REAL_P' > 0 ) Y ( 'EMPRELOJ':'ENTRADA_REAL_P' > 0 ))
+               FORMATO_HORA := 6
+               SI ( FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' ) > FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ))
+                  IMP ( COL ( 73 ), HORA ( FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' ) - FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' )))
+               SI_NO
+                  IMP ( COL ( 73 ), HORA ( ( FECHA_HOY + 1 + FRAC ( 'EMPRELOJ':'SALIDA_REAL_P' )) - ( FECHA_HOY + FRAC ( 'EMPRELOJ':'ENTRADA_REAL_P' ))))
+               FIN_SI
+               FORMATO_HORA := 0
+            FIN_SI
+            IMPRIME
+          FIN_SI
+       FIN_SI
+       _primero := 1
+       _faux := _faux + 1
+    FIN_MIENTRAS
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+termina_reporte
+
+IMPRIME IMPRIME IMPRIME
+DECIMALES := 0
+IMP ( 'TOTAL DE FALTAS        : ', DER( .( _faltas ), 5 ) ) IMPRIME
+IMP ( 'TOTAL DE INCAPACIDADES : ', DER( .( _incapacidades ), 5 ) ) IMPRIME
+IMP ( 'TOTAL DE VACACIONES    : ', DER( .( _vacaciones ), 5 ) ) IMPRIME
+IMP ( 'TOTAL DE DESCANSOS     : ', DER( .( _descansos ), 5 ) ) IMPRIME
+IMP ( 'SIN CHECAR ENTRADA     : ', DER( .( _sin_entrada ), 5 ) ) IMPRIME
+IMP ( 'SIN CHECAR SALIDA      : ', DER( .( _sin_salida ), 5 ) ) IMPRIME

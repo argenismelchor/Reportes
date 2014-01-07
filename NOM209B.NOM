@@ -1,0 +1,272 @@
+#ALTA DE TARJETAS HSBC NVO FORMATO
+#IMPORTACION HSBC FORMATO NVO
+#USUARIO =*
+#IMPORTACION HSBC FORMATO NVO
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte para el alta de tarjetas de HSBC.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'EXCEL', $salida)
+NUEVO_PARAMETRO_CHEQ ( 'MARCAR' , '' , _marcar ) 
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 0
+FORMATO_PESOS := 2
+
+$ruta := ''
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , $ruta ) 
+
+MODO_IMPRESION ( 'DIRECTO')
+IMPRIME
+
+# VARIABLES GLOBALES
+_filaexcel := 2
+$ruta := 'C:\ARGENIS\FORMATOS\NUEVO LAYOUT HSBC.XLS'
+
+SI ( EXISTE_ARCHIVO ( $ruta ) = FALSO ) 
+     MENSAJE ( 'error; la plantilla no existe.' ) 
+     TERMINA_REPORTE
+FIN_SI
+
+EXCEL ( 'AGREGA_HOJA_PLANTILLA' , 0 , 0 , $ruta ) 
+
+$cuenta := '' ;; $nombre := '' ;; $apellido := '' ;; $fechanac := '' ;; $rfc:= '' ;; $ecivil := '' ;; $genero := '' ;; $naciona:= '' ;; $codpos := '' 
+$domici := '' ;; $colonia := '' ;; $telcasa := '' ;; $telofi := ''  ;; $entid := ''
+_fechanac := 0  ;; _filaexcel := 2
+
+INCLUYE UTIL2.DAT
+
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E.*'
+base_trabajadores
+
+_filaexcel := 7
+
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPRH' , 'CLAVE'  ) 
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT' , 'CLAVE' ) 
+PRIMER_REGISTRO ( 'EMPPRIN' ) 
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO ) 
+
+  SI (( 'EMPEXT':'BANCO' = '3'  ) AND ( 'EMPEXT':'ALTA_TARJETA' = 0  ) ) 
+         $cuenta   := 'EMPPRIN':'CTA_TARJETA'
+         $nombre   := 'EMPPRIN':'NOMBREN'
+         $apellido := 'EMPPRIN':'NOMBREP' + ' ' + 'EMPPRIN':'NOMBREM'
+         _fechanac := 'Emprh':'FECHA_NACIMIENTO'        
+         FORMATO_FECHA := 0
+         $fechanac := FECHA ( _fechanac ) 
+         $rfc     := 'EMPPRIN':'RFC'
+         $ecivil  := 'EMPRH':'ESTADO_CIVIL'
+
+         SI ( $ecivil  = 'SOL'  ) 
+              $ecivil := 'SOLTERO'
+         FIN_SI
+
+         SI ( $ecivil  = 'CAS'  ) 
+              $ecivil := 'CASADO'
+         FIN_SI
+
+         SI ( $ecivil  = 'VIU'  ) 
+              $ecivil := 'VIUDO'
+         FIN_SI
+
+         SI ( $ecivil  = 'DIV'  ) 
+              $ecivil := 'DIVORCIADO'
+         FIN_SI
+
+         SI ( $ecivil  = 'ULI'  ) 
+              $ecivil := 'UNION LIBRE'
+         FIN_SI
+ 
+         $genero  := 'EMPRH':'SEXO'
+
+         SI ( $genero = 'F'  )
+              $genero := 'FEMENINO'
+         FIN_SI
+
+         SI ( $genero = 'M' ) 
+              $genero := 'MASCULINO'
+         FIN_SI
+
+         $naciona := 'MX'
+         DECIMALES:= 0 
+         $codpos  := .('EMPRH':'CP')
+         $domici  := 'EMPRH':'CALLE' + ' ' + 'EMPRH':'NUMERO'
+         $colonia := 'EMPRH':'COLONIA'
+         $telcasa := 'EMPRH':'TELEFONO_1'
+         $telofi  := 'Emprh':'TELEFONO_2'
+         $entid   := 'Emprh':'ESTADO'
+
+         SI ( $entid = 'AGS'   ) 
+              $entid := 'AGUASCALIENTES'
+         FIN_SI
+
+         SI ( $entid = 'BC'   ) 
+              $entid := 'BAJA CALIFORNIA'
+         FIN_SI
+
+         SI ( $entid = 'BCS'   ) 
+              $entid := 'BAJA CALIFORNIA SUR'          
+         FIN_SI
+
+         SI ( $entid = 'CAM'   ) 
+              $entid := 'CAMPECHE'
+         FIN_SI
+
+         SI ( $entid = 'COA'   ) 
+              $entid := 'COAHUILA'
+         FIN_SI
+
+         SI ( $entid = 'COL'   ) 
+              $entid := 'COLIMA'
+         FIN_SI
+
+         SI ( $entid = 'CHI'   ) 
+              $entid := 'CHIHUAHUA'
+         FIN_SI
+
+         SI ( $entid = 'CHIS'   ) 
+              $entid := 'CHIAPAS'
+         FIN_SI
+
+         SI ( $entid = 'DF'   ) 
+              $entid := 'DISTRITO FEDERAL'
+         FIN_SI
+
+         SI ( $entid = 'DUR'   ) 
+              $entid := 'DURANGO'
+         FIN_SI
+
+         SI ( $entid = 'GTO'   ) 
+              $entid := 'GUANAJUATO'
+         FIN_SI
+
+         SI ( $entid = 'GUE'   ) 
+              $entid := 'GUERRERO'
+         FIN_SI
+
+         SI ( $entid = 'HGO'   ) 
+              $entid := 'HIDALGO'
+         FIN_SI
+
+         SI ( $entid = 'JAL'   ) 
+              $entid := 'JALISCO'
+         FIN_SI
+
+         SI ( $entid = 'MEX'   ) 
+              $entid := 'ESTADO DE MEXICO'
+         FIN_SI
+
+         SI ( $entid = 'MICH'   ) 
+              $entid := 'MICHOACAN'
+         FIN_SI
+
+         SI ( $entid = 'MOR'   ) 
+              $entid := 'MORELIA'
+         FIN_SI
+
+         SI ( $entid = 'NAY'   ) 
+              $entid := 'NAYARIT'
+         FIN_SI
+
+         SI ( $entid = 'NL'   ) 
+              $entid := 'NUEVO LEON'
+         FIN_SI
+
+         SI ( $entid = 'OAX'   ) 
+              $entid := 'OAXACA'
+         FIN_SI
+
+         SI ( $entid = 'PUE'   ) 
+              $entid := 'PUEBLA'
+         FIN_SI
+
+         SI ( $entid = 'QR'   ) 
+              $entid := 'QUINTANA ROO'
+         FIN_SI
+
+         SI ( $entid = 'QRO'   ) 
+              $entid := 'QUERETARO'
+         FIN_SI
+
+         SI ( $entid = 'SIN'   ) 
+              $entid := 'SINALOA'
+         FIN_SI
+
+         SI ( $entid = 'SLP'   ) 
+              $entid := 'SAN LUIS POTOSI'
+         FIN_SI
+
+         SI ( $entid = 'SON'   ) 
+              $entid := 'SONORA'
+         FIN_SI
+
+         SI ( $entid = 'TAB'   ) 
+              $entid := 'TABASCO'
+         FIN_SI
+
+         SI ( $entid = 'TAM'   ) 
+              $entid := 'TAMAULIPAS'
+         FIN_SI
+
+         SI ( $entid = 'TLA'   ) 
+              $entid := 'TLAXCALA'
+         FIN_SI
+
+         SI ( $entid = 'TUX'   ) 
+              $entid := 'TUXTLA GUTIERREZ'
+         FIN_SI
+
+         SI ( $entid = 'VER'   ) 
+              $entid := 'VERACRUZ'
+         FIN_SI
+
+         SI ( $entid = 'YUC'   ) 
+              $entid := 'YUCATAN'
+         FIN_SI
+
+         EXCEL ( 'PON_VALOR' , 3  , _filaexcel , $cuenta    ) 
+         EXCEL ( 'PON_VALOR' , 4  , _filaexcel , $nombre    ) 
+         EXCEL ( 'PON_VALOR' , 5  , _filaexcel , $apellido  ) 
+         EXCEL ( 'PON_VALOR' , 6  , _filaexcel , $fechanac  ) 
+         EXCEL ( 'PON_VALOR' , 7  , _filaexcel , $rfc       ) 
+         EXCEL ( 'PON_VALOR' , 8  , _filaexcel , $ecivil    ) 
+         EXCEL ( 'PON_VALOR' , 9  , _filaexcel , $genero    ) 
+         EXCEL ( 'PON_VALOR' , 10  , _filaexcel , $naciona   ) 
+         EXCEL ( 'PON_VALOR' , 11  , _filaexcel , $codpos    ) 
+         EXCEL ( 'PON_VALOR' , 12 , _filaexcel , $domici    ) 
+         EXCEL ( 'PON_VALOR' , 13 , _filaexcel , $colonia   ) 
+         EXCEL ( 'PON_VALOR' , 14 , _filaexcel , $telcasa   ) 
+         EXCEL ( 'PON_VALOR' , 15 , _filaexcel , $telofi    ) 
+         EXCEL ( 'PON_VALOR' , 16 , _filaexcel , $entid     ) 
+         _filaexcel := _filaexcel + 1
+    
+
+        IMP ( COL ( 5 ) , $cuenta , COL(20) , $nombre  + ' ' + $apellido ) 
+        SI ( _marcar = 1  ) 
+              IMP ( COL( 55 ) , 'Marcado' ) 
+        SI_NO
+              IMP ( COL( 55 ) , 'Sin marcar' )  
+        FIN_SI
+
+        IMPRIME
+
+        SI ( _marcar = 1 ) 
+             'EMPEXT':'ALTA_TARJETA' := 1
+             GRABA_BASE ( 'EMPEXT' ) 
+        FIN_SI
+
+  FIN_SI
+
+SIGUIENTE_REGISTRO ( 'EMPPRIN')
+FIN_MIENTRAS
+
+# SUBRUTINAS GLOBALES
+
+
+TERMINA_REPORTE

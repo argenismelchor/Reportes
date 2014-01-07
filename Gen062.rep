@@ -1,0 +1,143 @@
+#REGENERACION DE PERC, PGRA, EXEN Y TOTA
+#NO EDITAR
+#USUARIO =*
+#VERSION 1.0
+#DESCRIPCION
+#Este reporte permite hacer la regeneracion de los conceptos PERC, PGRA, EXEN Y TOTA del mes seleccionado.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/IMPRESORA', $salida)
+NUEVO_PARAMETRO_CHEQ( 'GRABAR', '', _grabar )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+NUEVO_PARAMETRO_SEL ( 'MES', 'ENE/FEB/MAR/ABR/MAY/JUN/JUL/AGO/AGO/SEP/OCT/NOV/DIC', $mes )
+LEE_PARAMETROS
+
+BORRA_PARAMETROS
+
+FORMATO_FECHA := 2
+SALIDA := $salida
+
+ENCABEZADO   
+   IMPRIME
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( 'Rep. ', CLAVE_REPORTE, ' ', NOMBRE_REPORTE, COL ( 60 ), VERSION_GIRO ) IMPRIME
+   IMP ( CENTRA ( 'EMPRESA':'NOMBRE' )) IMPRIME
+   IMP ( CENTRA ( 'PERC, PGRA, EXEN Y TOTA' )) IMPRIME
+   IMP ( REPITETXT( '=',80 )) IMPRIME
+   IMP ( COL(1), 'CLAVE', COL(10), 'NOMBRE' ) IMPRIME
+   IMP ( REPITETXT ('-', 80 )) IMPRIME
+   LETRA ( 'LETRA NORMAL' )
+   IMPRIME
+FIN_ENCABEZADO
+
+PIE
+   IMPRIME ;; IMPRIME
+   DECIMALES := 0
+   LETRA ( 'LETRA ENFATISADA' )
+   IMP ( COL ( 2 ), 'Fecha : ', FECHA (FECHA_HOY), ' ', 'Hora : ', HORA ( HORA_ACTUAL ), COL ( 65 ), 'PAGINA -', PAGINA, '-' ) IMPRIME
+   LETRA ( 'LETRA NORMAL' ) IMPRIME
+   DECIMALES := 2
+FIN_PIE 
+
+#VARIABLES
+_perc := 0
+_dedu := 0
+_exen := 0
+_tota := 0
+_pgra := 0
+_aux  := 0
+_pg   := 0
+$conc := ''
+
+SUB_RUTINA formato_trabajador
+   IMP ( COL ( 1 ), 'EMPPRIN':'CLAVE', COL ( 10 ), 'EMPPRIN':'NOMBRE' )
+   IMPRIME
+   DECIMALES := 2
+   _perc := 0
+   _dedu := 0
+   _exen := 0
+   _tota := 0
+   _pgra := 0
+   _pg   := 0
+   PRIMER_REGISTRO ( 'EMPACUM' )
+   MIENTRAS( FIN_BASE( 'EMPACUM' ) = FALSO )
+     SI ( TRAE_REGISTRO ( 'CONCEPTO', 'EMPACUM':'CONCEPTO' ) )
+       _aux := 'EMPACUM':$mes
+       SI ( 'CONCEPTO':'PDC' = 0 )
+         _perc := _perc + _aux
+       FIN_SI
+       SI ( 'CONCEPTO':'PDC' = 1 )
+         _dedu := _dedu + _aux
+       FIN_SI
+       $conc := 'EMPACUM':'CONCEPTO'
+       SI ( POS( 'EX', $conc ) = 1 )
+         SI ( $conc <> 'EXEN' )
+           _exen := _exen + _aux
+         FIN_SI
+       FIN_SI
+     FIN_SI     
+     SIGUIENTE_REGISTRO ( 'EMPACUM' )
+   FIN_MIENTRAS  
+   _tota := _perc - _dedu
+   _pgra := _perc - _exen
+   SI ( _grabar = 1 )
+     SI ( TRAE_REGISTRO ( 'EMPACUM', 'EMPPRIN':'CLAVE', 'PERC' ) = FALSO )
+       AGREGA_REGISTRO( 'EMPACUM' )
+       'EMPACUM':'CLAVE' := 'EMPPRIN':'CLAVE'
+       'EMPACUM':'CONCEPTO' := 'PERC'
+     FIN_SI
+     'EMPACUM':$mes := _perc
+     GRABA_BASE( 'EMPACUM' )
+
+     SI ( TRAE_REGISTRO ( 'EMPACUM', 'EMPPRIN':'CLAVE', 'DEDU' ) = FALSO )
+       AGREGA_REGISTRO( 'EMPACUM' )
+       'EMPACUM':'CLAVE' := 'EMPPRIN':'CLAVE'
+       'EMPACUM':'CONCEPTO' := 'DEDU'
+     FIN_SI
+     'EMPACUM':$mes := _dedu
+     GRABA_BASE( 'EMPACUM' )
+
+     SI ( TRAE_REGISTRO ( 'EMPACUM', 'EMPPRIN':'CLAVE', 'EXEN' ) = FALSO )
+       AGREGA_REGISTRO( 'EMPACUM' )
+       'EMPACUM':'CLAVE' := 'EMPPRIN':'CLAVE'
+       'EMPACUM':'CONCEPTO' := 'EXEN'
+     FIN_SI
+     'EMPACUM':$mes := _exen
+     GRABA_BASE( 'EMPACUM' )
+
+     SI ( TRAE_REGISTRO ( 'EMPACUM', 'EMPPRIN':'CLAVE', 'PGRA' ) = FALSO )
+       AGREGA_REGISTRO( 'EMPACUM' )
+       'EMPACUM':'CLAVE' := 'EMPPRIN':'CLAVE'
+       'EMPACUM':'CONCEPTO' := 'PGRA'
+     FIN_SI
+     'EMPACUM':$mes := _pgra
+     GRABA_BASE( 'EMPACUM' )
+
+     SI ( TRAE_REGISTRO ( 'EMPACUM', 'EMPPRIN':'CLAVE', 'TOTA' ) = FALSO )
+       AGREGA_REGISTRO( 'EMPACUM' )
+       'EMPACUM':'CLAVE' := 'EMPPRIN':'CLAVE'
+       'EMPACUM':'CONCEPTO' := 'TOTA'
+     FIN_SI
+     'EMPACUM':$mes := _tota
+     GRABA_BASE( 'EMPACUM' )
+
+   FIN_SI
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_reporte_nomina := 1
+lee_parametros_seleccion
+lee_parametros_indices
+base_trabajadores
+USA_ARCHIVO ( 'EMPPRIN', 'EMPACUM', 'CLAVE' )
+
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+   datos_trabajador
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+termina_reporte

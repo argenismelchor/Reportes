@@ -1,0 +1,95 @@
+#GENERAL DE TRABAJADORES
+#NO EDITAR
+#USUARIO =*
+#VERSION 2.500
+#DESCRIPCION
+#Este reporte muestra todos los trabajadores de la base de datos. Pide el indice de ordenamiento(clave/alfabetico).
+#Este reporte despliega la clave, nombre, fecha ingreso, RFC, sucursal, departamento, puesto y los sueldos del empleado.
+#FIN_DESCRIPCION
+FORMATO_FECHA:=0
+NUEVO_PARAMETRO_SAL ( 'SALIDA' , 'PANTALLA/IMPRESORA/DISCO' , $salida )
+NUEVO_PARAMETRO_FEC ( 'FECHA INICIAL' , '' , _fi ) 
+NUEVO_PARAMETRO_FEC ( 'FECHA FINAL'   , '' , _ff )
+NUEVO_PARAMETRO_SEL ( 'ORDEN' , 'CLAVE/NOMBRE' , _orden )
+LEE_PARAMETROS
+
+SALIDA := $salida
+
+INCLUYE ENCPIE.DAT
+_condensado := 1
+COLUMNAS := 130
+
+ENCABEZADO   
+   $titulo_reporte := 'Reporte del ' + FECHA (_fi) + ' al ' + FECHA (_ff)
+   encabezado_ini
+   IMP ( COL (1)   , 'No.' , COL (11) , 'Nombre' , COL (42) , 'Puesto' , COL (67) , 'RFC' , COL (84) , 'No. IMSS' )
+   IMP ( COL (102) , 'F.Alta' , COL (114) , DER ( 'S.Dia' , 8 ) , COL (122) , DER ( 'S.Int' , 8 ) )
+   IMPRIME
+   encabezado_fin
+FIN_ENCABEZADO
+
+PIE
+   pie_estandar
+FIN_PIE 
+
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+COLUMNAS      := 130
+RENGLONES     := 65
+
+### DEFINICION DE TABLA SQL
+VAR_T ( tabla_sql )
+AGREGA_VALOR_COL ( tabla_sql, 0, 'SELECT E.CLAVE, E.NOMBREP || " " || E.NOMBREM || " " || E.NOMBREN AS NOMBRE' )
+AGREGA_VALOR_COL ( tabla_sql, 0, '       ,E.INGRESO, E.RFC, E.AFILIACION' )
+AGREGA_VALOR_COL ( tabla_sql, 0, 'FROM EMPPRIN E' )
+SI ( _orden=0 ) 
+   AGREGA_VALOR_COL ( tabla_sql, 0, 'ORDER BY E.CLAVE' )
+SI_NO
+   AGREGA_VALOR_COL ( tabla_sql, 0, 'ORDER BY E.NOMBRE' )
+FIN_SI
+CREA_CONSULTA ( 'EMPPRIN', tabla_sql )
+USA_ARCHIVO ( 'EMPPRIN', 'EMPSDO', 'CLAVE' )
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MUESTRA_AVANCE( 'EMPPRIN', 'PROGRESO...' )
+
+### DECLARACION DE VARIABLE
+_tot_trab := 0
+$vig := ''
+_vig := 0
+_nvig := 0
+
+### SUBRUTINAS
+SUB_RUTINA IMPRIME_EMPLEADO
+   SI ( TRAE_REGISTRO ( 'PUESTO' , TRAE_DSP ( 'P' , _ff ) ) ) ;; FIN_SI
+   IMP ( COL (1)   , 'EMPPRIN':'CLAVE' , COL (11) , SUBSTR ( 'EMPPRIN':'NOMBRE' , 1 , 30 ) , COL (42) , SUBSTR ( 'PUESTO':'DESCRIPCION' , 1 , 23 ) )
+   IMP ( COL (67)  , FORMATO ( 'EMPPRIN':'RFC' , 'XXXX-XXXXXX-XXX' ) , COL (84) , FORMATO ( 'EMPPRIN':'AFILIACION' , 'XXXX-XX-XXXX-X' ) )
+   IMP ( COL (102) , FECHA ( 'EMPPRIN':'INGRESO' ) )
+   DECIMALES := 2
+   IMP ( COL (114) , DER ( $ ( SUELDO_ACTUAL   ( _ff , _ff )) , 8 ) )
+   IMP ( COL (122) , DER ( $ ( INT_IMSS_ACTUAL ( _ff , _ff )) , 8 ) )
+   DECIMALES := 0
+   IMPRIME
+   _tot_trab := _tot_trab + 1
+FIN_SUB_RUTINA
+
+SUB_RUTINA IMPRIME_MOVIMIENTOS
+   REPITE
+      IMPRIME_EMPLEADO
+      SI ( FUE_VIGENTE ( _fi , _ff ) )
+         _vig := _vig + 1
+      SI_NO
+         _nvig := _nvig + 1
+      FIN_SI
+      SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+   HASTA ( FIN_BASE ('EMPPRIN') )
+FIN_SUB_RUTINA
+
+IMPRIME_MOVIMIENTOS
+
+IMPRIME
+IMP ( '   *** TOTALES GENERALES' ) ;; IMPRIME
+DECIMALES := 0
+IMP ( '       TOTAL DE TRABAJADORES   : ', DER ( _tot_trab, 4 )) ;; IMPRIME
+IMP ( '       VIGENTES                : ', DER ( _vig, 4 )) ;; IMPRIME
+IMP ( '       NO VIGENTES             : ', DER ( _nvig, 4 )) ;; IMPRIME
+TERMINA_REPORTE

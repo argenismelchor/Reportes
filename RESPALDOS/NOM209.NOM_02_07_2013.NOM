@@ -1,0 +1,156 @@
+#ALTA DE TARJETAS HSBC
+#REPORTE ESTANDAR DE MUESTRA
+#VERSION 2.5
+#EXCEL
+#DESCRIPCION
+#Reporte de alta de tarjetas HSBC.
+#FIN_DESCRIPCION
+
+NUEVO_PARAMETRO_SAL ( 'SALIDA', 'PANTALLA/EXCEL', $salida)
+NUEVO_PARAMETRO_CHEQ ( 'MARCAR' , '' , _marcar )
+LEE_PARAMETROS
+BORRA_PARAMETROS
+
+$salida2 := $salida
+SI ( $salida2 = 'EXCEL' )
+     $salida := 'PANTALLA' 
+FIN_SI
+
+SALIDA := $salida
+
+INCLUYE REPUTIL.DAT
+
+# DEFINICION DE COLUMNAS
+
+$columna   := 'CLAVE'
+_longitud  := 10
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'NOMBRE'
+_longitud  := 35
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+$columna   := 'RFC'
+_longitud  := 15
+$justifica := 'IZQ'
+$totales   := 'NO'
+agrega_columna
+
+
+_condensado := 0
+$titulo_reporte := 'REPORTE DE ALTA DE TARJETAS'
+define_encabezado
+
+# PARAMETROS GENERALES
+FORMATO_FECHA := 3
+FORMATO_PESOS := 2
+
+# VARIABLES GLOBALES
+_filaexcel := 1
+$fecha := '' ;; $ecivil  := '' ;; $sexo := ''  ;; $c := SUBSTR ( '''', 1 , 1 )
+# SUBRUTINAS GLOBALES
+SUB_RUTINA formato_trabajador
+   $valor := 'EMPPRIN':'CLAVE'
+   imprime_columna
+
+   $valor := 'EMPPRIN':'NOMBRE'
+   imprime_columna
+
+   $valor := FORMATO( 'EMPPRIN':'RFC', 'XXXX-XXXXXX-XXX' )
+   imprime_columna
+
+   SI ( $salida2 = 'EXCEL' )
+
+
+         EXCEL ( 'PON_VALOR' , 1  , _filaexcel , $c + 'EMPPRIN':'CTA_TARJETA' )
+         EXCEL ( 'PON_VALOR' , 2  , _filaexcel , 'EMPPRIN':'NOMBREN' )
+         EXCEL ( 'PON_VALOR' , 3  , _filaexcel , 'EMPPRIN':'NOMBREP' )
+         EXCEL ( 'PON_VALOR' , 4  , _filaexcel , 'EMPPRIN':'NOMBREM' )
+
+         FORMATO_FECHA := 6
+         $fecha   := FECHA ( 'EMPPRIN':'FECHA_NACIMIENTO' )
+         $fecha :=  SUBSTR ( $fecha , 1 ,2  ) + '/' + SUBSTR ( $fecha , 3 ,2  ) + '/' + SUBSTR ( $fecha , 5 ,4  ) 
+         $ecivil  := 'EMPPRIN':'ESTADO_CIVIL' 
+         $sexo    := 'EMPPRIN':'SEXO'
+
+         SI  ( $sexo = 'M'   ) ;; $sexo := 'MASCULINO' ;; FIN_SI
+         SI  ( $sexo = 'F'  )  ;; $sexo := 'FEMENINO'  ;; FIN_SI
+        
+         SI ( $ecivil = 'CAS' ) ;; $ecivil := 'CASADO' ;; FIN_SI
+         SI ( $ecivil = 'SOL' ) ;; $ecivil := 'SOLTERO' ;; FIN_SI
+         SI ( $ecivil = 'ULI' ) ;; $ecivil := 'UNION LIBRE' ;; FIN_SI
+         SI ( $ecivil = 'DIV' ) ;; $ecivil := 'DIVORCIADO' ;; FIN_SI
+         SI ( $ecivil = 'VIU' ) ;; $ecivil := 'VIUDO' ;; FIN_SI
+
+         EXCEL ( 'PON_VALOR' , 5  , _filaexcel , $c + $fecha  )
+         EXCEL ( 'PON_VALOR' , 6  , _filaexcel , $c + 'EMPPRIN':'RFC' )
+         EXCEL ( 'PON_VALOR' , 7  , _filaexcel , $ecivil )
+         EXCEL ( 'PON_VALOR' , 8  , _filaexcel , $sexo   )
+         EXCEL ( 'PON_VALOR' , 9  , _filaexcel , 'MX'   )
+         EXCEL ( 'PON_VALOR' , 10  , _filaexcel , 'EMPPRIN':'CALLE' )
+
+        SI (  'EMPPRIN':'NUMERO'  = 'S/N'  )
+           EXCEL ( 'PON_VALOR' , 11  , _filaexcel , $c + '0' )
+        SI_NO 
+           EXCEL ( 'PON_VALOR' , 11  , _filaexcel , $c + 'EMPPRIN':'NUMERO' )
+       FIN_SI
+
+
+       SI  (  'EMPPRIN':'INTERIOR' = 'A' )
+         EXCEL ( 'PON_VALOR' , 12 , _filaexcel , $c + '1' )
+       FIN_SI
+
+       SI  (  'EMPPRIN':'INTERIOR' = 'B' )
+         EXCEL ( 'PON_VALOR' , 12 , _filaexcel , $c + '2' )
+       FIN_SI
+
+       SI  (  'EMPPRIN':'INTERIOR' = 'C' )
+         EXCEL ( 'PON_VALOR' , 12 , _filaexcel , $c + '3' )
+       FIN_SI
+
+       SI  ( (  'EMPPRIN':'INTERIOR' <> 'A' ) AND  (  'EMPPRIN':'INTERIOR'<> 'B' )  AND (  'EMPPRIN':'INTERIOR' <> 'C' ) )
+         EXCEL ( 'PON_VALOR' , 12 , _filaexcel , $c + 'EMPPRIN':'INTERIOR'  )
+       FIN_SI
+
+
+         EXCEL ( 'PON_VALOR' , 13 , _filaexcel , 'EMPPRIN':'COLONIA' )
+         EXCEL ( 'PON_VALOR' , 14 , _filaexcel , $c + 'EMPPRIN':'CP' )
+         EXCEL ( 'PON_VALOR' , 15 , _filaexcel , $c + 'EMPPRIN':'TELEFONO_1' )
+         EXCEL ( 'PON_VALOR' , 16 , _filaexcel , $c + 'EMPPRIN':'TELEFONO_2' )
+         _filaexcel := _filaexcel + 1
+   FIN_SI
+
+   imprime_renglon
+FIN_SUB_RUTINA
+
+INCLUYE UTIL2.DAT
+
+_debuger := 0
+lee_parametros_seleccion
+lee_parametros_indices
+$campos_extras := 'E.CTA_TARJETA,E.NOMBREN,E.NOMBREM,E.NOMBREP'
+$campos_extras2 := ',EH.FECHA_NACIMIENTO,E.RFC,EH.ESTADO_CIVIL,EH.SEXO,EH.CALLE,EH.NUMERO,EH.INTERIOR,EH.COLONIA,EH.CP,EH.TELEFONO_1,EH.TELEFONO_2'
+$bases_extras  := 'EMPRH EH'
+$condiciones_extras := 'E.CLAVE = EH.CLAVE'
+base_trabajadores
+
+USA_ARCHIVO ( 'EMPPRIN' , 'EMPEXT' , 'CLAVE' )
+PRIMER_REGISTRO ( 'EMPPRIN' )
+MIENTRAS ( FIN_BASE ( 'EMPPRIN' ) = FALSO )
+
+   SI (( 'EMPEXT':'ALTA_TARJETA' = 0  )   AND  ( 'EMPPRIN':'CTA_TARJETA' <> '' ) )
+        formato_trabajador
+
+        SI ( _marcar = 1 ) 
+             'EMPEXT':'ALTA_TARJETA':= 1
+             GRABA_BASE ( 'EMPEXT')
+        FIN_SI
+   FIN_SI
+   SIGUIENTE_REGISTRO ( 'EMPPRIN' )
+FIN_MIENTRAS
+
+TERMINA_REPORTE
